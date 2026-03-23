@@ -25,6 +25,7 @@ import {
   Package,
   Settings,
   LogOut,
+  Sparkles,
 } from 'lucide-react';
 
 export function Header() {
@@ -41,6 +42,7 @@ export function Header() {
     { href: '/video', label: t.nav.video || '視頻學堂' },
     { href: '/news', label: t.nav.news },
     { href: '/verify', label: '證書驗證' },
+    { href: '/ai-assistant', label: 'AI助手', icon: Sparkles },
   ];
 
   const handleSearch = () => {
@@ -70,8 +72,9 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
               >
+                {item.icon && <item.icon className="w-4 h-4" />}
                 {item.label}
               </Link>
             ))}
@@ -216,8 +219,9 @@ export function Header() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMenuOpen(false)}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 px-2 rounded-lg hover:bg-muted"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 px-2 rounded-lg hover:bg-muted flex items-center gap-2"
                 >
+                  {item.icon && <item.icon className="w-4 h-4" />}
                   {item.label}
                 </Link>
               ))}
