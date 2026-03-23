@@ -1,6 +1,6 @@
 /**
  * @fileoverview 轮播图 API
- * @description 提供轮播图的查询和创建接口
+ * @description 处理轮播图的增删改查
  * @module app/api/banners/route
  */
 
@@ -9,72 +9,56 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /**
  * 获取轮播图列表
- * @param request - 请求对象
- * @returns 轮播图列表响应
  */
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const position = searchParams.get('position') || 'home';
-  const status = searchParams.get('status');
-
+export async function GET() {
   try {
     const client = getSupabaseClient();
-    
-    let query = client
+
+    const { data: banners, error } = await client
       .from('banners')
       .select('*')
-      .order('sort', { ascending: true });
-
-    // 后台管理可查看所有状态
-    if (status !== null && status !== 'all') {
-      query = query.eq('status', status === 'true');
-    } else if (status === null) {
-      // 前台只显示启用的
-      query = query.eq('status', true);
-    }
-
-    if (position !== 'all') {
-      query = query.eq('position', position);
-    }
-
-    const { data, error } = await query;
+      .order('sort', { ascending: true })
+      .order('created_at', { ascending: false });
 
     if (error) {
+      // 如果表不存在，返回空数组
+      if (error.code === '42P01') {
+        return NextResponse.json({ data: [] });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ data: banners || [] });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch banners' },
-      { status: 500 }
-    );
+    console.error('获取轮播图失败:', error);
+    return NextResponse.json({ error: '獲取輪播圖失敗' }, { status: 500 });
   }
 }
 
 /**
  * 创建轮播图
- * @param request - 请求对象
- * @returns 创建结果
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
     const client = getSupabaseClient();
+    const body = await request.json();
+
+    const { title, image_url, link_url, position, sort, status } = body;
+
+    if (!image_url) {
+      return NextResponse.json({ error: '請上傳輪播圖片' }, { status: 400 });
+    }
 
     const { data, error } = await client
       .from('banners')
       .insert({
-        title: body.title,
-        image: body.image,
-        link: body.link,
-        position: body.position || 'home',
-        status: body.status ?? true,
-        sort: body.sort || 0,
-        start_time: body.start_time,
-        end_time: body.end_time,
+        title: title || null,
+        image_url,
+        link_url: link_url || null,
+        position: position || 'home',
+        sort: sort || 0,
+        status: status !== false,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -83,11 +67,76 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data, message: '輪播圖創建成功' });
+    return NextResponse.json({ data });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to create banner' },
-      { status: 500 }
-    );
+    console.error('创建轮播图失败:', error);
+    return NextResponse.json({ error: '創建輪播圖失敗' }, { status: 500 });
+  }
+}
+
+/**
+ * 更新轮播图
+ */
+export async function PUT(request: Request) {
+  try {
+    const client = getSupabaseClient();
+    const body = await request.json();
+
+    const { id, title, image_url, link_url, position, sort, status } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: '輪播圖ID不能為空' }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = title;
+    if (image_url !== undefined) updateData.image_url = image_url;
+    if (link_url !== undefined) updateData.link_url = link_url;
+    if (position !== undefined) updateData.position = position;
+    if (sort !== undefined) updateData.sort = sort;
+    if (status !== undefined) updateData.status = status;
+
+    const { error } = await client
+      .from('banners')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '更新成功' });
+  } catch (error) {
+    console.error('更新轮播图失败:', error);
+    return NextResponse.json({ error: '更新輪播圖失敗' }, { status: 500 });
+  }
+}
+
+/**
+ * 删除轮播图
+ */
+export async function DELETE(request: Request) {
+  try {
+    const client = getSupabaseClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: '輪播圖ID不能為空' }, { status: 400 });
+    }
+
+    const { error } = await client
+      .from('banners')
+      .delete()
+      .eq('id', parseInt(id));
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '刪除成功' });
+  } catch (error) {
+    console.error('删除轮播图失败:', error);
+    return NextResponse.json({ error: '刪除輪播圖失敗' }, { status: 500 });
   }
 }

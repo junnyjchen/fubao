@@ -9,7 +9,7 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /**
  * 获取商品列表
- * @description 支持分页、筛选、排序
+ * @description 支持分页、筛选、排序、搜索
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,11 +18,14 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get('type');
   const purpose = searchParams.get('purpose');
   const merchantId = searchParams.get('merchant_id');
+  const categoryId = searchParams.get('category_id');
+  const keyword = searchParams.get('keyword');
   const isHot = searchParams.get('hot') === 'true';
   const limit = parseInt(searchParams.get('limit') || '20');
   const page = parseInt(searchParams.get('page') || '1');
   const offset = (page - 1) * limit;
   const includeAll = searchParams.get('includeAll') === 'true'; // 后台管理查询所有商品
+  const status = searchParams.get('status'); // 状态筛选
 
   try {
     const client = getSupabaseClient();
@@ -35,6 +38,14 @@ export async function GET(request: NextRequest) {
     // 前台只显示上架商品
     if (!includeAll) {
       query = query.eq('status', true);
+    } else if (status) {
+      // 后台状态筛选
+      query = query.eq('status', status === 'active');
+    }
+
+    // 关键字搜索
+    if (keyword && keyword.trim()) {
+      query = query.or(`name.ilike.%${keyword.trim()}%,subtitle.ilike.%${keyword.trim()}%,description.ilike.%${keyword.trim()}%`);
     }
 
     // 排序
@@ -51,6 +62,9 @@ export async function GET(request: NextRequest) {
     }
     if (merchantId) {
       query = query.eq('merchant_id', parseInt(merchantId));
+    }
+    if (categoryId) {
+      query = query.eq('category_id', parseInt(categoryId));
     }
     if (isHot) {
       query = query.order('sales', { ascending: false });

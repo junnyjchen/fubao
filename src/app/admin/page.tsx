@@ -137,6 +137,7 @@ export default function AdminDashboard() {
     { title: '添加商品', href: '/admin/goods/new', icon: Package },
     { title: '訂單管理', href: '/admin/orders', icon: ShoppingCart },
     { title: '分類管理', href: '/admin/categories', icon: Package },
+    { title: '輪播圖管理', href: '/admin/banners', icon: Package },
     { title: '系統設置', href: '/admin/settings', icon: Package },
   ];
 
@@ -220,7 +221,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">快捷操作</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (

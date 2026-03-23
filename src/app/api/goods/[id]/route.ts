@@ -12,76 +12,74 @@ interface RouteParams {
 }
 
 /**
- * 获取商品详情
+ * 更新商品
  * @param request - 请求对象
  * @param params - 路由参数
- * @returns 商品详情
+ * @returns 更新结果
  */
-export async function GET(request: Request, { params }: RouteParams) {
+export async function PUT(request: Request, { params }: RouteParams) {
+  try {
+    const client = getSupabaseClient();
+    const { id } = await params;
+    const body = await request.json();
+
+    const updateData: Record<string, unknown> = {};
+    
+    // 只更新提供的字段
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.subtitle !== undefined) updateData.subtitle = body.subtitle;
+    if (body.category_id !== undefined) updateData.category_id = body.category_id;
+    if (body.type !== undefined) updateData.type = body.type;
+    if (body.purpose !== undefined) updateData.purpose = body.purpose;
+    if (body.price !== undefined) updateData.price = String(body.price);
+    if (body.original_price !== undefined) updateData.original_price = body.original_price ? String(body.original_price) : null;
+    if (body.stock !== undefined) updateData.stock = body.stock;
+    if (body.main_image !== undefined) updateData.main_image = body.main_image;
+    if (body.images !== undefined) updateData.images = body.images;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.is_certified !== undefined) updateData.is_certified = body.is_certified;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.sort !== undefined) updateData.sort = body.sort;
+
+    const { error } = await client
+      .from('goods')
+      .update(updateData)
+      .eq('id', parseInt(id));
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '更新成功' });
+  } catch (error) {
+    console.error('更新商品失败:', error);
+    return NextResponse.json({ error: '更新商品失敗' }, { status: 500 });
+  }
+}
+
+/**
+ * 删除商品
+ * @param request - 请求对象
+ * @param params - 路由参数
+ * @returns 删除结果
+ */
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const client = getSupabaseClient();
     const { id } = await params;
 
-    // 获取商品基本信息
-    const { data: goods, error } = await client
+    const { error } = await client
       .from('goods')
-      .select('*')
-      .eq('id', parseInt(id))
-      .single();
+      .delete()
+      .eq('id', parseInt(id));
 
-    if (error || !goods) {
-      return NextResponse.json({ error: '商品不存在' }, { status: 404 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // 获取商户信息
-    const { data: merchant } = await client
-      .from('merchants')
-      .select('id, name, type, logo, certification_level, rating, total_sales')
-      .eq('id', goods.merchant_id)
-      .single();
-
-    // 获取分类信息
-    const { data: category } = goods.category_id
-      ? await client
-          .from('categories')
-          .select('id, name, slug')
-          .eq('id', goods.category_id)
-          .single()
-      : { data: null };
-
-    // 获取认证信息
-    const { data: certificate } = goods.is_certified
-      ? await client
-          .from('certificates')
-          .select('*')
-          .eq('goods_id', goods.id)
-          .single()
-      : { data: null };
-
-    // 获取关联商品（同分类）
-    let relatedGoods: unknown[] = [];
-    if (goods.category_id) {
-      const { data: related } = await client
-        .from('goods')
-        .select('id, name, price, main_image, sales')
-        .eq('category_id', goods.category_id)
-        .eq('status', true)
-        .neq('id', goods.id)
-        .limit(6);
-      relatedGoods = related || [];
-    }
-
-    return NextResponse.json({
-      data: {
-        ...goods,
-        merchant,
-        category,
-        certificate,
-        relatedGoods,
-      },
-    });
+    return NextResponse.json({ message: '刪除成功' });
   } catch (error) {
-    console.error('获取商品详情失败:', error);
-    return NextResponse.json({ error: '獲取商品詳情失敗' }, { status: 500 });
+    console.error('删除商品失败:', error);
+    return NextResponse.json({ error: '刪除商品失敗' }, { status: 500 });
   }
 }
