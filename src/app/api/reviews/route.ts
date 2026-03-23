@@ -1,163 +1,162 @@
 /**
- * @fileoverview 商品评价 API
- * @description 处理商品评价的增删改查
+ * @fileoverview 商品评价API
+ * @description 获取商品评价列表和创建评价
  * @module app/api/reviews/route
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
-/** 临时用户ID */
-const TEMP_USER_ID = 'guest-user-001';
-
-/**
- * 获取商品评价列表
- * @param request - 请求对象
- * @returns 评价列表
- */
-export async function GET(request: Request) {
+// GET - 获取评价列表
+export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
     const { searchParams } = new URL(request.url);
-
     const goodsId = searchParams.get('goods_id');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
 
-    let query = client
+    if (!goodsId) {
+      return NextResponse.json({ error: '缺少商品ID' }, { status: 400 });
+    }
+
+    const client = getSupabaseClient();
+
+    // 获取评价列表
+    const { data: reviews, error, count } = await client
       .from('reviews')
-      .select('*', { count: 'exact' })
-      .eq('status', true)
+      .select(`
+        id,
+        order_id,
+        goods_id,
+        user_id,
+        rating,
+        content,
+        images,
+        created_at,
+        user:users (nickname, avatar)
+      `, { count: 'exact' })
+      .eq('goods_id', parseInt(goodsId))
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (goodsId) {
-      query = query.eq('goods_id', parseInt(goodsId));
-    }
-
-    const { data: reviews, count, error } = await query;
-
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('查询评价失败:', error);
+      return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
     }
 
-    // 获取用户信息
-    const userIds = [...new Set(reviews?.map(r => r.user_id) || [])];
-    let usersMap = new Map();
-    
-    if (userIds.length > 0) {
-      const { data: users } = await client
-        .from('users')
-        .select('id, name, avatar')
-        .in('id', userIds);
-      
-      users?.forEach(u => usersMap.set(u.id, u));
+    // 获取评分统计
+    const { data: statsData } = await client
+      .from('reviews')
+      .select('rating')
+      .eq('goods_id', parseInt(goodsId));
+
+    const ratingStats = {
+      avg: 0,
+      total: 0,
+      distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as Record<number, number>,
+    };
+
+    if (statsData && statsData.length > 0) {
+      const total = statsData.length;
+      const sum = statsData.reduce((acc: number, r: any) => acc + r.rating, 0);
+      ratingStats.avg = sum / total;
+      ratingStats.total = total;
+
+      statsData.forEach((r: any) => {
+        if (r.rating >= 1 && r.rating <= 5) {
+          ratingStats.distribution[r.rating]++;
+        }
+      });
     }
 
-    // 合并用户信息
-    const reviewsWithUser = reviews?.map(review => ({
-      ...review,
-      user: usersMap.get(review.user_id) || { name: '匿名用戶', avatar: null },
-    }));
-
-    // 计算评分统计
-    let ratingStats = { avg: 0, total: 0, distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } };
-    
-    if (goodsId && reviewsWithUser) {
-      const allReviews = await client
-        .from('reviews')
-        .select('rating')
-        .eq('goods_id', parseInt(goodsId))
-        .eq('status', true);
-
-      if (allReviews.data && allReviews.data.length > 0) {
-        const total = allReviews.data.length;
-        const sum = allReviews.data.reduce((acc, r) => acc + r.rating, 0);
-        ratingStats.avg = Math.round((sum / total) * 10) / 10;
-        ratingStats.total = total;
-        
-        allReviews.data.forEach(r => {
-          ratingStats.distribution[r.rating as keyof typeof ratingStats.distribution]++;
-        });
-      }
-    }
+    // 格式化评价数据
+    const formattedReviews = reviews?.map((r: any) => ({
+      ...r,
+      user: {
+        name: r.user?.nickname || '匿名用戶',
+        avatar: r.user?.avatar,
+      },
+    })) || [];
 
     return NextResponse.json({
-      data: reviewsWithUser,
-      ratingStats,
+      data: formattedReviews,
+      total: count || 0,
       page,
       limit,
-      total: count || 0,
+      ratingStats,
     });
   } catch (error) {
-    console.error('获取评价失败:', error);
-    return NextResponse.json({ error: '獲取評價失敗' }, { status: 500 });
+    console.error('获取评价列表失败:', error);
+    return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
   }
 }
 
-/**
- * 创建商品评价
- * @param request - 请求对象
- * @returns 创建结果
- */
-export async function POST(request: Request) {
+// POST - 创建评价
+export async function POST(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
     const body = await request.json();
+    const { order_id, goods_id, user_id, rating, content, images } = body;
 
-    const { orderId, goodsId, rating, content, images } = body;
-
-    if (!orderId || !goodsId || !rating) {
-      return NextResponse.json({ error: '請填寫完整評價信息' }, { status: 400 });
+    // 验证必填字段
+    if (!order_id || !goods_id || !user_id || !rating) {
+      return NextResponse.json(
+        { error: '請填寫完整評價信息' },
+        { status: 400 }
+      );
     }
 
-    // 检查订单是否存在且已完成
-    const { data: order } = await client
-      .from('orders')
-      .select('id, order_status')
-      .eq('id', orderId)
-      .eq('user_id', TEMP_USER_ID)
-      .single();
-
-    if (!order || order.order_status !== 3) {
-      return NextResponse.json({ error: '訂單未完成，無法評價' }, { status: 400 });
+    // 验证评分范围
+    if (rating < 1 || rating > 5) {
+      return NextResponse.json(
+        { error: '評分範圍為1-5分' },
+        { status: 400 }
+      );
     }
+
+    const client = getSupabaseClient();
 
     // 检查是否已评价
     const { data: existingReview } = await client
       .from('reviews')
       .select('id')
-      .eq('order_id', orderId)
-      .eq('goods_id', goodsId)
+      .eq('order_id', order_id)
+      .eq('goods_id', goods_id)
+      .eq('user_id', user_id)
       .single();
 
     if (existingReview) {
-      return NextResponse.json({ error: '該商品已評價' }, { status: 400 });
+      return NextResponse.json(
+        { error: '該商品已評價' },
+        { status: 400 }
+      );
     }
 
-    const { data, error } = await client
+    // 创建评价
+    const { data: review, error } = await client
       .from('reviews')
       .insert({
-        order_id: orderId,
-        goods_id: goodsId,
-        user_id: TEMP_USER_ID,
+        order_id,
+        goods_id,
+        user_id,
         rating,
         content: content || null,
         images: images || null,
-        status: true,
-        created_at: new Date().toISOString(),
       })
       .select()
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('创建评价失败:', error);
+      return NextResponse.json({ error: '創建失敗' }, { status: 500 });
     }
 
-    return NextResponse.json({ message: '評價成功', data });
+    return NextResponse.json({
+      message: '評價成功',
+      data: review,
+    });
   } catch (error) {
     console.error('创建评价失败:', error);
-    return NextResponse.json({ error: '創建評價失敗' }, { status: 500 });
+    return NextResponse.json({ error: '創建失敗' }, { status: 500 });
   }
 }

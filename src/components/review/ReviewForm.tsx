@@ -1,24 +1,26 @@
-/**
- * @fileoverview 评价表单组件
- * @description 用户提交商品评价
- * @module components/review/ReviewForm
- */
-
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, Camera, X, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Star, Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface ReviewFormProps {
   orderId: number;
   goodsId: number;
   goodsName: string;
-  goodsImage: string | null;
+  goodsImage?: string;
   onSuccess?: () => void;
+  trigger?: React.ReactNode;
 }
 
 export function ReviewForm({
@@ -27,19 +29,17 @@ export function ReviewForm({
   goodsName,
   goodsImage,
   onSuccess,
+  trigger,
 }: ReviewFormProps) {
+  const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const { toast } = useToast();
 
   const handleSubmit = async () => {
-    if (rating === 0) {
-      toast({
-        variant: 'destructive',
-        title: '請選擇評分',
-      });
+    if (!content.trim()) {
+      alert('請填寫評價內容');
       return;
     }
 
@@ -49,183 +49,156 @@ export function ReviewForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId,
-          goodsId,
+          order_id: orderId,
+          goods_id: goodsId,
+          user_id: 'current-user', // TODO: 从session获取
           rating,
           content,
-          images,
+          images: images.length > 0 ? images : null,
         }),
       });
 
       const data = await res.json();
-      
+
       if (data.message) {
-        toast({
-          title: '評價成功',
-          description: '感謝您的評價',
-        });
+        alert('評價成功');
+        setOpen(false);
         onSuccess?.();
-      } else if (data.error) {
-        toast({
-          variant: 'destructive',
-          title: '評價失敗',
-          description: data.error,
-        });
+      } else {
+        alert(data.error || '評價失敗');
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '評價失敗',
-        description: '網絡錯誤，請重試',
-      });
+      console.error('提交评价失败:', error);
+      alert('評價失敗，請重試');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
-
-    // 模拟图片上传（实际项目中需要上传到服务器）
-    const newImages: string[] = [];
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          newImages.push(e.target.result as string);
-          if (newImages.length === files.length) {
-            setImages((prev) => [...prev, ...newImages].slice(0, 5));
-          }
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+  const handleImageAdd = () => {
+    const url = prompt('請輸入圖片URL');
+    if (url && url.trim()) {
+      setImages(prev => [...prev, url.trim()]);
+    }
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleImageRemove = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">評價商品</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* 商品信息 */}
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center text-muted-foreground text-xs">
-            {goodsImage ? (
-              <img
-                src={goodsImage}
-                alt={goodsName}
-                className="w-full h-full object-cover rounded-lg"
-              />
-            ) : (
-              '暫無圖片'
-            )}
-          </div>
-          <div>
-            <p className="font-medium">{goodsName}</p>
-            <p className="text-sm text-muted-foreground">訂單號：{orderId}</p>
-          </div>
-        </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || <Button size="sm">評價</Button>}
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>發表評價</DialogTitle>
+        </DialogHeader>
 
-        {/* 评分选择 */}
-        <div>
-          <label className="text-sm font-medium mb-2 block">評分</label>
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => setRating(star)}
-                className="p-1"
-              >
-                <Star
-                  className={`w-8 h-8 transition-colors ${
-                    star <= rating
-                      ? 'fill-yellow-400 text-yellow-400'
-                      : 'fill-gray-200 text-gray-200 hover:fill-gray-300'
-                  }`}
-                />
-              </button>
-            ))}
-            <span className="text-sm text-muted-foreground ml-2">
-              {rating === 5 ? '非常好' : rating === 4 ? '好' : rating === 3 ? '一般' : rating === 2 ? '差' : '很差'}
-            </span>
+        <div className="space-y-4">
+          {/* 商品信息 */}
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            <div className="w-16 h-16 rounded bg-muted flex items-center justify-center overflow-hidden">
+              {goodsImage ? (
+                <img src={goodsImage} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon className="w-6 h-6 text-muted-foreground" />
+              )}
+            </div>
+            <p className="flex-1 text-sm font-medium truncate">{goodsName}</p>
           </div>
-        </div>
 
-        {/* 评价内容 */}
-        <div>
-          <label className="text-sm font-medium mb-2 block">評價內容（選填）</label>
-          <Textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="分享您的使用體驗，幫助其他用戶做出選擇"
-            rows={4}
-            maxLength={500}
-          />
-          <p className="text-xs text-muted-foreground mt-1 text-right">
-            {content.length}/500
-          </p>
-        </div>
+          {/* 评分 */}
+          <div className="space-y-2">
+            <Label>評分</Label>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className="p-1"
+                >
+                  <Star
+                    className={`w-8 h-8 transition-colors ${
+                      star <= rating
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'fill-gray-200 text-gray-200 hover:fill-gray-300 hover:text-gray-300'
+                    }`}
+                  />
+                </button>
+              ))}
+              <span className="ml-2 text-lg font-medium">{rating}分</span>
+            </div>
+          </div>
 
-        {/* 图片上传 */}
-        <div>
-          <label className="text-sm font-medium mb-2 block">上傳圖片（最多5張）</label>
-          <div className="flex gap-2 flex-wrap">
-            {images.map((img, idx) => (
-              <div
-                key={idx}
-                className="relative w-20 h-20 rounded-lg overflow-hidden border"
-              >
-                <img src={img} alt="" className="w-full h-full object-cover" />
+          {/* 评价内容 */}
+          <div className="space-y-2">
+            <Label htmlFor="content">評價內容 *</Label>
+            <Textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="分享您的使用體驗..."
+              rows={4}
+              maxLength={500}
+            />
+            <p className="text-xs text-muted-foreground text-right">
+              {content.length}/500
+            </p>
+          </div>
+
+          {/* 图片上传 */}
+          <div className="space-y-2">
+            <Label>評價圖片（選填）</Label>
+            <div className="flex flex-wrap gap-2">
+              {images.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative w-16 h-16 rounded overflow-hidden bg-muted group"
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => handleImageRemove(idx)}
+                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {images.length < 5 && (
                 <button
                   type="button"
-                  onClick={() => removeImage(idx)}
-                  className="absolute top-1 right-1 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70"
+                  onClick={handleImageAdd}
+                  className="w-16 h-16 rounded border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
                 >
-                  <X className="w-3 h-3" />
+                  <ImageIcon className="w-5 h-5" />
                 </button>
-              </div>
-            ))}
-            
-            {images.length < 5 && (
-              <label className="w-20 h-20 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
-                <Camera className="w-6 h-6 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground mt-1">上傳</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageUpload}
-                />
-              </label>
-            )}
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">最多上傳5張圖片</p>
+          </div>
+
+          {/* 提交按钮 */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  提交中...
+                </>
+              ) : (
+                '提交評價'
+              )}
+            </Button>
           </div>
         </div>
-
-        {/* 提交按钮 */}
-        <div className="flex justify-end gap-3">
-          <Button
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                提交中...
-              </>
-            ) : (
-              '提交評價'
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }

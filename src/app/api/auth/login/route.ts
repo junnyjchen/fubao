@@ -1,73 +1,79 @@
 /**
  * @fileoverview 用户登录 API
- * @description 处理用户登录、注册、登出
+ * @description 处理用户登录、登出
  * @module app/api/auth/login/route
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { compare } from 'bcryptjs';
 
 /**
  * 用户登录
  * @param request - 请求对象
  * @returns 登录结果
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, action = 'login' } = body;
+    const { email, phone, password } = body;
     const client = getSupabaseClient();
 
-    if (action === 'register') {
-      // 注册
-      const { data, error } = await client.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            language: 'zh-TW',
-          },
-        },
-      });
+    // 查找用户
+    let query = client
+      .from('users')
+      .select('id, nickname, email, phone, password, role, status, avatar')
+      .eq('status', true);
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
-      }
-
-      // 创建用户记录
-      if (data.user) {
-        await client.from('users').upsert({
-          id: data.user.id,
-          email: data.user.email,
-          language: 'zh-TW',
-          status: true,
-        });
-      }
-
-      return NextResponse.json({
-        message: '註冊成功，請查收驗證郵件',
-        user: data.user,
-      });
+    if (email) {
+      query = query.eq('email', email);
+    } else if (phone) {
+      query = query.eq('phone', phone);
     } else {
-      // 登录
-      const { data, error } = await client.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        return NextResponse.json({ error: '郵箱或密碼錯誤' }, { status: 401 });
-      }
-
-      return NextResponse.json({
-        message: '登錄成功',
-        user: data.user,
-        session: data.session,
-      });
+      return NextResponse.json(
+        { error: '請輸入郵箱或手機號碼' },
+        { status: 400 }
+      );
     }
+
+    const { data: users, error: fetchError } = await query.limit(1);
+
+    if (fetchError || !users || users.length === 0) {
+      return NextResponse.json(
+        { error: '賬號不存在或已被禁用' },
+        { status: 401 }
+      );
+    }
+
+    const user = users[0];
+
+    // 验证密码
+    if (!user.password) {
+      return NextResponse.json(
+        { error: '賬號異常，請聯繫客服' },
+        { status: 401 }
+      );
+    }
+
+    const isValidPassword = await compare(password, user.password);
+
+    if (!isValidPassword) {
+      return NextResponse.json(
+        { error: '密碼錯誤' },
+        { status: 401 }
+      );
+    }
+
+    // 返回用户信息（不包含密码）
+    const { password: _, ...userWithoutPassword } = user;
+
+    return NextResponse.json({
+      message: '登錄成功',
+      user: userWithoutPassword,
+    });
   } catch (error) {
-    console.error('认证失败:', error);
-    return NextResponse.json({ error: '操作失敗' }, { status: 500 });
+    console.error('登录失败:', error);
+    return NextResponse.json({ error: '登錄失敗，請稍後重試' }, { status: 500 });
   }
 }
 
