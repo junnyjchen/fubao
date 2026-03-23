@@ -11,6 +11,10 @@ export const translations = {
       user: '個人中心',
       login: '登入',
       register: '註冊',
+      cart: '購物車',
+      help: '幫助中心',
+      about: '關於我們',
+      contact: '聯繫我們',
     },
     // 首页
     home: {
@@ -96,6 +100,59 @@ export const translations = {
       settings: '賬號設置',
       language: '語言設置',
     },
+    // 购物车
+    cart: {
+      title: '購物車',
+      empty: '購物車是空的',
+      continueShopping: '繼續購物',
+      checkout: '去結算',
+      subtotal: '小計',
+      shipping: '運費',
+      total: '總計',
+      remove: '移除',
+    },
+    // 帮助中心
+    help: {
+      title: '幫助中心',
+      subtitle: '我們隨時為您服務',
+      categories: {
+        shopping: '購物指南',
+        payment: '支付問題',
+        shipping: '配送說明',
+        afterSales: '售後服務',
+        account: '賬號問題',
+      },
+      faq: '常見問題',
+      contact: '聯繫客服',
+    },
+    // 关于我们
+    about: {
+      title: '關於我們',
+      subtitle: '全球玄門文化科普交易平台',
+      mission: '我們的使命',
+      vision: '我們的願景',
+      values: '我們的價值觀',
+      history: '發展歷程',
+    },
+    // 联系我们
+    contact: {
+      title: '聯繫我們',
+      subtitle: '期待與您的溝通',
+      form: {
+        name: '您的姓名',
+        email: '電子郵箱',
+        subject: '主題',
+        message: '留言內容',
+        submit: '提交留言',
+      },
+    },
+    // 法律页面
+    legal: {
+      terms: '用戶協議',
+      privacy: '隱私政策',
+      refund: '退換貨政策',
+      copyright: '版權聲明',
+    },
     // 通用
     common: {
       search: '搜索符箓、法器、宮觀...',
@@ -122,6 +179,10 @@ export const translations = {
       user: '个人中心',
       login: '登录',
       register: '注册',
+      cart: '购物车',
+      help: '帮助中心',
+      about: '关于我们',
+      contact: '联系我们',
     },
     home: {
       banner: {
@@ -201,6 +262,54 @@ export const translations = {
       settings: '账号设置',
       language: '语言设置',
     },
+    cart: {
+      title: '购物车',
+      empty: '购物车是空的',
+      continueShopping: '继续购物',
+      checkout: '去结算',
+      subtotal: '小计',
+      shipping: '运费',
+      total: '总计',
+      remove: '移除',
+    },
+    help: {
+      title: '帮助中心',
+      subtitle: '我们随时为您服务',
+      categories: {
+        shopping: '购物指南',
+        payment: '支付问题',
+        shipping: '配送说明',
+        afterSales: '售后服务',
+        account: '账号问题',
+      },
+      faq: '常见问题',
+      contact: '联系客服',
+    },
+    about: {
+      title: '关于我们',
+      subtitle: '全球玄门文化科普交易平台',
+      mission: '我们的使命',
+      vision: '我们的愿景',
+      values: '我们的价值观',
+      history: '发展历程',
+    },
+    contact: {
+      title: '联系我们',
+      subtitle: '期待与您的沟通',
+      form: {
+        name: '您的姓名',
+        email: '电子邮箱',
+        subject: '主题',
+        message: '留言内容',
+        submit: '提交留言',
+      },
+    },
+    legal: {
+      terms: '用户协议',
+      privacy: '隐私政策',
+      refund: '退换货政策',
+      copyright: '版权声明',
+    },
     common: {
       search: '搜索符箓、法器、宫观...',
       loading: '加载中...',
@@ -226,6 +335,10 @@ export const translations = {
       user: 'Account',
       login: 'Login',
       register: 'Register',
+      cart: 'Cart',
+      help: 'Help',
+      about: 'About',
+      contact: 'Contact',
     },
     home: {
       banner: {
@@ -304,6 +417,54 @@ export const translations = {
       messages: 'Messages',
       settings: 'Settings',
       language: 'Language',
+    },
+    cart: {
+      title: 'Shopping Cart',
+      empty: 'Your cart is empty',
+      continueShopping: 'Continue Shopping',
+      checkout: 'Checkout',
+      subtotal: 'Subtotal',
+      shipping: 'Shipping',
+      total: 'Total',
+      remove: 'Remove',
+    },
+    help: {
+      title: 'Help Center',
+      subtitle: 'We are here to help',
+      categories: {
+        shopping: 'Shopping Guide',
+        payment: 'Payment Issues',
+        shipping: 'Shipping Info',
+        afterSales: 'After-sales',
+        account: 'Account Issues',
+      },
+      faq: 'FAQ',
+      contact: 'Contact Support',
+    },
+    about: {
+      title: 'About Us',
+      subtitle: 'Global Spiritual Culture Platform',
+      mission: 'Our Mission',
+      vision: 'Our Vision',
+      values: 'Our Values',
+      history: 'Our History',
+    },
+    contact: {
+      title: 'Contact Us',
+      subtitle: 'We would love to hear from you',
+      form: {
+        name: 'Your Name',
+        email: 'Email Address',
+        subject: 'Subject',
+        message: 'Message',
+        submit: 'Send Message',
+      },
+    },
+    legal: {
+      terms: 'Terms of Service',
+      privacy: 'Privacy Policy',
+      refund: 'Refund Policy',
+      copyright: 'Copyright Notice',
     },
     common: {
       search: 'Search talismans, artifacts, temples...',
