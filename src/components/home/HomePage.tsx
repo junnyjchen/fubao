@@ -1,0 +1,469 @@
+'use client';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useI18n } from '@/lib/i18n';
+import { 
+  ShieldCheck, 
+  Building2, 
+  Shield, 
+  Store, 
+  ArrowRight,
+  Play,
+  Eye,
+  Calendar
+} from 'lucide-react';
+
+// 类型定义
+interface Banner {
+  id: number;
+  title: string | null;
+  image: string;
+  link: string | null;
+}
+
+interface Merchant {
+  id: number;
+  name: string;
+  type: number;
+  logo: string | null;
+  certification_level: number | null;
+}
+
+interface Goods {
+  id: number;
+  name: string;
+  main_image: string | null;
+  price: string;
+  original_price: string | null;
+  is_certified: boolean;
+  sales: number;
+  merchants: Merchant;
+}
+
+interface News {
+  id: number;
+  title: string;
+  slug: string | null;
+  cover: string | null;
+  summary: string | null;
+  type: number;
+  views: number;
+  published_at: string | null;
+}
+
+interface Article {
+  id: number;
+  title: string;
+  slug: string | null;
+  cover: string | null;
+  summary: string | null;
+  views: number;
+  published_at: string | null;
+}
+
+// 功能入口组件
+function FeatureCard({ icon: Icon, title, href }: { icon: React.ElementType; title: string; href: string }) {
+  return (
+    <Link href={href}>
+      <Card className="group hover:shadow-md transition-all duration-300 hover:border-primary/30">
+        <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+            <Icon className="w-6 h-6 text-primary" />
+          </div>
+          <span className="text-sm font-medium">{title}</span>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+// 商品卡片组件
+function GoodsCard({ item }: { item: Goods }) {
+  return (
+    <Link href={`/shop/${item.id}`}>
+      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
+        <div className="relative aspect-square bg-muted">
+          {item.main_image ? (
+            <Image
+              src={item.main_image}
+              alt={item.name}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
+              <span className="text-4xl text-primary/30">符</span>
+            </div>
+          )}
+          {item.is_certified && (
+            <Badge className="absolute top-2 left-2 bg-gold text-gold-foreground">
+              一物一證
+            </Badge>
+          )}
+        </div>
+        <CardContent className="p-4">
+          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+            {item.name}
+          </h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-baseline gap-1">
+              <span className="text-lg font-bold text-primary">HK${item.price}</span>
+              {item.original_price && (
+                <span className="text-xs text-muted-foreground line-through">
+                  HK${item.original_price}
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">已售 {item.sales}</span>
+          </div>
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
+            {item.merchants.logo && (
+              <Image
+                src={item.merchants.logo}
+                alt={item.merchants.name}
+                width={20}
+                height={20}
+                className="rounded-full"
+              />
+            )}
+            <span className="text-xs text-muted-foreground truncate">
+              {item.merchants.name}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+// 新闻卡片组件
+function NewsCard({ item }: { item: News }) {
+  const typeLabels = ['全球新聞', '行業資訊', '平台活動', '用戶互動'];
+  
+  return (
+    <Link href={`/news/${item.slug || item.id}`}>
+      <Card className="group flex gap-4 p-4 hover:shadow-md transition-all duration-300">
+        <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
+          {item.cover ? (
+            <Image
+              src={item.cover}
+              alt={item.title}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
+              <span className="text-2xl text-primary/30">玄</span>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <Badge variant="outline" className="text-xs">
+              {typeLabels[item.type - 1] || '資訊'}
+            </Badge>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              {item.views}
+            </span>
+          </div>
+          <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+            {item.title}
+          </h3>
+          {item.summary && (
+            <p className="text-xs text-muted-foreground line-clamp-1 mt-1">
+              {item.summary}
+            </p>
+          )}
+          {item.published_at && (
+            <span className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {new Date(item.published_at).toLocaleDateString('zh-TW')}
+            </span>
+          )}
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+export function HomePage() {
+  const { t } = useI18n();
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [goods, setGoods] = useState<Goods[]>([]);
+  const [news, setNews] = useState<News[]>([]);
+  const [todayArticle, setTodayArticle] = useState<Article | null>(null);
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // 并行获取数据
+        const [bannersRes, goodsRes, newsRes, articlesRes] = await Promise.all([
+          fetch('/api/banners?position=home'),
+          fetch('/api/goods?hot=true&limit=8'),
+          fetch('/api/news?limit=4'),
+          fetch('/api/articles?featured=true&limit=1'),
+        ]);
+
+        const [bannersData, goodsData, newsData, articlesData] = await Promise.all([
+          bannersRes.json(),
+          goodsRes.json(),
+          newsRes.json(),
+          articlesRes.json(),
+        ]);
+
+        if (bannersData.data) setBanners(bannersData.data);
+        if (goodsData.data) setGoods(goodsData.data);
+        if (newsData.data) setNews(newsData.data);
+        if (articlesData.data?.[0]) setTodayArticle(articlesData.data[0]);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  // Banner 自动轮播
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
+
+  const features = [
+    { icon: ShieldCheck, title: t.home.features.certificate, href: '/certificate' },
+    { icon: Building2, title: t.home.features.merchant, href: '/merchants' },
+    { icon: Shield, title: t.home.features.escrow, href: '/help/escrow' },
+    { icon: Store, title: t.home.features.join, href: '/merchant/apply' },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-pulse text-muted-foreground">{t.common.loading}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen">
+      {/* Hero Banner */}
+      <section className="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden">
+        {banners.length > 0 ? (
+          <>
+            {banners.map((banner, index) => (
+              <div
+                key={banner.id}
+                className={`absolute inset-0 transition-opacity duration-1000 ${
+                  index === currentBanner ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <Image
+                  src={banner.image}
+                  alt={banner.title || 'Banner'}
+                  fill
+                  className="object-cover"
+                  priority={index === 0}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent" />
+              </div>
+            ))}
+            {/* Banner 内容 */}
+            <div className="absolute inset-0 flex items-end pb-16">
+              <div className="container mx-auto px-4">
+                <div className="max-w-2xl">
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
+                    {t.home.banner.title}
+                  </h1>
+                  <p className="text-lg md:text-xl text-muted-foreground mb-6">
+                    {t.home.banner.subtitle}
+                  </p>
+                  <Button size="lg" asChild>
+                    <Link href="/shop">
+                      {t.home.banner.cta}
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+            {/* Banner 指示器 */}
+            {banners.length > 1 && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+                {banners.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentBanner(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === currentBanner
+                        ? 'w-8 bg-primary'
+                        : 'bg-primary/30 hover:bg-primary/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          /* 默认背景 */
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-background">
+            <div className="absolute inset-0 flex items-end pb-16">
+              <div className="container mx-auto px-4">
+                <div className="max-w-2xl">
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+                    {t.home.banner.title}
+                  </h1>
+                  <p className="text-lg md:text-xl text-muted-foreground mb-6">
+                    {t.home.banner.subtitle}
+                  </p>
+                  <Button size="lg" asChild>
+                    <Link href="/shop">
+                      {t.home.banner.cta}
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 功能入口 */}
+      <section className="container mx-auto px-4 py-8 -mt-8 relative z-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {features.map((feature) => (
+            <FeatureCard key={feature.href} {...feature} />
+          ))}
+        </div>
+      </section>
+
+      {/* 今日符箓 */}
+      {todayArticle && (
+        <section className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">{t.home.todayFu}</h2>
+            <Button variant="ghost" asChild>
+              <Link href="/baike" className="text-muted-foreground hover:text-foreground">
+                {t.home.viewMore}
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+          <Link href={`/baike/${todayArticle.slug || todayArticle.id}`}>
+            <Card className="group overflow-hidden md:flex hover:shadow-lg transition-all duration-300">
+              <div className="relative w-full md:w-80 h-48 md:h-auto flex-shrink-0">
+                {todayArticle.cover ? (
+                  <Image
+                    src={todayArticle.cover}
+                    alt={todayArticle.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/20 to-primary/10">
+                    <span className="text-6xl text-primary/30">符</span>
+                  </div>
+                )}
+              </div>
+              <CardContent className="flex-1 p-6 md:p-8">
+                <Badge className="mb-4">每日推薦</Badge>
+                <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
+                  {todayArticle.title}
+                </h3>
+                {todayArticle.summary && (
+                  <p className="text-muted-foreground line-clamp-3">
+                    {todayArticle.summary}
+                  </p>
+                )}
+                <Button variant="link" className="mt-4 p-0 text-primary">
+                  了解詳情
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </Link>
+        </section>
+      )}
+
+      {/* 热门法器 */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">{t.home.hotGoods}</h2>
+          <Button variant="ghost" asChild>
+            <Link href="/shop" className="text-muted-foreground hover:text-foreground">
+              {t.home.viewMore}
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Link>
+          </Button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {goods.length > 0 ? (
+            goods.map((item) => <GoodsCard key={item.id} item={item} />)
+          ) : (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              {t.common.noData}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 玄门头条 */}
+      <section className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">{t.home.news}</h2>
+          <Button variant="ghost" asChild>
+            <Link href="/news" className="text-muted-foreground hover:text-foreground">
+              {t.home.viewMore}
+              <ArrowRight className="ml-2 w-4 h-4" />
+            </Link>
+          </Button>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {news.length > 0 ? (
+            news.map((item) => <NewsCard key={item.id} item={item} />)
+          ) : (
+            <div className="col-span-full text-center py-12 text-muted-foreground">
+              {t.common.noData}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 视频学堂入口 */}
+      <section className="container mx-auto px-4 py-8">
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 overflow-hidden">
+          <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                <Play className="w-8 h-8 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-1">{t.nav.video}</h3>
+                <p className="text-muted-foreground">道長說符 · 法器開箱 · 宮觀巡禮</p>
+              </div>
+            </div>
+            <Button size="lg" asChild>
+              <Link href="/video">
+                探索視頻
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}

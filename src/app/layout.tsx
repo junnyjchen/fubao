@@ -1,55 +1,52 @@
 import type { Metadata } from 'next';
 import { Inspector } from 'react-dev-inspector';
 import './globals.css';
+import { Header } from '@/components/common/Header';
+import { Footer } from '@/components/common/Footer';
+import { I18nProvider } from '@/lib/i18n';
 
 export const metadata: Metadata = {
   title: {
-    default: '新应用 | 扣子编程',
-    template: '%s | 扣子编程',
+    default: '符寶網 | 全球玄門文化科普交易平台',
+    template: '%s | 符寶網',
   },
   description:
-    '扣子编程是一款一站式云端 Vibe Coding 开发平台。通过对话轻松构建智能体、工作流和网站，实现从创意到上线的无缝衔接。',
+    '符寶網是全球玄門文化科普交易平台，提供符箓、法器等玄門文化產品的交易與科普服務。科普先行、交易放心、一物一證。',
   keywords: [
-    '扣子编程',
-    'Coze Code',
-    'Vibe Coding',
-    'AI 编程',
-    '智能体搭建',
-    '工作流搭建',
-    '网站搭建',
-    '网站部署',
-    '全栈开发',
-    'AI 工程师',
+    '符寶網',
+    'fubao.ltd',
+    '符箓',
+    '法器',
+    '玄門',
+    '道教',
+    '開光',
+    '一物一證',
+    '道觀',
+    '寺廟',
+    '玄學',
+    'Talismans',
+    'Spiritual Items',
   ],
-  authors: [{ name: 'Coze Code Team', url: 'https://code.coze.cn' }],
-  generator: 'Coze Code',
-  // icons: {
-  //   icon: '',
-  // },
-  openGraph: {
-    title: '扣子编程 | 你的 AI 工程师已就位',
-    description:
-      '我正在使用扣子编程 Vibe Coding，让创意瞬间上线。告别拖拽，拥抱心流。',
-    url: 'https://code.coze.cn',
-    siteName: '扣子编程',
-    locale: 'zh_CN',
-    type: 'website',
-    // images: [
-    //   {
-    //     url: '',
-    //     width: 1200,
-    //     height: 630,
-    //     alt: '扣子编程 - 你的 AI 工程师',
-    //   },
-    // ],
+  authors: [{ name: '符寶網', url: 'https://fubao.ltd' }],
+  generator: 'Next.js',
+  icons: {
+    icon: '/favicon.ico',
   },
-  // twitter: {
-  //   card: 'summary_large_image',
-  //   title: 'Coze Code | Your AI Engineer is Here',
-  //   description:
-  //     'Build and deploy full-stack applications through AI conversation. No env setup, just flow.',
-  //   // images: [''],
-  // },
+  openGraph: {
+    title: '符寶網 | 全球玄門文化科普交易平台',
+    description:
+      '科普先行 · 交易放心 · 一物一證。探索符箓法器的奧秘，全球修行者信賴的靈性資產交易平台。',
+    url: 'https://fubao.ltd',
+    siteName: '符寶網',
+    locale: 'zh_TW',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '符寶網 | 全球玄門文化科普交易平台',
+    description:
+      '科普先行 · 交易放心 · 一物一證',
+  },
   robots: {
     index: true,
     follow: true,
@@ -64,10 +61,14 @@ export default function RootLayout({
   const isDev = process.env.COZE_PROJECT_ENV === 'DEV';
 
   return (
-    <html lang="en">
-      <body className={`antialiased`}>
+    <html lang="zh-TW">
+      <body className={`antialiased min-h-screen flex flex-col`}>
         {isDev && <Inspector />}
-        {children}
+        <I18nProvider>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </I18nProvider>
       </body>
     </html>
   );

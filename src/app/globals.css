@@ -42,6 +42,14 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  /* 符宝网专用品牌色 */
+  --color-xuanmen: var(--xuanmen);
+  --color-xuanmen-foreground: var(--xuanmen-foreground);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  /* 中文字体优化 */
   --font-sans:
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', ui-sans-serif,
     system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -55,72 +63,97 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --radius: 0.75rem;
+  /* 背景与前景 */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0.02 145);
+  /* 卡片 */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.15 0.02 145);
+  /* 弹出层 */
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --popover-foreground: oklch(0.15 0.02 145);
+  /* 主色：玄门青 #1A5F3C */
+  --primary: oklch(0.48 0.12 145);
+  --primary-foreground: oklch(0.98 0 0);
+  /* 次要色 */
+  --secondary: oklch(0.96 0.01 145);
+  --secondary-foreground: oklch(0.25 0.02 145);
+  /* 柔和色 */
+  --muted: oklch(0.96 0.01 145);
+  --muted-foreground: oklch(0.50 0.02 145);
+  /* 强调色：古铜金 #C9A87C */
+  --accent: oklch(0.72 0.08 70);
+  --accent-foreground: oklch(0.25 0.02 145);
+  /* 危险色 */
+  --destructive: oklch(0.58 0.22 25);
+  /* 边框与输入 */
+  --border: oklch(0.92 0.01 145);
+  --input: oklch(0.92 0.01 145);
+  --ring: oklch(0.48 0.12 145);
+  /* 图表色系 */
+  --chart-1: oklch(0.48 0.12 145);
+  --chart-2: oklch(0.72 0.08 70);
+  --chart-3: oklch(0.65 0.15 180);
+  --chart-4: oklch(0.75 0.12 50);
+  --chart-5: oklch(0.55 0.18 30);
+  /* 侧边栏 */
+  --sidebar: oklch(0.98 0.01 145);
+  --sidebar-foreground: oklch(0.15 0.02 145);
+  --sidebar-primary: oklch(0.48 0.12 145);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.94 0.02 145);
+  --sidebar-accent-foreground: oklch(0.25 0.02 145);
+  --sidebar-border: oklch(0.92 0.01 145);
+  --sidebar-ring: oklch(0.48 0.12 145);
+  /* 符宝网品牌色 */
+  --xuanmen: oklch(0.48 0.12 145);
+  --xuanmen-foreground: oklch(0.98 0 0);
+  --gold: oklch(0.72 0.08 70);
+  --gold-foreground: oklch(0.25 0.02 145);
+  --success: oklch(0.70 0.18 145);
+  --warning: oklch(0.75 0.15 50);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.12 0.02 145);
+  --foreground: oklch(0.95 0.01 145);
+  --card: oklch(0.16 0.02 145);
+  --card-foreground: oklch(0.95 0.01 145);
+  --popover: oklch(0.16 0.02 145);
+  --popover-foreground: oklch(0.95 0.01 145);
+  --primary: oklch(0.65 0.14 145);
+  --primary-foreground: oklch(0.12 0.02 145);
+  --secondary: oklch(0.22 0.02 145);
+  --secondary-foreground: oklch(0.95 0.01 145);
+  --muted: oklch(0.22 0.02 145);
+  --muted-foreground: oklch(0.65 0.02 145);
+  --accent: oklch(0.72 0.08 70);
+  --accent-foreground: oklch(0.12 0.02 145);
+  --destructive: oklch(0.65 0.22 25);
+  --border: oklch(0.25 0.02 145);
+  --input: oklch(0.25 0.02 145);
+  --ring: oklch(0.65 0.14 145);
+  --chart-1: oklch(0.65 0.14 145);
+  --chart-2: oklch(0.72 0.08 70);
+  --chart-3: oklch(0.60 0.15 180);
+  --chart-4: oklch(0.75 0.12 50);
+  --chart-5: oklch(0.60 0.18 30);
+  --sidebar: oklch(0.14 0.02 145);
+  --sidebar-foreground: oklch(0.95 0.01 145);
+  --sidebar-primary: oklch(0.65 0.14 145);
+  --sidebar-primary-foreground: oklch(0.12 0.02 145);
+  --sidebar-accent: oklch(0.22 0.02 145);
+  --sidebar-accent-foreground: oklch(0.95 0.01 145);
+  --sidebar-border: oklch(0.25 0.02 145);
+  --sidebar-ring: oklch(0.65 0.14 145);
+  /* 符宝网品牌色 - 暗色模式 */
+  --xuanmen: oklch(0.65 0.14 145);
+  --xuanmen-foreground: oklch(0.12 0.02 145);
+  --gold: oklch(0.75 0.10 70);
+  --gold-foreground: oklch(0.12 0.02 145);
+  --success: oklch(0.70 0.18 145);
+  --warning: oklch(0.75 0.15 50);
 }
 
 @layer base {
@@ -128,10 +161,29 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 }
 
 body {
   @apply font-sans;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.70 0.02 145 / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.60 0.02 145 / 0.5);
 }
