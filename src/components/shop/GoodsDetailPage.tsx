@@ -502,10 +502,22 @@ export function GoodsDetailPage() {
               <TabsContent value="certificate" className="mt-0">
                 {goods.certificate ? (
                   <div className="space-y-4">
+                    {/* 认证状态卡片 */}
+                    <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
+                      <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-green-800">已認證商品</p>
+                        <p className="text-sm text-green-600">該商品已通過一物一證認證</p>
+                      </div>
+                    </div>
+
+                    {/* 认证信息 */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-sm text-muted-foreground">認證編號</span>
-                        <p className="font-mono">{goods.certificate.certificate_no}</p>
+                        <p className="font-mono font-semibold">{goods.certificate.certificate_no}</p>
                       </div>
                       <div>
                         <span className="text-sm text-muted-foreground">頒發機構</span>
@@ -516,11 +528,25 @@ export function GoodsDetailPage() {
                         <p>{new Date(goods.certificate.issue_date).toLocaleDateString()}</p>
                       </div>
                     </div>
+
+                    {/* 验证链接 */}
+                    <div className="pt-4 border-t">
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href={`/verify/${goods.certificate.certificate_no}`} target="_blank">
+                          <Shield className="w-4 h-4 mr-2" />
+                          查看完整認證信息
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">
-                    該商品暫無認證信息
-                  </p>
+                  <div className="text-center py-8">
+                    <Shield className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">該商品暫無認證信息</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      如需了解認證詳情，請聯繫商戶
+                    </p>
+                  </div>
                 )}
               </TabsContent>
 

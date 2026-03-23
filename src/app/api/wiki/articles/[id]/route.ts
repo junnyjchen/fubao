@@ -96,6 +96,29 @@ export async function PUT(
     if (body.is_featured !== undefined) updateData.is_featured = body.is_featured;
     if (body.tags !== undefined) updateData.tags = body.tags;
 
+    // 增加浏览量
+    if (body.incrementView) {
+      // 使用原始SQL增加浏览量
+      const { error: viewError } = await client.rpc('increment_article_view', { article_id: parseInt(id) });
+      if (viewError) {
+        // 如果RPC不存在，直接更新
+        const { data: currentArticle } = await client
+          .from('wiki_articles')
+          .select('view_count')
+          .eq('id', id)
+          .single();
+        if (currentArticle) {
+          updateData.view_count = (currentArticle.view_count || 0) + 1;
+        }
+      }
+      delete body.incrementView;
+    }
+
+    if (Object.keys(updateData).length === 1 && updateData.updated_at) {
+      // 只有updated_at，没有实际更新内容
+      return NextResponse.json({ message: '文章已更新' });
+    }
+
     const { data, error } = await client
       .from('wiki_articles')
       .update(updateData)
