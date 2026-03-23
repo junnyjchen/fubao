@@ -347,7 +347,7 @@ export function HomePage() {
       <section className="container mx-auto px-4 py-8 -mt-8 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {features.map((feature) => (
-            <FeatureCard key={feature.href} {...feature} />
+            <FeatureCard key={feature.title} {...feature} />
           ))}
         </div>
       </section>
