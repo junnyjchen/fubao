@@ -1,6 +1,6 @@
 /**
- * @fileoverview 新闻列表 API
- * @description 提供新闻的查询和创建接口
+ * @fileoverview 新闻资讯 API
+ * @description 处理新闻的增删改查
  * @module app/api/news/route
  */
 
@@ -9,95 +9,87 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /**
  * 获取新闻列表
- * @param request - 请求对象
- * @returns 新闻列表响应
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const type = searchParams.get('type');
-  const isFeatured = searchParams.get('featured') === 'true';
-  const status = searchParams.get('status');
-  const search = searchParams.get('search');
-  const limit = parseInt(searchParams.get('limit') || '10');
-  const page = parseInt(searchParams.get('page') || '1');
-  const offset = (page - 1) * limit;
-
   try {
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
+    const includeAll = searchParams.get('includeAll') === 'true';
+    const category = searchParams.get('category');
+
     const client = getSupabaseClient();
-    
+
     let query = client
       .from('news')
-      .select('*', { count: 'exact' })
-      .order('sort', { ascending: true })
-      .order('published_at', { ascending: false });
+      .select('*', { count: 'exact' });
 
-    // 状态筛选
-    if (status !== null && status !== 'all') {
-      query = query.eq('status', status === 'true');
-    } else if (status === null) {
+    // 前台只显示已发布新闻
+    if (!includeAll) {
       query = query.eq('status', true);
     }
 
-    if (type) {
-      query = query.eq('type', parseInt(type));
-    }
-    if (isFeatured) {
-      query = query.eq('is_featured', true);
-    }
-    if (search) {
-      query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
+    // 分类筛选
+    if (category) {
+      query = query.eq('category', category);
     }
 
-    query = query.range(offset, offset + limit - 1);
+    // 排序和分页
+    query = query
+      .order('is_top', { ascending: false })
+      .order('published_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
-    const { data, error, count } = await query;
+    const { data: news, error, count } = await query;
 
     if (error) {
+      // 如果表不存在，返回空数组
+      if (error.code === '42P01') {
+        return NextResponse.json({ data: [], total: 0 });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ 
-      data, 
-      page, 
+      data: news || [], 
+      total: count || 0,
+      page,
       limit,
-      total: count,
-      totalPages: Math.ceil((count || 0) / limit)
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to fetch news' },
-      { status: 500 }
-    );
+    console.error('获取新闻失败:', error);
+    return NextResponse.json({ error: '獲取新聞失敗' }, { status: 500 });
   }
 }
 
 /**
- * 创建新新闻
- * @param request - 请求对象
- * @returns 创建结果
+ * 创建新闻
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
     const client = getSupabaseClient();
+    const body = await request.json();
+
+    const { title, summary, content, cover_image, category, is_top, status } = body;
+
+    if (!title) {
+      return NextResponse.json({ error: '請填寫新聞標題' }, { status: 400 });
+    }
 
     const { data, error } = await client
       .from('news')
       .insert({
-        title: body.title,
-        slug: body.slug || body.title.toLowerCase().replace(/\s+/g, '-'),
-        summary: body.summary,
-        content: body.content,
-        cover: body.cover,
-        type: body.type || 0,
-        author: body.author || '管理員',
-        status: body.status ?? true,
-        is_featured: body.is_featured ?? false,
-        sort: body.sort || 0,
-        views: 0,
-        published_at: new Date().toISOString(),
+        title,
+        summary: summary || null,
+        content: content || null,
+        cover_image: cover_image || null,
+        category: category || 'news',
+        is_top: is_top || false,
+        status: status !== false,
+        view_count: 0,
+        published_at: status !== false ? new Date().toISOString() : null,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -106,11 +98,82 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data, message: '新聞創建成功' });
+    return NextResponse.json({ data });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to create news' },
-      { status: 500 }
-    );
+    console.error('创建新闻失败:', error);
+    return NextResponse.json({ error: '創建新聞失敗' }, { status: 500 });
+  }
+}
+
+/**
+ * 更新新闻
+ */
+export async function PUT(request: Request) {
+  try {
+    const client = getSupabaseClient();
+    const body = await request.json();
+
+    const { id, title, summary, content, cover_image, category, is_top, status } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: '新聞ID不能為空' }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (title !== undefined) updateData.title = title;
+    if (summary !== undefined) updateData.summary = summary;
+    if (content !== undefined) updateData.content = content;
+    if (cover_image !== undefined) updateData.cover_image = cover_image;
+    if (category !== undefined) updateData.category = category;
+    if (is_top !== undefined) updateData.is_top = is_top;
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status && !updateData.published_at) {
+        updateData.published_at = new Date().toISOString();
+      }
+    }
+
+    const { error } = await client
+      .from('news')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '更新成功' });
+  } catch (error) {
+    console.error('更新新闻失败:', error);
+    return NextResponse.json({ error: '更新新聞失敗' }, { status: 500 });
+  }
+}
+
+/**
+ * 删除新闻
+ */
+export async function DELETE(request: Request) {
+  try {
+    const client = getSupabaseClient();
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: '新聞ID不能為空' }, { status: 400 });
+    }
+
+    const { error } = await client
+      .from('news')
+      .delete()
+      .eq('id', parseInt(id));
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '刪除成功' });
+  } catch (error) {
+    console.error('删除新闻失败:', error);
+    return NextResponse.json({ error: '刪除新聞失敗' }, { status: 500 });
   }
 }

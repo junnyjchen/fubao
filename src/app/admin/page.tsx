@@ -20,7 +20,10 @@ import {
   ArrowRight,
   Clock,
   AlertCircle,
+  Store,
+  FileText,
 } from 'lucide-react';
+import { SalesChart, OrderStatusChart } from '@/components/admin/Charts';
 
 interface DashboardStats {
   goods: {
@@ -53,6 +56,25 @@ export default function AdminDashboard() {
     revenue: { total: 0, month: 0, trend: 0 },
   });
   const [loading, setLoading] = useState(true);
+
+  // 模拟销售数据
+  const salesData = [
+    { label: '週一', value: 1250 },
+    { label: '週二', value: 1890 },
+    { label: '週三', value: 1560 },
+    { label: '週四', value: 2100 },
+    { label: '週五', value: 2450 },
+    { label: '週六', value: 3200 },
+    { label: '週日', value: 2800 },
+  ];
+
+  // 模拟订单状态数据
+  const orderStatusData = [
+    { label: '待付款', count: stats.orders.pending, color: '#f59e0b' },
+    { label: '待發貨', count: 0, color: '#3b82f6' },
+    { label: '已發貨', count: 0, color: '#8b5cf6' },
+    { label: '已完成', count: stats.orders.total - stats.orders.pending, color: '#10b981' },
+  ];
 
   useEffect(() => {
     loadStats();
@@ -138,6 +160,9 @@ export default function AdminDashboard() {
     { title: '訂單管理', href: '/admin/orders', icon: ShoppingCart },
     { title: '分類管理', href: '/admin/categories', icon: Package },
     { title: '輪播圖管理', href: '/admin/banners', icon: Package },
+    { title: '新聞管理', href: '/admin/news', icon: Package },
+    { title: '商戶管理', href: '/admin/merchants', icon: Package },
+    { title: '用戶管理', href: '/admin/users', icon: Users },
     { title: '系統設置', href: '/admin/settings', icon: Package },
   ];
 
@@ -221,7 +246,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">快捷操作</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
@@ -240,7 +265,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* 待处理事项 */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -306,6 +331,51 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* 数据图表 */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <SalesChart title="本週銷售趨勢" data={salesData} loading={loading} />
+          <OrderStatusChart data={orderStatusData} />
+        </div>
+
+        {/* 管理入口 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">管理功能</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Link href="/admin/goods" className="group">
+                <div className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+                  <Package className="w-8 h-8 mb-2 text-primary" />
+                  <p className="font-medium">商品管理</p>
+                  <p className="text-sm text-muted-foreground">管理商品信息</p>
+                </div>
+              </Link>
+              <Link href="/admin/orders" className="group">
+                <div className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+                  <ShoppingCart className="w-8 h-8 mb-2 text-primary" />
+                  <p className="font-medium">訂單管理</p>
+                  <p className="text-sm text-muted-foreground">處理訂單流程</p>
+                </div>
+              </Link>
+              <Link href="/admin/news" className="group">
+                <div className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+                  <FileText className="w-8 h-8 mb-2 text-primary" />
+                  <p className="font-medium">新聞管理</p>
+                  <p className="text-sm text-muted-foreground">發布資訊內容</p>
+                </div>
+              </Link>
+              <Link href="/admin/merchants" className="group">
+                <div className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+                  <Store className="w-8 h-8 mb-2 text-primary" />
+                  <p className="font-medium">商戶管理</p>
+                  <p className="text-sm text-muted-foreground">管理入駐商戶</p>
+                </div>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
