@@ -15,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -32,11 +31,10 @@ import {
 import {
   ArrowLeft,
   Save,
-  X,
-  Plus,
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SingleImageUpload, ImageUpload } from '@/components/upload/ImageUpload';
 
 interface Category {
   id: number;
@@ -72,7 +70,6 @@ export default function GoodsEditPage({ params }: PageProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [newImageUrl, setNewImageUrl] = useState('');
   
   const [form, setForm] = useState<GoodsForm>({
     name: '',
@@ -191,23 +188,6 @@ export default function GoodsEditPage({ params }: PageProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const addImage = () => {
-    if (newImageUrl.trim()) {
-      setForm(prev => ({
-        ...prev,
-        images: [...prev.images, newImageUrl.trim()],
-      }));
-      setNewImageUrl('');
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setForm(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index),
-    }));
   };
 
   // 构建分类树
@@ -447,40 +427,28 @@ export default function GoodsEditPage({ params }: PageProps) {
               <CardHeader>
                 <CardTitle className="text-base">商品主圖</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <div className="flex gap-2">
-                      <Input
-                        value={form.main_image}
-                        onChange={e => setForm(prev => ({ ...prev, main_image: e.target.value }))}
-                        placeholder="輸入圖片URL"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      建議尺寸: 800x800px，支持 JPG、PNG 格式
-                    </p>
-                  </div>
-                  {form.main_image && (
-                    <div className="relative w-24 h-24 border rounded overflow-hidden">
-                      <img
-                        src={form.main_image}
-                        alt="主圖"
-                        className="w-full h-full object-cover"
-                        onError={e => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23f0f0f0" width="100" height="100"/><text x="50" y="50" text-anchor="middle" fill="%23999" font-size="12">預覽</text></svg>';
-                        }}
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1 right-1 w-5 h-5"
-                        onClick={() => setForm(prev => ({ ...prev, main_image: '' }))}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  )}
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <SingleImageUpload
+                    value={form.main_image}
+                    onChange={url => setForm(prev => ({ ...prev, main_image: url }))}
+                    folder="goods"
+                    maxSize={5}
+                    placeholder="上傳主圖"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  建議尺寸: 800x800px，支持 JPG、PNG、WebP 格式
+                </p>
+                {/* URL输入备选 */}
+                <div className="mt-4 pt-4 border-t">
+                  <Label className="text-sm text-muted-foreground">或輸入圖片URL</Label>
+                  <Input
+                    value={form.main_image}
+                    onChange={e => setForm(prev => ({ ...prev, main_image: e.target.value }))}
+                    placeholder="https://example.com/image.jpg"
+                    className="mt-2"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -489,43 +457,15 @@ export default function GoodsEditPage({ params }: PageProps) {
               <CardHeader>
                 <CardTitle className="text-base">商品圖集</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    value={newImageUrl}
-                    onChange={e => setNewImageUrl(e.target.value)}
-                    placeholder="輸入圖片URL"
-                    onKeyDown={e => e.key === 'Enter' && addImage()}
-                  />
-                  <Button onClick={addImage} variant="outline">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-                
-                {form.images.length > 0 && (
-                  <div className="grid grid-cols-4 md:grid-cols-6 gap-4">
-                    {form.images.map((img, index) => (
-                      <div key={index} className="relative aspect-square border rounded overflow-hidden">
-                        <img
-                          src={img}
-                          alt={`圖片 ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={e => {
-                            (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23f0f0f0" width="100" height="100"/><text x="50" y="50" text-anchor="middle" fill="%23999" font-size="12">預覽</text></svg>';
-                          }}
-                        />
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 w-5 h-5"
-                          onClick={() => removeImage(index)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <CardContent>
+                <ImageUpload
+                  value={form.images}
+                  onChange={urls => setForm(prev => ({ ...prev, images: urls }))}
+                  maxCount={9}
+                  folder="goods/gallery"
+                  maxSize={5}
+                  placeholder="點擊或拖拽圖片上傳商品圖集"
+                />
               </CardContent>
             </Card>
           </TabsContent>
