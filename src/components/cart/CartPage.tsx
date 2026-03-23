@@ -1,32 +1,34 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import {
-  Trash2,
-  Minus,
-  Plus,
-  ShoppingCart,
+import { 
+  ShoppingCart, 
+  Trash2, 
+  Plus, 
+  Minus, 
+  Package,
   ArrowRight,
-  ShieldCheck,
-  Truck,
 } from 'lucide-react';
 
 interface CartItem {
   id: number;
   goodsId: number;
-  name: string;
-  image: string | null;
-  price: number;
+  goodsName: string;
+  goodsImage: string | null;
+  price: string;
   quantity: number;
+  selected: boolean;
+  stock: number;
+  merchantId: number;
   merchantName: string;
-  isCertified: boolean;
 }
 
 // 模拟购物车数据
@@ -34,153 +36,204 @@ const mockCartItems: CartItem[] = [
   {
     id: 1,
     goodsId: 1,
-    name: '武當鎮宅符',
-    image: null,
-    price: 288,
+    goodsName: '武當鎮宅符',
+    goodsImage: null,
+    price: '288',
     quantity: 1,
+    selected: true,
+    stock: 100,
+    merchantId: 1,
     merchantName: '武當山道觀官方店',
-    isCertified: true,
   },
   {
     id: 2,
-    goodsId: 3,
-    name: '天師平安符',
-    image: null,
-    price: 168,
+    goodsId: 2,
+    goodsName: '武當招財符',
+    goodsImage: null,
+    price: '388',
     quantity: 2,
-    merchantName: '龍虎山天師府店',
-    isCertified: true,
+    selected: true,
+    stock: 80,
+    merchantId: 1,
+    merchantName: '武當山道觀官方店',
+  },
+  {
+    id: 3,
+    goodsId: 3,
+    goodsName: '天師平安符',
+    goodsImage: null,
+    price: '168',
+    quantity: 1,
+    selected: false,
+    stock: 200,
+    merchantId: 2,
+    merchantName: '龍虎山天師府官方店',
   },
 ];
 
 export function CartPage() {
   const { t } = useI18n();
-  const [cartItems, setCartItems] = useState<CartItem[]>(mockCartItems);
-  const [selectedItems, setSelectedItems] = useState<number[]>(cartItems.map((item) => item.id));
+  const router = useRouter();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleQuantityChange = (id: number, delta: number) => {
-    setCartItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
+  useEffect(() => {
+    // 模拟加载购物车数据
+    setTimeout(() => {
+      setCartItems(mockCartItems);
+      setLoading(false);
+    }, 500);
+  }, []);
+
+  const updateQuantity = (id: number, quantity: number) => {
+    if (quantity < 1) return;
+    setCartItems(items =>
+      items.map(item =>
+        item.id === id ? { ...item, quantity: Math.min(quantity, item.stock) } : item
       )
     );
   };
 
-  const handleRemove = (id: number) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
-    setSelectedItems((prev) => prev.filter((itemId) => itemId !== id));
+  const removeItem = (id: number) => {
+    setCartItems(items => items.filter(item => item.id !== id));
   };
 
-  const handleSelectItem = (id: number) => {
-    setSelectedItems((prev) =>
-      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+  const toggleSelect = (id: number) => {
+    setCartItems(items =>
+      items.map(item =>
+        item.id === id ? { ...item, selected: !item.selected } : item
+      )
     );
   };
 
-  const handleSelectAll = () => {
-    if (selectedItems.length === cartItems.length) {
-      setSelectedItems([]);
-    } else {
-      setSelectedItems(cartItems.map((item) => item.id));
-    }
+  const toggleSelectAll = () => {
+    const allSelected = cartItems.every(item => item.selected);
+    setCartItems(items =>
+      items.map(item => ({ ...item, selected: !allSelected }))
+    );
   };
 
-  const selectedCartItems = cartItems.filter((item) => selectedItems.includes(item.id));
-  const totalPrice = selectedCartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
-  const totalQuantity = selectedCartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const selectedItems = cartItems.filter(item => item.selected);
+  const totalAmount = selectedItems.reduce((sum, item) => {
+    return sum + parseFloat(item.price) * item.quantity;
+  }, 0);
+  const totalCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleCheckout = () => {
+    if (selectedItems.length === 0) {
+      alert('請選擇要結算的商品');
+      return;
+    }
+
+    // 将选中的商品信息编码到URL中
+    const itemsParam = encodeURIComponent(JSON.stringify(selectedItems));
+    router.push(`/checkout?items=${itemsParam}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <div className="text-muted-foreground">載入中...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/20">
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <ShoppingCart className="w-6 h-6" />
-          購物車
-        </h1>
+      {/* Header */}
+      <header className="bg-background border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <h1 className="text-xl font-semibold flex items-center gap-2">
+            <ShoppingCart className="w-6 h-6" />
+            購物車
+            {cartItems.length > 0 && (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({cartItems.length}件商品)
+              </span>
+            )}
+          </h1>
+        </div>
+      </header>
 
-        {cartItems.length > 0 ? (
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {cartItems.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Package className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h2 className="text-xl font-semibold mb-2">購物車是空的</h2>
+              <p className="text-muted-foreground mb-6">快去挑選心儀的商品吧</p>
+              <Button asChild>
+                <Link href="/shop">去購物</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Cart Items */}
-            <div className="lg:col-span-2 space-y-4">
-              {/* Select All */}
+            {/* 商品列表 */}
+            <div className="lg:col-span-2">
               <Card>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.length === cartItems.length}
-                    onChange={handleSelectAll}
-                    className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                  <span className="text-sm">全選</span>
-                  <span className="text-sm text-muted-foreground ml-auto">
-                    已選擇 {selectedItems.length} 件商品
-                  </span>
-                </CardContent>
-              </Card>
-
-              {/* Items */}
-              {cartItems.map((item) => (
-                <Card key={item.id}>
-                  <CardContent className="p-4">
-                    <div className="flex gap-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => handleSelectItem(item.id)}
-                        className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary mt-6"
+                <CardHeader className="py-3">
+                  <div className="flex items-center gap-4">
+                    <Checkbox
+                      checked={cartItems.every(item => item.selected)}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                    <span className="text-sm">全選</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {cartItems.map((item) => (
+                    <div key={item.id} className="flex gap-4 p-4 border-b last:border-0 hover:bg-muted/30">
+                      <Checkbox
+                        checked={item.selected}
+                        onCheckedChange={() => toggleSelect(item.id)}
                       />
-                      <div className="relative w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                        {item.image ? (
-                          <Image src={item.image} alt={item.name} fill className="object-cover" />
+                      <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center text-muted-foreground text-xs">
+                        {item.goodsImage ? (
+                          <img src={item.goodsImage} alt={item.goodsName} className="w-full h-full object-cover rounded-lg" />
                         ) : (
-                          <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
-                            <span className="text-3xl text-primary/20">符</span>
-                          </div>
-                        )}
-                        {item.isCertified && (
-                          <Badge className="absolute top-1 left-1 bg-gold text-gold-foreground text-xs">
-                            認證
-                          </Badge>
+                          '暫無圖片'
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1">
                         <Link href={`/shop/${item.goodsId}`} className="font-medium hover:text-primary">
-                          {item.name}
+                          {item.goodsName}
                         </Link>
-                        <p className="text-sm text-muted-foreground mt-1">{item.merchantName}</p>
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-lg font-bold text-primary">HK${item.price}</span>
-                          </div>
+                        <p className="text-xs text-muted-foreground">{item.merchantName}</p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-primary font-semibold">HK${item.price}</span>
                           <div className="flex items-center gap-2">
-                            <div className="flex items-center border rounded-lg">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-none"
-                                onClick={() => handleQuantityChange(item.id, -1)}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="w-8 text-center text-sm">{item.quantity}</span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 rounded-none"
-                                onClick={() => handleQuantityChange(item.id, 1)}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="w-8 h-8"
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                            >
+                              <Minus className="w-4 h-4" />
+                            </Button>
+                            <Input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 1)}
+                              className="w-16 text-center"
+                              min={1}
+                              max={item.stock}
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="w-8 h-8"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              disabled={item.quantity >= item.stock}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemove(item.id)}
+                              className="w-8 h-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeItem(item.id)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -188,70 +241,53 @@ export function CartPage() {
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  ))}
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
-                <CardContent className="p-6">
-                  <h2 className="font-semibold mb-4">訂單摘要</h2>
-                  
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">商品金額</span>
-                      <span>HK${totalPrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">運費</span>
-                      <span className="text-success">免運費</span>
-                    </div>
+            {/* 结算信息 */}
+            <div>
+              <Card className="sticky top-20">
+                <CardHeader>
+                  <CardTitle>訂單匯總</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">已選商品</span>
+                    <span>{selectedItems.length}件</span>
                   </div>
-
-                  <Separator className="my-4" />
-
-                  <div className="flex justify-between items-baseline">
-                    <span className="font-medium">合計</span>
-                    <div className="text-right">
-                      <span className="text-2xl font-bold text-primary">HK${totalPrice.toFixed(2)}</span>
-                      <p className="text-xs text-muted-foreground">共 {totalQuantity} 件商品</p>
-                    </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">商品金額</span>
+                    <span>HK${totalAmount.toFixed(2)}</span>
                   </div>
-
-                  <Button className="w-full mt-6" size="lg" disabled={selectedItems.length === 0}>
-                    去結算
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">運費</span>
+                    <span className="text-green-600">免運費</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-lg font-semibold">
+                    <span>合計</span>
+                    <span className="text-primary">HK${totalAmount.toFixed(2)}</span>
+                  </div>
+                  <Button 
+                    className="w-full" 
+                    size="lg"
+                    onClick={handleCheckout}
+                    disabled={selectedItems.length === 0}
+                  >
+                    去結算 ({totalCount})
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-
-                  <div className="mt-4 space-y-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-primary" />
-                      <span>平台擔保交易</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-primary" />
-                      <span>全球配送</span>
-                    </div>
+                  <div className="text-xs text-muted-foreground text-center">
+                    結算即表示您同意《用戶協議》和《隱私政策》
                   </div>
                 </CardContent>
               </Card>
             </div>
           </div>
-        ) : (
-          <Card className="max-w-md mx-auto">
-            <CardContent className="p-12 text-center">
-              <ShoppingCart className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">購物車是空的</h2>
-              <p className="text-muted-foreground mb-6">快去選購您心儀的符箓法器吧</p>
-              <Button asChild>
-                <Link href="/shop">去商城逛逛</Link>
-              </Button>
-            </CardContent>
-          </Card>
         )}
-      </div>
+      </main>
     </div>
   );
 }
