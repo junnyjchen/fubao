@@ -31,7 +31,9 @@ import {
   Award,
   CheckCircle2,
   Loader2,
+  MessageSquare,
 } from 'lucide-react';
+import { ReviewSection } from '@/components/review/ReviewSection';
 
 interface Goods {
   id: number;
@@ -471,6 +473,10 @@ export function GoodsDetailPage() {
             <CardHeader className="pb-0">
               <TabsList className="w-full justify-start">
                 <TabsTrigger value="description">商品詳情</TabsTrigger>
+                <TabsTrigger value="reviews">
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  用戶評價
+                </TabsTrigger>
                 <TabsTrigger value="certificate">認證信息</TabsTrigger>
                 <TabsTrigger value="service">售後服務</TabsTrigger>
               </TabsList>
@@ -486,6 +492,10 @@ export function GoodsDetailPage() {
                     </p>
                   )}
                 </div>
+              </TabsContent>
+
+              <TabsContent value="reviews" className="mt-0">
+                <ReviewSection goodsId={goods.id} />
               </TabsContent>
 
               <TabsContent value="certificate" className="mt-0">

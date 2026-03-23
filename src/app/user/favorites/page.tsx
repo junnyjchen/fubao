@@ -80,7 +80,23 @@ export default function FavoritesPage() {
    * 加入购物车
    */
   const handleAddToCart = async (goodsId: number) => {
-    alert('已加入購物車');
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goodsId, quantity: 1 }),
+      });
+
+      const data = await res.json();
+      if (data.message) {
+        alert('已加入購物車');
+      } else if (data.error) {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error('加入购物车失败:', error);
+      alert('操作失敗，請重試');
+    }
   };
 
   return (
