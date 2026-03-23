@@ -109,6 +109,8 @@ export function GoodsDetailPage() {
         const data = await res.json();
         if (data.data) {
           setGoods(data.data);
+          // 检查是否已收藏
+          checkFavoriteStatus(parseInt(goodsId));
         } else {
           router.push('/shop');
         }
@@ -121,6 +123,20 @@ export function GoodsDetailPage() {
     };
     loadGoods();
   }, [goodsId, router]);
+
+  // 检查收藏状态
+  const checkFavoriteStatus = async (goodsId: number) => {
+    try {
+      const res = await fetch(`/api/favorites?targetType=goods`);
+      const data = await res.json();
+      if (data.data) {
+        const isFav = data.data.some((f: { target_id: number }) => f.target_id === goodsId);
+        setIsFavorite(isFav);
+      }
+    } catch (error) {
+      console.error('检查收藏状态失败:', error);
+    }
+  };
 
   const handleQuantityChange = (delta: number) => {
     if (!goods) return;
@@ -186,8 +202,42 @@ export function GoodsDetailPage() {
   };
 
   const handleToggleFavorite = async () => {
-    setIsFavorite(!isFavorite);
-    // TODO: 调用收藏API
+    if (!goods) return;
+
+    try {
+      if (isFavorite) {
+        // 取消收藏
+        const res = await fetch(
+          `/api/favorites?targetType=goods&targetId=${goods.id}`,
+          { method: 'DELETE' }
+        );
+        const data = await res.json();
+        if (data.success) {
+          setIsFavorite(false);
+          toast.success('已取消收藏');
+        }
+      } else {
+        // 添加收藏
+        const res = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetType: 'goods',
+            targetId: goods.id,
+          }),
+        });
+        const data = await res.json();
+        if (data.data) {
+          setIsFavorite(true);
+          toast.success('已添加到收藏');
+        } else if (data.error) {
+          toast.error(data.error);
+        }
+      }
+    } catch (error) {
+      console.error('收藏操作失败:', error);
+      toast.error('操作失敗，請重試');
+    }
   };
 
   if (loading) {

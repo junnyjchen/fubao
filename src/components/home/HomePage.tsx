@@ -18,6 +18,7 @@ import {
   Calendar,
   BookOpen,
   Award,
+  Sparkles,
 } from 'lucide-react';
 
 // 类型定义
@@ -247,8 +248,8 @@ export function HomePage() {
   const features = [
     { icon: ShieldCheck, title: '證書驗證', href: '/verify' },
     { icon: BookOpen, title: '玄門百科', href: '/wiki' },
+    { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
     { icon: Building2, title: '商戶入駐', href: '/merchant/apply' },
-    { icon: Store, title: '開店經營', href: '/merchant/apply' },
   ];
 
   if (loading) {
