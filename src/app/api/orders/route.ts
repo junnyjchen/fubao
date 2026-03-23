@@ -17,18 +17,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId') || 'guest-user-001';
     const status = searchParams.get('status');
+    const includeAll = searchParams.get('includeAll') === 'true';
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
 
     const client = getSupabaseClient();
     
+    // 获取总数
+    let countQuery = client
+      .from('orders')
+      .select('*', { count: 'exact', head: true });
+
+    if (!includeAll) {
+      countQuery = countQuery.eq('user_id', userId);
+    }
+    
+    if (status) {
+      countQuery = countQuery.eq('order_status', parseInt(status));
+    }
+
+    const { count } = await countQuery;
+    
+    // 查询订单列表
     let query = client
       .from('orders')
       .select('*')
-      .eq('user_id', userId)
       .order('created_at', { ascending: false });
+
+    if (!includeAll) {
+      query = query.eq('user_id', userId);
+    }
     
     if (status) {
       query = query.eq('order_status', parseInt(status));
     }
+
+    query = query.range(offset, offset + limit - 1);
 
     const { data: ordersList, error } = await query;
 
@@ -47,7 +72,12 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ data: ordersWithItems });
+    return NextResponse.json({ 
+      data: ordersWithItems,
+      total: count || 0,
+      page,
+      limit,
+    });
   } catch (error) {
     console.error('获取订单列表失败:', error);
     return NextResponse.json({ error: '获取订单列表失败' }, { status: 500 });
