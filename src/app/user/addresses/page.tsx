@@ -7,7 +7,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserLayout } from '@/components/user/UserLayout';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -80,7 +81,7 @@ export default function AddressesPage() {
         setAddresses(result.data);
       }
     } catch (error) {
-      console.error('加载地址失败:', error);
+      console.error('加載地址失敗:', error);
     } finally {
       setLoading(false);
     }
@@ -127,7 +128,7 @@ export default function AddressesPage() {
         setAddresses((prev) => prev.filter((a) => a.id !== id));
       }
     } catch (error) {
-      console.error('删除地址失败:', error);
+      console.error('刪除地址失敗:', error);
     }
   };
 
@@ -146,7 +147,7 @@ export default function AddressesPage() {
         loadAddresses();
       }
     } catch (error) {
-      console.error('设置默认地址失败:', error);
+      console.error('設置默認地址失敗:', error);
     }
   };
 
@@ -164,7 +165,7 @@ export default function AddressesPage() {
     e.preventDefault();
 
     // 验证必填字段
-    if (!formData.name || !formData.phone || !formData.province || 
+    if (!formData.name || !formData.phone || !formData.province ||
         !formData.city || !formData.district || !formData.address) {
       alert('請填寫完整地址信息');
       return;
@@ -193,7 +194,7 @@ export default function AddressesPage() {
         alert(result.error || '操作失敗');
       }
     } catch (error) {
-      console.error('提交失败:', error);
+      console.error('提交失敗:', error);
       alert('操作失敗，請重試');
     } finally {
       setSubmitting(false);
@@ -201,90 +202,78 @@ export default function AddressesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            <MapPin className="w-6 h-6" />
-            收貨地址
-          </h1>
-        </div>
-      </header>
+    <UserLayout title="收貨地址" description="管理您的收貨地址">
+      {/* 新增按钮 */}
+      <div className="mb-6">
+        <Button onClick={handleAdd}>
+          <Plus className="w-4 h-4 mr-2" />
+          新增地址
+        </Button>
+      </div>
 
-      <main className="max-w-3xl mx-auto px-4 py-6">
-        {/* 新增按钮 */}
-        <div className="mb-6">
-          <Button onClick={handleAdd}>
-            <Plus className="w-4 h-4 mr-2" />
-            新增地址
-          </Button>
-        </div>
-
-        {/* 地址列表 */}
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">載入中...</div>
-        ) : addresses.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <MapPin className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">暫無地址</h2>
-              <p className="text-muted-foreground mb-6">添加一個收貨地址吧</p>
-              <Button onClick={handleAdd}>新增地址</Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {addresses.map((address) => (
-              <Card key={address.id} className={address.is_default ? 'border-primary' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="font-medium">{address.name}</span>
-                        <span className="text-muted-foreground">{address.phone}</span>
-                        {address.is_default && (
-                          <Badge className="bg-primary/10 text-primary">默認</Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {address.province} {address.city} {address.district} {address.address}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!address.is_default && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSetDefault(address.id)}
-                        >
-                          <Check className="w-4 h-4 mr-1" />
-                          設為默認
-                        </Button>
+      {/* 地址列表 */}
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">載入中...</div>
+      ) : addresses.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <MapPin className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+            <h2 className="text-xl font-semibold mb-2">暫無地址</h2>
+            <p className="text-muted-foreground mb-6">添加一個收貨地址吧</p>
+            <Button onClick={handleAdd}>新增地址</Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {addresses.map((address) => (
+            <Card key={address.id} className={address.is_default ? 'border-primary' : ''}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-medium">{address.name}</span>
+                      <span className="text-muted-foreground">{address.phone}</span>
+                      {address.is_default && (
+                        <Badge className="bg-primary/10 text-primary">默認</Badge>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(address)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(address.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
                     </div>
+                    <p className="text-sm text-muted-foreground">
+                      {address.province} {address.city} {address.district} {address.address}
+                    </p>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
+                  <div className="flex items-center gap-2">
+                    {!address.is_default && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetDefault(address.id)}
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        設為默認
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(address)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(address.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* 新增/编辑对话框 */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -292,7 +281,7 @@ export default function AddressesPage() {
           <DialogHeader>
             <DialogTitle>{editingId ? '編輯地址' : '新增地址'}</DialogTitle>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -377,6 +366,6 @@ export default function AddressesPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </UserLayout>
   );
 }

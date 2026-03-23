@@ -8,9 +8,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserLayout } from '@/components/user/UserLayout';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Heart, Trash2, ShoppingCart } from 'lucide-react';
 
 /** 收藏数据类型 */
@@ -24,6 +24,7 @@ interface Favorite {
     price: string;
     main_image: string | null;
     sales: number;
+    status: boolean;
   } | null;
 }
 
@@ -51,7 +52,7 @@ export default function FavoritesPage() {
         setFavorites(result.data);
       }
     } catch (error) {
-      console.error('加载收藏失败:', error);
+      console.error('加載收藏失敗:', error);
     } finally {
       setLoading(false);
     }
@@ -71,7 +72,7 @@ export default function FavoritesPage() {
         setFavorites((prev) => prev.filter((f) => f.target_id !== targetId));
       }
     } catch (error) {
-      console.error('取消收藏失败:', error);
+      console.error('取消收藏失敗:', error);
     }
   };
 
@@ -79,87 +80,74 @@ export default function FavoritesPage() {
    * 加入购物车
    */
   const handleAddToCart = async (goodsId: number) => {
-    // 这里可以调用购物车 API
     alert('已加入購物車');
   };
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      {/* Header */}
-      <header className="bg-primary text-primary-foreground py-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            <Heart className="w-6 h-6" />
-            我的收藏
-          </h1>
-        </div>
-      </header>
+    <UserLayout title="我的收藏" description="管理您收藏的商品">
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">載入中...</div>
+      ) : favorites.length === 0 ? (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <Heart className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+            <h2 className="text-xl font-semibold mb-2">暫無收藏</h2>
+            <p className="text-muted-foreground mb-6">去發現更多心儀的商品吧</p>
+            <Button asChild>
+              <Link href="/shop">去購物</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {favorites.map((favorite) => {
+            const goods = favorite.goods;
+            if (!goods) return null;
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">載入中...</div>
-        ) : favorites.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <Heart className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">暫無收藏</h2>
-              <p className="text-muted-foreground mb-6">去發現更多心儀的商品吧</p>
-              <Button asChild>
-                <Link href="/shop">去購物</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {favorites.map((favorite) => {
-              const goods = favorite.goods;
-              if (!goods) return null;
-
-              return (
-                <Card key={favorite.id} className="overflow-hidden">
+            return (
+              <Card key={favorite.id} className="overflow-hidden">
+                <Link href={`/shop/${goods.id}`}>
+                  <div className="aspect-square bg-muted flex items-center justify-center text-muted-foreground">
+                    {goods.main_image ? '圖片' : '暫無圖片'}
+                  </div>
+                </Link>
+                <CardContent className="p-4">
                   <Link href={`/shop/${goods.id}`}>
-                    <div className="aspect-square bg-muted flex items-center justify-center text-muted-foreground">
-                      {goods.main_image ? '圖片' : '暫無圖片'}
-                    </div>
+                    <h3 className="font-medium truncate hover:text-primary">
+                      {goods.name}
+                    </h3>
                   </Link>
-                  <CardContent className="p-4">
-                    <Link href={`/shop/${goods.id}`}>
-                      <h3 className="font-medium truncate hover:text-primary">
-                        {goods.name}
-                      </h3>
-                    </Link>
-                    <p className="text-primary font-semibold mt-1">
-                      HK${goods.price}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      銷量 {goods.sales}
-                    </p>
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => handleAddToCart(goods.id)}
-                      >
-                        <ShoppingCart className="w-4 h-4 mr-1" />
-                        加入購物車
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleRemove(favorite.target_id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </main>
-    </div>
+                  <p className="text-primary font-semibold mt-1">
+                    HK${goods.price}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    銷量 {goods.sales}
+                  </p>
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => handleAddToCart(goods.id)}
+                    >
+                      <ShoppingCart className="w-4 h-4 mr-1" />
+                      加入購物車
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleRemove(favorite.target_id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </UserLayout>
   );
 }

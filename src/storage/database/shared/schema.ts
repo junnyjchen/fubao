@@ -1,379 +1,367 @@
-import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, index } from "drizzle-orm/pg-core"
+import { pgTable, index, serial, varchar, boolean, timestamp, unique, text, integer, jsonb, numeric } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-// ==================== 系统表 ====================
+
+
+export const addresses = pgTable("addresses", {
+	id: serial().notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	name: varchar({ length: 50 }).notNull(),
+	phone: varchar({ length: 20 }).notNull(),
+	province: varchar({ length: 50 }).notNull(),
+	city: varchar({ length: 50 }).notNull(),
+	district: varchar({ length: 50 }).notNull(),
+	address: varchar({ length: 200 }).notNull(),
+	isDefault: boolean("is_default").default(false),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("addresses_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
+
+export const articles = pgTable("articles", {
+	id: serial().notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	slug: varchar({ length: 200 }),
+	cover: varchar({ length: 500 }),
+	summary: varchar({ length: 500 }),
+	content: text(),
+	categoryId: integer("category_id"),
+	author: varchar({ length: 50 }),
+	authorId: varchar("author_id", { length: 36 }),
+	views: integer().default(0),
+	likes: integer().default(0),
+	isFeatured: boolean("is_featured").default(false),
+	status: boolean().default(true).notNull(),
+	sort: integer().default(0),
+	publishedAt: timestamp("published_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("articles_category_id_idx").using("btree", table.categoryId.asc().nullsLast().op("int4_ops")),
+	index("articles_is_featured_idx").using("btree", table.isFeatured.asc().nullsLast().op("bool_ops")),
+	index("articles_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	index("articles_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+	unique("articles_slug_unique").on(table.slug),
+]);
+
 export const healthCheck = pgTable("health_check", {
-  id: serial().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	id: serial().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
-// ==================== 多语言配置 ====================
-export const languages = pgTable("languages", {
-  id: serial().notNull(),
-  code: varchar("code", { length: 10 }).notNull().unique(),
-  name: varchar("name", { length: 50 }).notNull(),
-  isDefault: boolean("is_default").default(false).notNull(),
-  status: boolean("status").default(true).notNull(),
-}, (table) => [
-  index("languages_code_idx").on(table.code),
-]);
-
-// ==================== 用户表 ====================
-export const users = pgTable("users", {
-  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  phone: varchar("phone", { length: 20 }),
-  password: text("password"),
-  name: varchar("name", { length: 100 }),
-  avatar: varchar("avatar", { length: 500 }),
-  language: varchar("language", { length: 10 }).default('zh-TW'),
-  status: boolean("status").default(true).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("users_email_idx").on(table.email),
-  index("users_phone_idx").on(table.phone),
-]);
-
-// ==================== 商户表（道观/寺庙） ====================
-export const merchants = pgTable("merchants", {
-  id: serial().notNull(),
-  name: varchar("name", { length: 100 }).notNull(),
-  type: integer("type").default(1).notNull(),
-  logo: varchar("logo", { length: 500 }),
-  cover: varchar("cover", { length: 500 }),
-  description: text("description"),
-  certificationLevel: integer("certification_level").default(1),
-  contactName: varchar("contact_name", { length: 50 }),
-  contactPhone: varchar("contact_phone", { length: 20 }),
-  address: varchar("address", { length: 500 }),
-  province: varchar("province", { length: 50 }),
-  city: varchar("city", { length: 50 }),
-  rating: decimal("rating", { precision: 3, scale: 2 }).default('5.00'),
-  totalSales: integer("total_sales").default(0),
-  status: boolean("status").default(true).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("merchants_type_idx").on(table.type),
-  index("merchants_status_idx").on(table.status),
-]);
-
-// ==================== 商户管理员表 ====================
-export const merchantUsers = pgTable("merchant_users", {
-  id: serial().notNull(),
-  merchantId: integer("merchant_id").notNull(),
-  userId: varchar("user_id", { length: 36 }),
-  username: varchar("username", { length: 50 }).notNull(),
-  password: varchar("password", { length: 255 }).notNull(),
-  role: integer("role").default(1).notNull(),
-  status: boolean("status").default(true).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index("merchant_users_merchant_id_idx").on(table.merchantId),
-  index("merchant_users_username_idx").on(table.username),
-]);
-
-// ==================== 商品分类表 ====================
-export const categories = pgTable("categories", {
-  id: serial().notNull(),
-  name: varchar("name", { length: 50 }).notNull(),
-  slug: varchar("slug", { length: 50 }).notNull().unique(),
-  parentId: integer("parent_id"),
-  icon: varchar("icon", { length: 200 }),
-  sort: integer("sort").default(0),
-  status: boolean("status").default(true).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index("categories_slug_idx").on(table.slug),
-  index("categories_parent_id_idx").on(table.parentId),
-]);
-
-// ==================== 商品表 ====================
-export const goods = pgTable("goods", {
-  id: serial().notNull(),
-  merchantId: integer("merchant_id").notNull(),
-  categoryId: integer("category_id"),
-  name: varchar("name", { length: 200 }).notNull(),
-  subtitle: varchar("subtitle", { length: 200 }),
-  type: integer("type").default(1).notNull(),
-  purpose: varchar("purpose", { length: 100 }),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  originalPrice: decimal("original_price", { precision: 10, scale: 2 }),
-  stock: integer("stock").default(0),
-  sales: integer("sales").default(0),
-  images: jsonb("images").$type<string[]>(),
-  mainImage: varchar("main_image", { length: 500 }),
-  description: text("description"),
-  isCertified: boolean("is_certified").default(false),
-  status: boolean("status").default(true).notNull(),
-  sort: integer("sort").default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("goods_merchant_id_idx").on(table.merchantId),
-  index("goods_category_id_idx").on(table.categoryId),
-  index("goods_type_idx").on(table.type),
-  index("goods_status_idx").on(table.status),
-]);
-
-// ==================== 商品多语言表 ====================
-export const goodsLang = pgTable("goods_lang", {
-  id: serial().notNull(),
-  goodsId: integer("goods_id").notNull(),
-  langCode: varchar("lang_code", { length: 10 }).notNull(),
-  name: varchar("name", { length: 200 }).notNull(),
-  subtitle: varchar("subtitle", { length: 200 }),
-  description: text("description"),
-}, (table) => [
-  index("goods_lang_goods_id_idx").on(table.goodsId),
-  index("goods_lang_lang_code_idx").on(table.langCode),
-]);
-
-// ==================== 认证证书表 ====================
-export const certificates = pgTable("certificates", {
-  id: serial().notNull(),
-  goodsId: integer("goods_id").notNull(),
-  certificateNo: varchar("certificate_no", { length: 50 }).notNull().unique(),
-  inspectionResult: text("inspection_result"),
-  issueDate: timestamp("issue_date", { withTimezone: true }).notNull(),
-  validUntil: timestamp("valid_until", { withTimezone: true }),
-  images: jsonb("images").$type<string[]>(),
-  issuedBy: varchar("issued_by", { length: 100 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index("certificates_goods_id_idx").on(table.goodsId),
-  index("certificates_certificate_no_idx").on(table.certificateNo),
-]);
-
-// ==================== 订单表 ====================
-export const orders = pgTable("orders", {
-  id: serial().notNull(),
-  orderNo: varchar("order_no", { length: 32 }).notNull().unique(),
-  userId: varchar("user_id", { length: 36 }).notNull(),
-  merchantId: integer("merchant_id").notNull(),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  payAmount: decimal("pay_amount", { precision: 10, scale: 2 }).notNull(),
-  payStatus: integer("pay_status").default(0).notNull(),
-  orderStatus: integer("order_status").default(0).notNull(),
-  payMethod: varchar("pay_method", { length: 20 }),
-  payTime: timestamp("pay_time", { withTimezone: true }),
-  shippingName: varchar("shipping_name", { length: 50 }),
-  shippingPhone: varchar("shipping_phone", { length: 20 }),
-  shippingAddress: varchar("shipping_address", { length: 500 }),
-  shippingTime: timestamp("shipping_time", { withTimezone: true }),
-  receiveTime: timestamp("receive_time", { withTimezone: true }),
-  remark: varchar("remark", { length: 500 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("orders_order_no_idx").on(table.orderNo),
-  index("orders_user_id_idx").on(table.userId),
-  index("orders_merchant_id_idx").on(table.merchantId),
-  index("orders_pay_status_idx").on(table.payStatus),
-  index("orders_order_status_idx").on(table.orderStatus),
-]);
-
-// ==================== 订单商品明细表 ====================
-export const orderItems = pgTable("order_items", {
-  id: serial().notNull(),
-  orderId: integer("order_id").notNull(),
-  goodsId: integer("goods_id").notNull(),
-  goodsName: varchar("goods_name", { length: 200 }).notNull(),
-  goodsImage: varchar("goods_image", { length: 500 }),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  quantity: integer("quantity").notNull(),
-  totalPrice: decimal("total_price", { precision: 10, scale: 2 }).notNull(),
-}, (table) => [
-  index("order_items_order_id_idx").on(table.orderId),
-  index("order_items_goods_id_idx").on(table.goodsId),
-]);
-
-// ==================== 百科文章表 ====================
-export const articles = pgTable("articles", {
-  id: serial().notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  slug: varchar("slug", { length: 200 }).unique(),
-  cover: varchar("cover", { length: 500 }),
-  summary: varchar("summary", { length: 500 }),
-  content: text("content"),
-  categoryId: integer("category_id"),
-  author: varchar("author", { length: 50 }),
-  authorId: varchar("author_id", { length: 36 }),
-  views: integer("views").default(0),
-  likes: integer("likes").default(0),
-  isFeatured: boolean("is_featured").default(false),
-  status: boolean("status").default(true).notNull(),
-  sort: integer("sort").default(0),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("articles_slug_idx").on(table.slug),
-  index("articles_category_id_idx").on(table.categoryId),
-  index("articles_status_idx").on(table.status),
-  index("articles_is_featured_idx").on(table.isFeatured),
-]);
-
-// ==================== 文章多语言表 ====================
 export const articlesLang = pgTable("articles_lang", {
-  id: serial().notNull(),
-  articleId: integer("article_id").notNull(),
-  langCode: varchar("lang_code", { length: 10 }).notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  summary: varchar("summary", { length: 500 }),
-  content: text("content"),
+	id: serial().notNull(),
+	articleId: integer("article_id").notNull(),
+	langCode: varchar("lang_code", { length: 10 }).notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	summary: varchar({ length: 500 }),
+	content: text(),
 }, (table) => [
-  index("articles_lang_article_id_idx").on(table.articleId),
-  index("articles_lang_lang_code_idx").on(table.langCode),
+	index("articles_lang_article_id_idx").using("btree", table.articleId.asc().nullsLast().op("int4_ops")),
+	index("articles_lang_lang_code_idx").using("btree", table.langCode.asc().nullsLast().op("text_ops")),
 ]);
 
-// ==================== 视频表 ====================
-export const videos = pgTable("videos", {
-  id: serial().notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  slug: varchar("slug", { length: 200 }).unique(),
-  cover: varchar("cover", { length: 500 }),
-  url: varchar("url", { length: 500 }).notNull(),
-  duration: integer("duration").default(0),
-  categoryId: integer("category_id"),
-  author: varchar("author", { length: 50 }),
-  authorId: varchar("author_id", { length: 36 }),
-  views: integer("views").default(0),
-  likes: integer("likes").default(0),
-  isFeatured: boolean("is_featured").default(false),
-  status: boolean("status").default(true).notNull(),
-  sort: integer("sort").default(0),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index("videos_slug_idx").on(table.slug),
-  index("videos_category_id_idx").on(table.categoryId),
-  index("videos_status_idx").on(table.status),
-]);
-
-// ==================== 新闻动态表 ====================
-export const news = pgTable("news", {
-  id: serial().notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  slug: varchar("slug", { length: 200 }).unique(),
-  cover: varchar("cover", { length: 500 }),
-  summary: varchar("summary", { length: 500 }),
-  content: text("content"),
-  type: integer("type").default(1),
-  source: varchar("source", { length: 100 }),
-  views: integer("views").default(0),
-  isFeatured: boolean("is_featured").default(false),
-  status: boolean("status").default(true).notNull(),
-  sort: integer("sort").default(0),
-  publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("news_slug_idx").on(table.slug),
-  index("news_type_idx").on(table.type),
-  index("news_status_idx").on(table.status),
-]);
-
-// ==================== 新闻多语言表 ====================
-export const newsLang = pgTable("news_lang", {
-  id: serial().notNull(),
-  newsId: integer("news_id").notNull(),
-  langCode: varchar("lang_code", { length: 10 }).notNull(),
-  title: varchar("title", { length: 200 }).notNull(),
-  summary: varchar("summary", { length: 500 }),
-  content: text("content"),
-}, (table) => [
-  index("news_lang_news_id_idx").on(table.newsId),
-  index("news_lang_lang_code_idx").on(table.langCode),
-]);
-
-// ==================== 页面配置表 ====================
-export const pageConfigs = pgTable("page_configs", {
-  id: serial().notNull(),
-  pageKey: varchar("page_key", { length: 50 }).notNull(),
-  pageName: varchar("page_name", { length: 100 }).notNull(),
-  components: jsonb("components").notNull(),
-  langCode: varchar("lang_code", { length: 10 }).default('zh-TW'),
-  status: boolean("status").default(true).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
-}, (table) => [
-  index("page_configs_page_key_idx").on(table.pageKey),
-  index("page_configs_lang_code_idx").on(table.langCode),
-]);
-
-// ==================== Banner轮播图表 ====================
 export const banners = pgTable("banners", {
-  id: serial().notNull(),
-  title: varchar("title", { length: 100 }),
-  image: varchar("image", { length: 500 }).notNull(),
-  link: varchar("link", { length: 500 }),
-  position: varchar("position", { length: 50 }).default('home'),
-  sort: integer("sort").default(0),
-  status: boolean("status").default(true).notNull(),
-  startDate: timestamp("start_date", { withTimezone: true }),
-  endDate: timestamp("end_date", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+	id: serial().notNull(),
+	title: varchar({ length: 100 }),
+	image: varchar({ length: 500 }).notNull(),
+	link: varchar({ length: 500 }),
+	position: varchar({ length: 50 }).default('home'),
+	sort: integer().default(0),
+	status: boolean().default(true).notNull(),
+	startDate: timestamp("start_date", { withTimezone: true, mode: 'string' }),
+	endDate: timestamp("end_date", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-  index("banners_position_idx").on(table.position),
-  index("banners_status_idx").on(table.status),
+	index("banners_position_idx").using("btree", table.position.asc().nullsLast().op("text_ops")),
+	index("banners_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
 ]);
 
-// ==================== 用户收藏表 ====================
-export const favorites = pgTable("favorites", {
-  id: serial().notNull(),
-  userId: varchar("user_id", { length: 36 }).notNull(),
-  targetType: varchar("target_type", { length: 20 }).notNull(),
-  targetId: integer("target_id").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index("favorites_user_id_idx").on(table.userId),
-  index("favorites_target_type_idx").on(table.targetType),
-]);
-
-// ==================== 用户收货地址表 ====================
-export const addresses = pgTable("addresses", {
-  id: serial().notNull(),
-  userId: varchar("user_id", { length: 36 }).notNull(),
-  name: varchar("name", { length: 50 }).notNull(),
-  phone: varchar("phone", { length: 20 }).notNull(),
-  province: varchar("province", { length: 50 }).notNull(),
-  city: varchar("city", { length: 50 }).notNull(),
-  district: varchar("district", { length: 50 }).notNull(),
-  address: varchar("address", { length: 200 }).notNull(),
-  isDefault: boolean("is_default").default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  index("addresses_user_id_idx").on(table.userId),
-]);
-
-// ==================== 购物车表 ====================
 export const cartItems = pgTable("cart_items", {
-  id: serial().notNull(),
-  userId: varchar("user_id", { length: 36 }).notNull(),
-  goodsId: integer("goods_id").notNull(),
-  quantity: integer("quantity").default(1).notNull(),
-  selected: boolean("selected").default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }),
+	id: serial().notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	goodsId: integer("goods_id").notNull(),
+	quantity: integer().default(1).notNull(),
+	selected: boolean().default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
-  index("cart_items_user_id_idx").on(table.userId),
-  index("cart_items_goods_id_idx").on(table.goodsId),
+	index("cart_items_goods_id_idx").using("btree", table.goodsId.asc().nullsLast().op("int4_ops")),
+	index("cart_items_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
 ]);
 
-// ==================== 商品评价表 ====================
-export const reviews = pgTable("reviews", {
-  id: serial().notNull(),
-  orderId: integer("order_id").notNull(),
-  goodsId: integer("goods_id").notNull(),
-  userId: varchar("user_id", { length: 36 }).notNull(),
-  rating: integer("rating").default(5).notNull(),
-  content: text("content"),
-  images: jsonb("images").$type<string[]>(),
-  status: boolean("status").default(true).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+export const categories = pgTable("categories", {
+	id: serial().notNull(),
+	name: varchar({ length: 50 }).notNull(),
+	slug: varchar({ length: 50 }).notNull(),
+	parentId: integer("parent_id"),
+	icon: varchar({ length: 200 }),
+	sort: integer().default(0),
+	status: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 }, (table) => [
-  index("reviews_order_id_idx").on(table.orderId),
-  index("reviews_goods_id_idx").on(table.goodsId),
-  index("reviews_user_id_idx").on(table.userId),
+	index("categories_parent_id_idx").using("btree", table.parentId.asc().nullsLast().op("int4_ops")),
+	index("categories_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	unique("categories_slug_unique").on(table.slug),
+]);
+
+export const certificates = pgTable("certificates", {
+	id: serial().notNull(),
+	goodsId: integer("goods_id").notNull(),
+	certificateNo: varchar("certificate_no", { length: 50 }).notNull(),
+	inspectionResult: text("inspection_result"),
+	issueDate: timestamp("issue_date", { withTimezone: true, mode: 'string' }).notNull(),
+	validUntil: timestamp("valid_until", { withTimezone: true, mode: 'string' }),
+	images: jsonb(),
+	issuedBy: varchar("issued_by", { length: 100 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("certificates_certificate_no_idx").using("btree", table.certificateNo.asc().nullsLast().op("text_ops")),
+	index("certificates_goods_id_idx").using("btree", table.goodsId.asc().nullsLast().op("int4_ops")),
+	unique("certificates_certificate_no_unique").on(table.certificateNo),
+]);
+
+export const favorites = pgTable("favorites", {
+	id: serial().notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	targetType: varchar("target_type", { length: 20 }).notNull(),
+	targetId: integer("target_id").notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("favorites_target_type_idx").using("btree", table.targetType.asc().nullsLast().op("text_ops")),
+	index("favorites_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
+
+export const goods = pgTable("goods", {
+	id: serial().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	categoryId: integer("category_id"),
+	name: varchar({ length: 200 }).notNull(),
+	subtitle: varchar({ length: 200 }),
+	type: integer().default(1).notNull(),
+	purpose: varchar({ length: 100 }),
+	price: numeric({ precision: 10, scale:  2 }).notNull(),
+	originalPrice: numeric("original_price", { precision: 10, scale:  2 }),
+	stock: integer().default(0),
+	sales: integer().default(0),
+	images: jsonb(),
+	mainImage: varchar("main_image", { length: 500 }),
+	description: text(),
+	isCertified: boolean("is_certified").default(false),
+	status: boolean().default(true).notNull(),
+	sort: integer().default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("goods_category_id_idx").using("btree", table.categoryId.asc().nullsLast().op("int4_ops")),
+	index("goods_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("goods_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+	index("goods_type_idx").using("btree", table.type.asc().nullsLast().op("int4_ops")),
+]);
+
+export const goodsLang = pgTable("goods_lang", {
+	id: serial().notNull(),
+	goodsId: integer("goods_id").notNull(),
+	langCode: varchar("lang_code", { length: 10 }).notNull(),
+	name: varchar({ length: 200 }).notNull(),
+	subtitle: varchar({ length: 200 }),
+	description: text(),
+}, (table) => [
+	index("goods_lang_goods_id_idx").using("btree", table.goodsId.asc().nullsLast().op("int4_ops")),
+	index("goods_lang_lang_code_idx").using("btree", table.langCode.asc().nullsLast().op("text_ops")),
+]);
+
+export const languages = pgTable("languages", {
+	id: serial().notNull(),
+	code: varchar({ length: 10 }).notNull(),
+	name: varchar({ length: 50 }).notNull(),
+	isDefault: boolean("is_default").default(false).notNull(),
+	status: boolean().default(true).notNull(),
+}, (table) => [
+	index("languages_code_idx").using("btree", table.code.asc().nullsLast().op("text_ops")),
+	unique("languages_code_unique").on(table.code),
+]);
+
+export const merchantUsers = pgTable("merchant_users", {
+	id: serial().notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	userId: varchar("user_id", { length: 36 }),
+	username: varchar({ length: 50 }).notNull(),
+	password: varchar({ length: 255 }).notNull(),
+	role: integer().default(1).notNull(),
+	status: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("merchant_users_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("merchant_users_username_idx").using("btree", table.username.asc().nullsLast().op("text_ops")),
+]);
+
+export const merchants = pgTable("merchants", {
+	id: serial().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	type: integer().default(1).notNull(),
+	logo: varchar({ length: 500 }),
+	cover: varchar({ length: 500 }),
+	description: text(),
+	certificationLevel: integer("certification_level").default(1),
+	contactName: varchar("contact_name", { length: 50 }),
+	contactPhone: varchar("contact_phone", { length: 20 }),
+	address: varchar({ length: 500 }),
+	province: varchar({ length: 50 }),
+	city: varchar({ length: 50 }),
+	rating: numeric({ precision: 3, scale:  2 }).default('5.00'),
+	totalSales: integer("total_sales").default(0),
+	status: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("merchants_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+	index("merchants_type_idx").using("btree", table.type.asc().nullsLast().op("int4_ops")),
+]);
+
+export const news = pgTable("news", {
+	id: serial().notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	slug: varchar({ length: 200 }),
+	cover: varchar({ length: 500 }),
+	summary: varchar({ length: 500 }),
+	content: text(),
+	type: integer().default(1),
+	source: varchar({ length: 100 }),
+	views: integer().default(0),
+	isFeatured: boolean("is_featured").default(false),
+	status: boolean().default(true).notNull(),
+	sort: integer().default(0),
+	publishedAt: timestamp("published_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("news_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	index("news_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+	index("news_type_idx").using("btree", table.type.asc().nullsLast().op("int4_ops")),
+	unique("news_slug_unique").on(table.slug),
+]);
+
+export const newsLang = pgTable("news_lang", {
+	id: serial().notNull(),
+	newsId: integer("news_id").notNull(),
+	langCode: varchar("lang_code", { length: 10 }).notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	summary: varchar({ length: 500 }),
+	content: text(),
+}, (table) => [
+	index("news_lang_lang_code_idx").using("btree", table.langCode.asc().nullsLast().op("text_ops")),
+	index("news_lang_news_id_idx").using("btree", table.newsId.asc().nullsLast().op("int4_ops")),
+]);
+
+export const orderItems = pgTable("order_items", {
+	id: serial().notNull(),
+	orderId: integer("order_id").notNull(),
+	goodsId: integer("goods_id").notNull(),
+	goodsName: varchar("goods_name", { length: 200 }).notNull(),
+	goodsImage: varchar("goods_image", { length: 500 }),
+	price: numeric({ precision: 10, scale:  2 }).notNull(),
+	quantity: integer().notNull(),
+	totalPrice: numeric("total_price", { precision: 10, scale:  2 }).notNull(),
+}, (table) => [
+	index("order_items_goods_id_idx").using("btree", table.goodsId.asc().nullsLast().op("int4_ops")),
+	index("order_items_order_id_idx").using("btree", table.orderId.asc().nullsLast().op("int4_ops")),
+]);
+
+export const orders = pgTable("orders", {
+	id: serial().notNull(),
+	orderNo: varchar("order_no", { length: 32 }).notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	merchantId: integer("merchant_id").notNull(),
+	totalAmount: numeric("total_amount", { precision: 10, scale:  2 }).notNull(),
+	payAmount: numeric("pay_amount", { precision: 10, scale:  2 }).notNull(),
+	payStatus: integer("pay_status").default(0).notNull(),
+	orderStatus: integer("order_status").default(0).notNull(),
+	payMethod: varchar("pay_method", { length: 20 }),
+	payTime: timestamp("pay_time", { withTimezone: true, mode: 'string' }),
+	shippingName: varchar("shipping_name", { length: 50 }),
+	shippingPhone: varchar("shipping_phone", { length: 20 }),
+	shippingAddress: varchar("shipping_address", { length: 500 }),
+	shippingTime: timestamp("shipping_time", { withTimezone: true, mode: 'string' }),
+	receiveTime: timestamp("receive_time", { withTimezone: true, mode: 'string' }),
+	remark: varchar({ length: 500 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("orders_merchant_id_idx").using("btree", table.merchantId.asc().nullsLast().op("int4_ops")),
+	index("orders_order_no_idx").using("btree", table.orderNo.asc().nullsLast().op("text_ops")),
+	index("orders_order_status_idx").using("btree", table.orderStatus.asc().nullsLast().op("int4_ops")),
+	index("orders_pay_status_idx").using("btree", table.payStatus.asc().nullsLast().op("int4_ops")),
+	index("orders_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	unique("orders_order_no_unique").on(table.orderNo),
+]);
+
+export const pageConfigs = pgTable("page_configs", {
+	id: serial().notNull(),
+	pageKey: varchar("page_key", { length: 50 }).notNull(),
+	pageName: varchar("page_name", { length: 100 }).notNull(),
+	components: jsonb().notNull(),
+	langCode: varchar("lang_code", { length: 10 }).default('zh-TW'),
+	status: boolean().default(true).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("page_configs_lang_code_idx").using("btree", table.langCode.asc().nullsLast().op("text_ops")),
+	index("page_configs_page_key_idx").using("btree", table.pageKey.asc().nullsLast().op("text_ops")),
+]);
+
+export const reviews = pgTable("reviews", {
+	id: serial().notNull(),
+	orderId: integer("order_id").notNull(),
+	goodsId: integer("goods_id").notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	rating: integer().default(5).notNull(),
+	content: text(),
+	images: jsonb(),
+	status: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("reviews_goods_id_idx").using("btree", table.goodsId.asc().nullsLast().op("int4_ops")),
+	index("reviews_order_id_idx").using("btree", table.orderId.asc().nullsLast().op("int4_ops")),
+	index("reviews_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+]);
+
+export const users = pgTable("users", {
+	id: varchar({ length: 36 }).default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	email: varchar({ length: 255 }).notNull(),
+	phone: varchar({ length: 20 }),
+	password: text(),
+	name: varchar({ length: 100 }),
+	avatar: varchar({ length: 500 }),
+	language: varchar({ length: 10 }).default('zh-TW'),
+	status: boolean().default(true).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("users_email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
+	index("users_phone_idx").using("btree", table.phone.asc().nullsLast().op("text_ops")),
+	unique("users_email_unique").on(table.email),
+]);
+
+export const videos = pgTable("videos", {
+	id: serial().notNull(),
+	title: varchar({ length: 200 }).notNull(),
+	slug: varchar({ length: 200 }),
+	cover: varchar({ length: 500 }),
+	url: varchar({ length: 500 }).notNull(),
+	duration: integer().default(0),
+	categoryId: integer("category_id"),
+	author: varchar({ length: 50 }),
+	authorId: varchar("author_id", { length: 36 }),
+	views: integer().default(0),
+	likes: integer().default(0),
+	isFeatured: boolean("is_featured").default(false),
+	status: boolean().default(true).notNull(),
+	sort: integer().default(0),
+	publishedAt: timestamp("published_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+}, (table) => [
+	index("videos_category_id_idx").using("btree", table.categoryId.asc().nullsLast().op("int4_ops")),
+	index("videos_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	index("videos_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+	unique("videos_slug_unique").on(table.slug),
 ]);
