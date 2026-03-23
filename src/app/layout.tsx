@@ -3,6 +3,7 @@ import { Inspector } from 'react-dev-inspector';
 import './globals.css';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
+import { FloatingAIButton } from '@/components/ai/FloatingAIButton';
 import { I18nProvider } from '@/lib/i18n';
 
 export const metadata: Metadata = {
@@ -68,6 +69,7 @@ export default function RootLayout({
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
+          <FloatingAIButton />
         </I18nProvider>
       </body>
     </html>
