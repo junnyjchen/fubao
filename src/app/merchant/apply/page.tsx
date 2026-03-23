@@ -1,13 +1,19 @@
+/**
+ * @fileoverview 商户入驻申请页面
+ * @description 商户申请入驻平台
+ * @module app/merchant/apply/page
+ */
+
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -16,31 +22,40 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { 
   ChevronRight, 
   Store, 
   CheckCircle, 
-  Clock, 
   Shield, 
   TrendingUp,
   Users,
-  Upload,
-  Plus,
-  X,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { ImageUpload } from '@/components/upload/ImageUpload';
+
+/** 商户类型映射 */
+const BUSINESS_TYPE_MAP: Record<string, number> = {
+  individual: 1,
+  enterprise: 2,
+  temple: 3,
+};
 
 export default function MerchantApplyPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    storeName: '',
-    contactName: '',
-    phone: '',
-    email: '',
-    businessType: '',
+    name: '',
+    type: '',
+    contact_name: '',
+    contact_phone: '',
+    contact_email: '',
     province: '',
     city: '',
     address: '',
     description: '',
-    qualifications: [] as File[],
+    qualifications: [] as string[],
     agreeTerms: false,
   });
 
@@ -82,9 +97,83 @@ export default function MerchantApplyPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: 提交商戶入駐申請
-    console.log('提交申請:', formData);
-    alert('申請已提交，我們將在1-3個工作日內審核');
+    
+    // 表单验证
+    if (!formData.name.trim()) {
+      toast.error('請填寫店鋪名稱');
+      return;
+    }
+    if (!formData.type) {
+      toast.error('請選擇經營類型');
+      return;
+    }
+    if (!formData.contact_name.trim()) {
+      toast.error('請填寫聯繫人姓名');
+      return;
+    }
+    if (!formData.contact_phone.trim()) {
+      toast.error('請填寫聯繫電話');
+      return;
+    }
+    if (!formData.contact_email.trim()) {
+      toast.error('請填寫電子郵箱');
+      return;
+    }
+    // 邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.contact_email)) {
+      toast.error('請輸入正確的郵箱格式');
+      return;
+    }
+    // 手机号验证
+    const phoneRegex = /^[\d\-+]{8,15}$/;
+    if (!phoneRegex.test(formData.contact_phone.replace(/\s/g, ''))) {
+      toast.error('請輸入正確的電話號碼');
+      return;
+    }
+    if (!formData.agreeTerms) {
+      toast.error('請閱讀並同意平台協議');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 组装地址
+      const fullAddress = [formData.province, formData.city, formData.address]
+        .filter(Boolean)
+        .join(' ');
+
+      const res = await fetch('/api/merchants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          type: BUSINESS_TYPE_MAP[formData.type] || 1,
+          contact_name: formData.contact_name,
+          contact_phone: formData.contact_phone,
+          contact_email: formData.contact_email,
+          address: fullAddress || null,
+          description: formData.description || null,
+          qualifications: formData.qualifications.length > 0 ? formData.qualifications : null,
+          status: false, // 默认待审核
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.data) {
+        toast.success('申請已提交成功！');
+        // 跳转到成功页面
+        router.push('/merchant/apply/success');
+      } else {
+        toast.error(data.error || '提交失敗，請重試');
+      }
+    } catch (error) {
+      console.error('提交申请失败:', error);
+      toast.error('提交失敗，請重試');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -144,8 +233,8 @@ export default function MerchantApplyPage() {
               <ul className="space-y-3">
                 {requirements.map((req, index) => (
                   <li key={index} className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    {req}
+                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span>{req}</span>
                   </li>
                 ))}
               </ul>
@@ -156,7 +245,7 @@ export default function MerchantApplyPage() {
         {/* Process */}
         <section className="mb-12">
           <h2 className="text-2xl font-bold text-center mb-8">入駐流程</h2>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 flex-wrap md:flex-nowrap">
             {process.map((step, index) => (
               <div key={index} className="flex items-center">
                 <div className="text-center">
@@ -184,7 +273,7 @@ export default function MerchantApplyPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-8">
                 {/* 店铺信息 */}
                 <div className="space-y-4">
                   <h3 className="font-semibold flex items-center gap-2">
@@ -193,20 +282,27 @@ export default function MerchantApplyPage() {
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="storeName">店鋪名稱 *</Label>
+                      <Label htmlFor="name">
+                        店鋪名稱 <span className="text-destructive">*</span>
+                      </Label>
                       <Input
-                        id="storeName"
-                        value={formData.storeName}
-                        onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         placeholder="請輸入店鋪名稱"
-                        required
+                        maxLength={50}
                       />
+                      <p className="text-xs text-muted-foreground">
+                        {formData.name.length}/50 字符
+                      </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="businessType">經營類型 *</Label>
+                      <Label htmlFor="type">
+                        經營類型 <span className="text-destructive">*</span>
+                      </Label>
                       <Select
-                        value={formData.businessType}
-                        onValueChange={(value) => setFormData({ ...formData, businessType: value })}
+                        value={formData.type}
+                        onValueChange={(value) => setFormData({ ...formData, type: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="請選擇經營類型" />
@@ -227,85 +323,101 @@ export default function MerchantApplyPage() {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="請簡要介紹您的店鋪和經營特色"
                       rows={3}
+                      maxLength={500}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      {formData.description.length}/500 字符
+                    </p>
                   </div>
                 </div>
+
+                <Separator />
 
                 {/* 联系信息 */}
                 <div className="space-y-4">
                   <h3 className="font-semibold">聯繫信息</h3>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="contactName">聯繫人 *</Label>
+                      <Label htmlFor="contact_name">
+                        聯繫人 <span className="text-destructive">*</span>
+                      </Label>
                       <Input
-                        id="contactName"
-                        value={formData.contactName}
-                        onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                        id="contact_name"
+                        value={formData.contact_name}
+                        onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
                         placeholder="請輸入聯繫人姓名"
-                        required
+                        maxLength={20}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">聯繫電話 *</Label>
+                      <Label htmlFor="contact_phone">
+                        聯繫電話 <span className="text-destructive">*</span>
+                      </Label>
                       <Input
-                        id="phone"
+                        id="contact_phone"
                         type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                         placeholder="請輸入手機號碼"
-                        required
+                        maxLength={20}
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">電子郵箱 *</Label>
+                  <div className="space-y-2 md:w-1/2">
+                    <Label htmlFor="contact_email">
+                      電子郵箱 <span className="text-destructive">*</span>
+                    </Label>
                     <Input
-                      id="email"
+                      id="contact_email"
                       type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      value={formData.contact_email}
+                      onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                       placeholder="請輸入郵箱地址"
-                      required
+                      maxLength={100}
                     />
                   </div>
                 </div>
+
+                <Separator />
 
                 {/* 地址信息 */}
                 <div className="space-y-4">
                   <h3 className="font-semibold">經營地址</h3>
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="province">省份 *</Label>
+                      <Label htmlFor="province">省份</Label>
                       <Input
                         id="province"
                         value={formData.province}
                         onChange={(e) => setFormData({ ...formData, province: e.target.value })}
                         placeholder="省份"
-                        required
+                        maxLength={20}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="city">城市 *</Label>
+                      <Label htmlFor="city">城市</Label>
                       <Input
                         id="city"
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="城市"
-                        required
+                        maxLength={20}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="address">詳細地址 *</Label>
+                      <Label htmlFor="address">詳細地址</Label>
                       <Input
                         id="address"
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                         placeholder="詳細地址"
-                        required
+                        maxLength={200}
                       />
                     </div>
                   </div>
                 </div>
+
+                <Separator />
 
                 {/* 资质上传 */}
                 <div className="space-y-4">
@@ -313,30 +425,34 @@ export default function MerchantApplyPage() {
                   <p className="text-sm text-muted-foreground">
                     請上傳營業執照、法人身份證等資質證明文件（支持JPG、PNG格式，單個文件不超過5MB）
                   </p>
-                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                    <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-2">
-                      點擊或拖拽文件到此處上傳
-                    </p>
-                    <Button type="button" variant="outline" size="sm">
-                      <Plus className="w-4 h-4 mr-1" />
-                      選擇文件
-                    </Button>
-                  </div>
+                  <ImageUpload
+                    value={formData.qualifications}
+                    onChange={(urls) => setFormData({ ...formData, qualifications: urls })}
+                    maxCount={5}
+                    folder="merchant/qualifications"
+                    maxSize={5}
+                    placeholder="點擊或拖拽資質圖片上傳"
+                  />
                 </div>
 
+                <Separator />
+
                 {/* 同意条款 */}
-                <div className="flex items-start gap-2">
+                <div className="flex items-start gap-3">
                   <Checkbox
                     id="terms"
                     checked={formData.agreeTerms}
                     onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked as boolean })}
                   />
-                  <Label htmlFor="terms" className="text-sm leading-relaxed">
+                  <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
                     我已閱讀並同意
-                    <Link href="/terms" className="text-primary hover:underline">《平台服務協議》</Link>
+                    <Link href="/terms" className="text-primary hover:underline mx-1" target="_blank">
+                      《平台服務協議》
+                    </Link>
                     和
-                    <Link href="/privacy" className="text-primary hover:underline">《隱私政策》</Link>
+                    <Link href="/privacy" className="text-primary hover:underline mx-1" target="_blank">
+                      《隱私政策》
+                    </Link>
                   </Label>
                 </div>
 
@@ -344,9 +460,17 @@ export default function MerchantApplyPage() {
                 <Button 
                   type="submit" 
                   className="w-full" 
-                  disabled={!formData.agreeTerms}
+                  disabled={!formData.agreeTerms || loading}
+                  size="lg"
                 >
-                  提交申請
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      提交中...
+                    </>
+                  ) : (
+                    '提交申請'
+                  )}
                 </Button>
               </form>
             </CardContent>

@@ -79,11 +79,24 @@ export async function POST(request: Request) {
       address,
       description,
       logo,
+      qualifications,
       status 
     } = body;
 
     if (!name) {
       return NextResponse.json({ error: '請填寫商戶名稱' }, { status: 400 });
+    }
+
+    if (!contact_name) {
+      return NextResponse.json({ error: '請填寫聯繫人' }, { status: 400 });
+    }
+
+    if (!contact_phone) {
+      return NextResponse.json({ error: '請填寫聯繫電話' }, { status: 400 });
+    }
+
+    if (!contact_email) {
+      return NextResponse.json({ error: '請填寫電子郵箱' }, { status: 400 });
     }
 
     const { data, error } = await client
@@ -97,6 +110,7 @@ export async function POST(request: Request) {
         address: address || null,
         description: description || null,
         logo: logo || null,
+        qualifications: qualifications || null,
         status: status !== false,
         rating: 5.0,
         total_sales: 0,
@@ -106,10 +120,14 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
+      console.error('创建商户数据库错误:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ 
+      message: '申請提交成功',
+      data 
+    });
   } catch (error) {
     console.error('创建商户失败:', error);
     return NextResponse.json({ error: '創建商戶失敗' }, { status: 500 });
