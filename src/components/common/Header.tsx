@@ -36,10 +36,10 @@ export function Header() {
 
   const navItems = [
     { href: '/', label: t.nav.home },
-    { href: '/baike', label: t.nav.baike },
+    { href: '/wiki', label: t.nav.baike || '玄門百科' },
     { href: '/shop', label: t.nav.shop },
     { href: '/news', label: t.nav.news },
-    { href: '/video', label: t.nav.video },
+    { href: '/verify', label: '證書驗證' },
   ];
 
   const handleSearch = () => {

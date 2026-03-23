@@ -15,7 +15,9 @@ import {
   ArrowRight,
   Play,
   Eye,
-  Calendar
+  Calendar,
+  BookOpen,
+  Award,
 } from 'lucide-react';
 
 // 类型定义
@@ -60,10 +62,10 @@ interface Article {
   id: number;
   title: string;
   slug: string | null;
-  cover: string | null;
+  cover_image: string | null;
   summary: string | null;
-  views: number;
-  published_at: string | null;
+  view_count: number;
+  created_at: string;
 }
 
 // 功能入口组件
@@ -205,24 +207,24 @@ export function HomePage() {
     async function fetchData() {
       try {
         // 并行获取数据
-        const [bannersRes, goodsRes, newsRes, articlesRes] = await Promise.all([
+        const [bannersRes, goodsRes, newsRes, wikiRes] = await Promise.all([
           fetch('/api/banners?position=home'),
           fetch('/api/goods?hot=true&limit=8'),
           fetch('/api/news?limit=4'),
-          fetch('/api/articles?featured=true&limit=1'),
+          fetch('/api/wiki/articles?limit=1&is_published=true&is_featured=true'),
         ]);
 
-        const [bannersData, goodsData, newsData, articlesData] = await Promise.all([
+        const [bannersData, goodsData, newsData, wikiData] = await Promise.all([
           bannersRes.json(),
           goodsRes.json(),
           newsRes.json(),
-          articlesRes.json(),
+          wikiRes.json(),
         ]);
 
         if (bannersData.data) setBanners(bannersData.data);
         if (goodsData.data) setGoods(goodsData.data);
         if (newsData.data) setNews(newsData.data);
-        if (articlesData.data?.[0]) setTodayArticle(articlesData.data[0]);
+        if (wikiData.data?.[0]) setTodayArticle(wikiData.data[0]);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -243,10 +245,10 @@ export function HomePage() {
   }, [banners.length]);
 
   const features = [
-    { icon: ShieldCheck, title: t.home.features.certificate, href: '/certificate' },
-    { icon: Building2, title: t.home.features.merchant, href: '/merchants' },
-    { icon: Shield, title: t.home.features.escrow, href: '/help/escrow' },
-    { icon: Store, title: t.home.features.join, href: '/merchant/apply' },
+    { icon: ShieldCheck, title: '證書驗證', href: '/verify' },
+    { icon: BookOpen, title: '玄門百科', href: '/wiki' },
+    { icon: Building2, title: '商戶入駐', href: '/merchant/apply' },
+    { icon: Store, title: '開店經營', href: '/merchant/apply' },
   ];
 
   if (loading) {
@@ -354,32 +356,32 @@ export function HomePage() {
       {todayArticle && (
         <section className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">{t.home.todayFu}</h2>
+            <h2 className="text-2xl font-bold">玄門百科</h2>
             <Button variant="ghost" asChild>
-              <Link href="/baike" className="text-muted-foreground hover:text-foreground">
-                {t.home.viewMore}
+              <Link href="/wiki" className="text-muted-foreground hover:text-foreground">
+                查看更多
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
             </Button>
           </div>
-          <Link href={`/baike/${todayArticle.slug || todayArticle.id}`}>
+          <Link href={`/wiki/${todayArticle.slug || todayArticle.id}`}>
             <Card className="group overflow-hidden md:flex hover:shadow-lg transition-all duration-300">
               <div className="relative w-full md:w-80 h-48 md:h-auto flex-shrink-0">
-                {todayArticle.cover ? (
+                {todayArticle.cover_image ? (
                   <Image
-                    src={todayArticle.cover}
+                    src={todayArticle.cover_image}
                     alt={todayArticle.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/20 to-primary/10">
-                    <span className="text-6xl text-primary/30">符</span>
+                    <BookOpen className="text-6xl text-primary/30 w-16 h-16" />
                   </div>
                 )}
               </div>
               <CardContent className="flex-1 p-6 md:p-8">
-                <Badge className="mb-4">每日推薦</Badge>
+                <Badge className="mb-4">推薦閱讀</Badge>
                 <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
                   {todayArticle.title}
                 </h3>
@@ -389,7 +391,7 @@ export function HomePage() {
                   </p>
                 )}
                 <Button variant="link" className="mt-4 p-0 text-primary">
-                  了解詳情
+                  閱讀全文
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </CardContent>
