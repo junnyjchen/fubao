@@ -1,6 +1,6 @@
 /**
- * @fileoverview 后台管理控制台页面
- * @description 提供数据概览、快捷操作入口
+ * @fileoverview 后台管理首页
+ * @description 展示数据统计概览
  * @module app/admin/page
  */
 
@@ -8,212 +8,245 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
-  ShoppingCart,
-  DollarSign,
   Package,
-  Eye,
+  ShoppingCart,
+  Users,
+  DollarSign,
   TrendingUp,
+  TrendingDown,
   ArrowRight,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 
-/** 统计数据类型 */
-interface Stat {
-  title: string;
-  value: string;
-  change: string;
-  icon: React.ComponentType<{ className?: string }>;
-  trend: 'up' | 'down';
+interface DashboardStats {
+  goods: {
+    total: number;
+    active: number;
+    lowStock: number;
+  };
+  orders: {
+    total: number;
+    pending: number;
+    todayCount: number;
+    todayAmount: number;
+  };
+  users: {
+    total: number;
+    todayCount: number;
+  };
+  revenue: {
+    total: number;
+    month: number;
+    trend: number;
+  };
 }
 
-/** 订单数据类型 */
-interface RecentOrder {
-  id: string;
-  orderNo: string;
-  customer: string;
-  amount: string;
-  status: string;
-  date: string;
-}
-
-/** 商品数据类型 */
-interface TopProduct {
-  id: number;
-  name: string;
-  price: number;
-  stock: number;
-  sales: number;
-  status: string;
-}
-
-/** 订单状态映射 */
-const statusColors: Record<string, string> = {
-  '待付款': 'bg-yellow-100 text-yellow-800',
-  '待發貨': 'bg-blue-100 text-blue-800',
-  '已發貨': 'bg-purple-100 text-purple-800',
-  '已完成': 'bg-green-100 text-green-800',
-};
-
-/**
- * 后台管理控制台页面组件
- * @returns 控制台页面
- */
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stat[]>([]);
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    goods: { total: 0, active: 0, lowStock: 0 },
+    orders: { total: 0, pending: 0, todayCount: 0, todayAmount: 0 },
+    users: { total: 0, todayCount: 0 },
+    revenue: { total: 0, month: 0, trend: 0 },
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 加载统计数据
-    loadDashboardData();
+    loadStats();
   }, []);
 
-  /**
-   * 加载控制台数据
-   */
-  const loadDashboardData = async () => {
-    setLoading(true);
+  const loadStats = async () => {
     try {
-      // 并行请求商品和订单数据
-      const [goodsRes, ordersRes] = await Promise.all([
-        fetch('/api/goods?limit=100'),
-        fetch('/api/orders?limit=10'),
+      // 并行获取统计数据
+      const [goodsRes, ordersRes, usersRes] = await Promise.all([
+        fetch('/api/goods?limit=1'),
+        fetch('/api/orders?limit=1'),
+        fetch('/api/auth/me'),
       ]);
 
-      const goodsResult = await goodsRes.json();
-      const ordersResult = await ordersRes.json();
-
-      // 计算统计数据
-      const goods = goodsResult.data || [];
-      const orders = ordersResult.data || [];
-      
-      const totalSales = orders.reduce(
-        (sum: number, o: { pay_amount: string | number }) => sum + parseFloat(String(o.pay_amount || 0)),
-        0
-      );
-
-      setStats([
-        { 
-          title: '今日訂單', 
-          value: String(orders.length), 
-          change: '+8%', 
-          icon: ShoppingCart,
-          trend: 'up' 
-        },
-        { 
-          title: '今日銷售額', 
-          value: `HK$${totalSales.toFixed(0)}`, 
-          change: '+12%', 
-          icon: DollarSign,
-          trend: 'up' 
-        },
-        { 
-          title: '商品總數', 
-          value: String(goods.length), 
-          change: '+2', 
-          icon: Package,
-          trend: 'up' 
-        },
-        { 
-          title: '本月訪客', 
-          value: '1,234', 
-          change: '+15%', 
-          icon: Eye,
-          trend: 'up' 
-        },
+      const [goodsData, ordersData] = await Promise.all([
+        goodsRes.json(),
+        ordersRes.json(),
       ]);
 
-      // 设置最近订单
-      setRecentOrders(
-        orders.slice(0, 5).map((o: { 
-          id: number; 
-          order_no: string; 
-          shipping_name: string; 
-          pay_amount: string; 
-          order_status: number; 
-          created_at: string;
-        }) => ({
-          id: String(o.id),
-          orderNo: o.order_no,
-          customer: (o.shipping_name || '未命名').charAt(0) + '**',
-          amount: 'HK$' + o.pay_amount,
-          status: ['待付款', '待發貨', '已發貨', '已完成'][o.order_status] || '待付款',
-          date: (o.created_at || '').split('T')[0],
-        }))
-      );
-
-      // 设置热销商品
-      setTopProducts(
-        goods
-          .sort((a: { sales: number }, b: { sales: number }) => b.sales - a.sales)
-          .slice(0, 5)
-          .map((g: { id: number; name: string; price: string; stock: number; sales: number; status: boolean }) => ({
-            id: g.id,
-            name: g.name,
-            price: parseFloat(g.price),
-            stock: g.stock,
-            sales: g.sales,
-            status: g.status ? '上架' : '下架',
-          }))
-      );
+      setStats({
+        goods: {
+          total: goodsData.total || 0,
+          active: goodsData.total || 0,
+          lowStock: 0,
+        },
+        orders: {
+          total: ordersData.total || 0,
+          pending: ordersData.data?.filter((o: { order_status: number }) => o.order_status === 0).length || 0,
+          todayCount: 0,
+          todayAmount: 0,
+        },
+        users: { total: 1, todayCount: 0 },
+        revenue: { total: 0, month: 0, trend: 0 },
+      });
     } catch (error) {
-      console.error('加载数据失败:', error);
+      console.error('加载统计数据失败:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const statCards = [
+    {
+      title: '商品總數',
+      value: stats.goods.total,
+      description: `${stats.goods.active} 個上架中`,
+      icon: Package,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      href: '/admin/goods',
+    },
+    {
+      title: '訂單總數',
+      value: stats.orders.total,
+      description: `${stats.orders.pending} 個待處理`,
+      icon: ShoppingCart,
+      color: 'text-green-600',
+      bgColor: 'bg-green-100',
+      href: '/admin/orders',
+    },
+    {
+      title: '用戶總數',
+      value: stats.users.total,
+      description: `今日新增 ${stats.users.todayCount}`,
+      icon: Users,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+      href: '/admin/users',
+    },
+    {
+      title: '本月營收',
+      value: `HK$${stats.revenue.month.toLocaleString()}`,
+      description: stats.revenue.trend >= 0 ? '增長中' : '下降中',
+      icon: DollarSign,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-100',
+      trend: stats.revenue.trend,
+    },
+  ];
+
+  const quickActions = [
+    { title: '添加商品', href: '/admin/goods/new', icon: Package },
+    { title: '訂單管理', href: '/admin/orders', icon: ShoppingCart },
+    { title: '分類管理', href: '/admin/categories', icon: Package },
+    { title: '系統設置', href: '/admin/settings', icon: Package },
+  ];
+
   return (
-    <AdminLayout
-      title="控制台"
-      description="歡迎回來，管理員"
-      actions={
-        <Button asChild>
-          <Link href="/">查看網站</Link>
-        </Button>
-      }
-    >
-      <div className="space-y-6">
+    <div className="min-h-screen bg-muted/20">
+      {/* Header */}
+      <header className="bg-background border-b sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">後台管理</h1>
+              <p className="text-sm text-muted-foreground">符寶網管理系統</p>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" asChild>
+                <Link href="/">返回前台</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
-              <Card key={stat.title}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{stat.title}</p>
-                      <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                      <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                        {stat.trend === 'up' ? (
-                          <TrendingUp className="w-3 h-3" />
-                        ) : null}
-                        {stat.change}
-                      </p>
+              <Card key={stat.title} className={stat.href ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}>
+                {stat.href ? (
+                  <Link href={stat.href}>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">{stat.title}</p>
+                          <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+                        </div>
+                        <div className={`w-12 h-12 rounded-full ${stat.bgColor} flex items-center justify-center`}>
+                          <Icon className={`w-6 h-6 ${stat.color}`} />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Link>
+                ) : (
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">{stat.title}</p>
+                        <p className="text-2xl font-bold mt-1">{stat.value}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          {stat.trend !== undefined && (
+                            <>
+                              {stat.trend >= 0 ? (
+                                <TrendingUp className="w-3 h-3 text-green-600" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3 text-red-600" />
+                              )}
+                              <span className={`text-xs ${stat.trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {Math.abs(stat.trend)}%
+                              </span>
+                            </>
+                          )}
+                          <span className="text-xs text-muted-foreground">{stat.description}</span>
+                        </div>
+                      </div>
+                      <div className={`w-12 h-12 rounded-full ${stat.bgColor} flex items-center justify-center`}>
+                        <Icon className={`w-6 h-6 ${stat.color}`} />
+                      </div>
                     </div>
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Icon className="w-6 h-6 text-primary" />
-                    </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
+                )}
               </Card>
             );
           })}
         </div>
 
-        {/* 数据展示 */}
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* 最近订单 */}
+        {/* 快捷操作 */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-lg">快捷操作</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <Link key={action.href} href={action.href}>
+                    <Button variant="outline" className="w-full h-auto py-4">
+                      <div className="flex flex-col items-center gap-2">
+                        <Icon className="w-5 h-5" />
+                        <span>{action.title}</span>
+                      </div>
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 待处理事项 */}
+        <div className="grid md:grid-cols-2 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">最近訂單</CardTitle>
-              <Button variant="link" size="sm" asChild>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                待處理事項
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
                 <Link href="/admin/orders">
                   查看全部
                   <ArrowRight className="w-4 h-4 ml-1" />
@@ -221,76 +254,58 @@ export default function AdminDashboardPage() {
               </Button>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="text-center py-8 text-muted-foreground">載入中...</div>
-              ) : recentOrders.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">暫無訂單</div>
-              ) : (
-                <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="flex items-center justify-between py-2 border-b last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{order.orderNo}</p>
-                        <p className="text-xs text-muted-foreground">{order.customer}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm">{order.amount}</p>
-                        <Badge className={`text-xs ${statusColors[order.status] || ''}`}>
-                          {order.status}
-                        </Badge>
-                      </div>
+              {stats.orders.pending > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-yellow-600" />
+                      <span>待付款訂單</span>
                     </div>
-                  ))}
+                    <span className="font-semibold text-yellow-600">{stats.orders.pending}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Package className="w-5 h-5 text-blue-600" />
+                      <span>待發貨訂單</span>
+                    </div>
+                    <span className="font-semibold text-blue-600">0</span>
+                  </div>
                 </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  暫無待處理事項
+                </p>
               )}
             </CardContent>
           </Card>
 
-          {/* 热销商品 */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg">熱銷商品</CardTitle>
-              <Button variant="link" size="sm" asChild>
-                <Link href="/admin/products">
+              <CardTitle className="text-lg">庫存預警</CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/admin/goods?filter=low_stock">
                   查看全部
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
               </Button>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="text-center py-8 text-muted-foreground">載入中...</div>
-              ) : topProducts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">暫無商品</div>
-              ) : (
-                <div className="space-y-4">
-                  {topProducts.map((product, index) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center gap-4 py-2 border-b last:border-0"
-                    >
-                      <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                        {index + 1}
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">HK${product.price}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-sm">{product.sales}</p>
-                        <p className="text-xs text-muted-foreground">銷量</p>
-                      </div>
-                    </div>
-                  ))}
+              {stats.goods.lowStock > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                    <span>庫存不足商品</span>
+                    <span className="font-semibold text-red-600">{stats.goods.lowStock}</span>
+                  </div>
                 </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  庫存充足
+                </p>
               )}
             </CardContent>
           </Card>
         </div>
-      </div>
-    </AdminLayout>
+      </main>
+    </div>
   );
 }

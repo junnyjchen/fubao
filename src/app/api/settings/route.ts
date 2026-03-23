@@ -201,6 +201,43 @@ export async function GET(request: Request) {
  * @param request - 请求对象
  * @returns 更新结果
  */
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { group, settings: updates } = body;
+    const client = getSupabaseClient();
+
+    if (!updates || !Array.isArray(updates)) {
+      return NextResponse.json({ error: '參數錯誤' }, { status: 400 });
+    }
+
+    // 批量更新
+    for (const item of updates) {
+      await client
+        .from('settings')
+        .upsert({
+          key: item.key,
+          value: item.value,
+          group: group,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'key' });
+    }
+
+    return NextResponse.json({ message: '設置保存成功' });
+  } catch (error) {
+    console.error('保存设置失败:', error);
+    return NextResponse.json(
+      { error: '保存設置失敗' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 创建设置项
+ * @param request - 请求对象
+ * @returns 创建结果
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
