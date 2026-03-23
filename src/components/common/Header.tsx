@@ -38,6 +38,7 @@ export function Header() {
     { href: '/', label: t.nav.home },
     { href: '/wiki', label: t.nav.baike || '玄門百科' },
     { href: '/shop', label: t.nav.shop },
+    { href: '/video', label: t.nav.video || '視頻學堂' },
     { href: '/news', label: t.nav.news },
     { href: '/verify', label: '證書驗證' },
   ];
