@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n';
@@ -29,91 +29,126 @@ interface CartItem {
   stock: number;
   merchantId: number;
   merchantName: string;
+  status: boolean;
 }
-
-// 模拟购物车数据
-const mockCartItems: CartItem[] = [
-  {
-    id: 1,
-    goodsId: 1,
-    goodsName: '武當鎮宅符',
-    goodsImage: null,
-    price: '288',
-    quantity: 1,
-    selected: true,
-    stock: 100,
-    merchantId: 1,
-    merchantName: '武當山道觀官方店',
-  },
-  {
-    id: 2,
-    goodsId: 2,
-    goodsName: '武當招財符',
-    goodsImage: null,
-    price: '388',
-    quantity: 2,
-    selected: true,
-    stock: 80,
-    merchantId: 1,
-    merchantName: '武當山道觀官方店',
-  },
-  {
-    id: 3,
-    goodsId: 3,
-    goodsName: '天師平安符',
-    goodsImage: null,
-    price: '168',
-    quantity: 1,
-    selected: false,
-    stock: 200,
-    merchantId: 2,
-    merchantName: '龍虎山天師府官方店',
-  },
-];
 
 export function CartPage() {
   const { t } = useI18n();
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
-  useEffect(() => {
-    // 模拟加载购物车数据
-    setTimeout(() => {
-      setCartItems(mockCartItems);
+  /**
+   * 加载购物车数据
+   */
+  const loadCart = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/cart');
+      const data = await res.json();
+      if (data.data) {
+        setCartItems(data.data);
+      }
+    } catch (error) {
+      console.error('加載購物車失敗:', error);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   }, []);
 
-  const updateQuantity = (id: number, quantity: number) => {
+  useEffect(() => {
+    loadCart();
+  }, [loadCart]);
+
+  /**
+   * 更新商品数量
+   */
+  const updateQuantity = async (id: number, quantity: number) => {
     if (quantity < 1) return;
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, quantity: Math.min(quantity, item.stock) } : item
-      )
-    );
+    setUpdating(true);
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, quantity }),
+      });
+
+      if (res.ok) {
+        setCartItems(items =>
+          items.map(item =>
+            item.id === id ? { ...item, quantity: Math.min(quantity, item.stock) } : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error('更新數量失敗:', error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
-  const removeItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id));
+  /**
+   * 删除商品
+   */
+  const removeItem = async (id: number) => {
+    if (!confirm('確定要刪除此商品嗎？')) return;
+    
+    try {
+      const res = await fetch(`/api/cart?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setCartItems(items => items.filter(item => item.id !== id));
+      }
+    } catch (error) {
+      console.error('刪除商品失敗:', error);
+    }
   };
 
-  const toggleSelect = (id: number) => {
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id ? { ...item, selected: !item.selected } : item
-      )
-    );
+  /**
+   * 切换选中状态
+   */
+  const toggleSelect = async (id: number, selected: boolean) => {
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, selected }),
+      });
+
+      if (res.ok) {
+        setCartItems(items =>
+          items.map(item =>
+            item.id === id ? { ...item, selected } : item
+          )
+        );
+      }
+    } catch (error) {
+      console.error('更新選中狀態失敗:', error);
+    }
   };
 
-  const toggleSelectAll = () => {
+  /**
+   * 全选/取消全选
+   */
+  const toggleSelectAll = async () => {
     const allSelected = cartItems.every(item => item.selected);
+    const newSelected = !allSelected;
+
+    // 批量更新
+    for (const item of cartItems) {
+      await fetch('/api/cart', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, selected: newSelected }),
+      });
+    }
+
     setCartItems(items =>
-      items.map(item => ({ ...item, selected: !allSelected }))
+      items.map(item => ({ ...item, selected: newSelected }))
     );
   };
 
-  const selectedItems = cartItems.filter(item => item.selected);
+  const selectedItems = cartItems.filter(item => item.selected && item.status);
   const totalAmount = selectedItems.reduce((sum, item) => {
     return sum + parseFloat(item.price) * item.quantity;
   }, 0);
@@ -175,7 +210,7 @@ export function CartPage() {
                 <CardHeader className="py-3">
                   <div className="flex items-center gap-4">
                     <Checkbox
-                      checked={cartItems.every(item => item.selected)}
+                      checked={cartItems.length > 0 && cartItems.every(item => item.selected)}
                       onCheckedChange={toggleSelectAll}
                     />
                     <span className="text-sm">全選</span>
@@ -186,7 +221,7 @@ export function CartPage() {
                     <div key={item.id} className="flex gap-4 p-4 border-b last:border-0 hover:bg-muted/30">
                       <Checkbox
                         checked={item.selected}
-                        onCheckedChange={() => toggleSelect(item.id)}
+                        onCheckedChange={(checked) => toggleSelect(item.id, checked as boolean)}
                       />
                       <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center text-muted-foreground text-xs">
                         {item.goodsImage ? (
@@ -200,6 +235,9 @@ export function CartPage() {
                           {item.goodsName}
                         </Link>
                         <p className="text-xs text-muted-foreground">{item.merchantName}</p>
+                        {!item.status && (
+                          <p className="text-xs text-destructive">商品已下架</p>
+                        )}
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-primary font-semibold">HK${item.price}</span>
                           <div className="flex items-center gap-2">
@@ -208,7 +246,7 @@ export function CartPage() {
                               size="icon"
                               className="w-8 h-8"
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
+                              disabled={item.quantity <= 1 || updating}
                             >
                               <Minus className="w-4 h-4" />
                             </Button>
@@ -219,13 +257,14 @@ export function CartPage() {
                               className="w-16 text-center"
                               min={1}
                               max={item.stock}
+                              disabled={updating}
                             />
                             <Button
                               variant="outline"
                               size="icon"
                               className="w-8 h-8"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              disabled={item.quantity >= item.stock}
+                              disabled={item.quantity >= item.stock || updating}
                             >
                               <Plus className="w-4 h-4" />
                             </Button>
