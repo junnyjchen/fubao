@@ -12,6 +12,102 @@ interface RouteParams {
 }
 
 /**
+ * 获取商品详情
+ * @param request - 请求对象
+ * @param params - 路由参数
+ * @returns 商品详情
+ */
+export async function GET(request: Request, { params }: RouteParams) {
+  try {
+    const client = getSupabaseClient();
+    const { id } = await params;
+
+    // 获取商品基本信息
+    const { data: goods, error } = await client
+      .from('goods')
+      .select('*')
+      .eq('id', parseInt(id))
+      .single();
+
+    if (error || !goods) {
+      return NextResponse.json({ error: '商品不存在' }, { status: 404 });
+    }
+
+    // 获取商户信息
+    let merchant = null;
+    if (goods.merchant_id) {
+      const { data: merchantData } = await client
+        .from('merchants')
+        .select('id, name, logo, certification_level, rating, total_sales')
+        .eq('id', goods.merchant_id)
+        .single();
+      merchant = merchantData;
+    }
+
+    // 获取分类信息
+    let category = null;
+    if (goods.category_id) {
+      const { data: categoryData } = await client
+        .from('categories')
+        .select('id, name, slug')
+        .eq('id', goods.category_id)
+        .single();
+      category = categoryData;
+    }
+
+    // 获取认证信息（如果有）
+    let certificate = null;
+    if (goods.is_certified) {
+      const { data: certData } = await client
+        .from('certificates')
+        .select('certificate_no, issue_date, issued_by')
+        .eq('goods_id', goods.id)
+        .single();
+      certificate = certData;
+    }
+
+    // 获取相关商品（同类型或同分类）
+    let relatedGoods: Array<{ id: number; name: string; price: string; main_image: string | null; sales: number }> = [];
+    if (goods.category_id) {
+      const { data: relatedData } = await client
+        .from('goods')
+        .select('id, name, price, main_image, sales')
+        .eq('category_id', goods.category_id)
+        .eq('status', true)
+        .neq('id', goods.id)
+        .limit(6);
+      relatedGoods = relatedData || [];
+    }
+
+    // 如果同分类商品不足，补充同类型商品
+    if (relatedGoods.length < 6 && goods.type) {
+      const { data: typeRelated } = await client
+        .from('goods')
+        .select('id, name, price, main_image, sales')
+        .eq('type', goods.type)
+        .eq('status', true)
+        .neq('id', goods.id)
+        .not('id', 'in', `(${relatedGoods.map(g => g.id).join(',') || '0'})`)
+        .limit(6 - relatedGoods.length);
+      relatedGoods = [...relatedGoods, ...(typeRelated || [])];
+    }
+
+    return NextResponse.json({
+      data: {
+        ...goods,
+        merchant,
+        category,
+        certificate,
+        relatedGoods,
+      },
+    });
+  } catch (error) {
+    console.error('获取商品详情失败:', error);
+    return NextResponse.json({ error: '獲取商品詳情失敗' }, { status: 500 });
+  }
+}
+
+/**
  * 更新商品
  * @param request - 请求对象
  * @param params - 路由参数

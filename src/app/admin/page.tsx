@@ -160,8 +160,10 @@ export default function AdminDashboard() {
     { title: '訂單管理', href: '/admin/orders', icon: ShoppingCart },
     { title: '分類管理', href: '/admin/categories', icon: Package },
     { title: '輪播圖管理', href: '/admin/banners', icon: Package },
-    { title: '新聞管理', href: '/admin/news', icon: Package },
-    { title: '商戶管理', href: '/admin/merchants', icon: Package },
+    { title: '證書管理', href: '/admin/certificates', icon: AlertCircle },
+    { title: '百科管理', href: '/admin/wiki', icon: FileText },
+    { title: '新聞管理', href: '/admin/news', icon: FileText },
+    { title: '商戶管理', href: '/admin/merchants', icon: Store },
     { title: '用戶管理', href: '/admin/users', icon: Users },
     { title: '系統設置', href: '/admin/settings', icon: Package },
   ];
@@ -246,7 +248,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">快捷操作</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
@@ -357,6 +359,20 @@ export default function AdminDashboard() {
                   <ShoppingCart className="w-8 h-8 mb-2 text-primary" />
                   <p className="font-medium">訂單管理</p>
                   <p className="text-sm text-muted-foreground">處理訂單流程</p>
+                </div>
+              </Link>
+              <Link href="/admin/certificates" className="group">
+                <div className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+                  <AlertCircle className="w-8 h-8 mb-2 text-primary" />
+                  <p className="font-medium">證書管理</p>
+                  <p className="text-sm text-muted-foreground">一物一證認證</p>
+                </div>
+              </Link>
+              <Link href="/admin/wiki" className="group">
+                <div className="p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors">
+                  <FileText className="w-8 h-8 mb-2 text-primary" />
+                  <p className="font-medium">百科管理</p>
+                  <p className="text-sm text-muted-foreground">玄門文化百科</p>
                 </div>
               </Link>
               <Link href="/admin/news" className="group">

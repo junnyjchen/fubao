@@ -34,6 +34,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { ReviewSection } from '@/components/review/ReviewSection';
+import { toast } from 'sonner';
 
 interface Goods {
   id: number;
@@ -145,13 +146,13 @@ export function GoodsDetailPage() {
 
       const data = await res.json();
       if (data.message) {
-        alert('已添加到購物車');
+        toast.success('已添加到購物車');
       } else if (data.error) {
-        alert(data.error);
+        toast.error(data.error);
       }
     } catch (error) {
       console.error('添加到购物车失败:', error);
-      alert('添加失敗，請重試');
+      toast.error('添加失敗，請重試');
     } finally {
       setAddingToCart(false);
     }

@@ -299,6 +299,131 @@ export async function POST(request: Request) {
       console.error('创建轮播图失败:', bannerError);
     }
 
+    // 5. 创建百科分类
+    const { data: wikiCategories, error: wikiCategoryError } = await client
+      .from('wiki_categories')
+      .upsert([
+        { id: 1, name: '符籙知識', slug: 'fulu-knowledge', description: '符籙的歷史、種類與使用方法', sort_order: 1 },
+        { id: 2, name: '法器介紹', slug: 'faqie-intro', description: '道教法器的種類與用途', sort_order: 2 },
+        { id: 3, name: '道教文化', slug: 'daoism-culture', description: '道教文化與歷史', sort_order: 3 },
+        { id: 4, name: '修行入門', slug: 'practice-intro', description: '道教修行基礎知識', sort_order: 4 },
+      ], { onConflict: 'id' })
+      .select();
+
+    if (wikiCategoryError) {
+      console.error('创建百科分类失败:', wikiCategoryError);
+    }
+
+    // 6. 创建百科文章
+    const { data: wikiArticles, error: wikiArticleError } = await client
+      .from('wiki_articles')
+      .upsert([
+        {
+          id: 1,
+          title: '什麼是符籙？',
+          slug: 'what-is-fulu',
+          category_id: 1,
+          summary: '符籙是道教重要的法術載體，歷史悠久，用途廣泛。',
+          content: `# 什麼是符籙？
+
+符籙是道教重要的法術載體，歷史悠久，用途廣泛。
+
+## 符籙的起源
+
+符籙起源於古代的巫術和祭祀活動，經過道教的發展和完善，形成了獨特的符籙體系。
+
+## 符籙的種類
+
+- 鎮宅符：用於鎮宅辟邪
+- 護身符：用於保護人身安全
+- 平安符：祈求平安吉祥
+- 財運符：招財進寶
+
+## 符籙的使用方法
+
+1. 選擇合適的符籙
+2. 誠心祈禱
+3. 正確佩戴或放置`,
+          author: '符寶網編輯部',
+          is_published: true,
+          is_featured: true,
+          tags: ['符籙', '道教', '入門'],
+        },
+        {
+          id: 2,
+          title: '道教法器簡介',
+          slug: 'daoism-tools',
+          category_id: 2,
+          summary: '道教法器種類繁多，各有其特殊用途和象徵意義。',
+          content: `# 道教法器簡介
+
+道教法器種類繁多，各有其特殊用途和象徵意義。
+
+## 常見法器
+
+### 桃木劍
+桃木劍是最常見的法器之一，用於驅邪鎮煞。
+
+### 八卦鏡
+八卦鏡用於化解煞氣，是風水常用的法器。
+
+### 鈴鐺
+鈴鐺用於法事中，可通神靈、驅邪祟。`,
+          author: '符寶網編輯部',
+          is_published: true,
+          is_featured: false,
+          tags: ['法器', '道教', '入門'],
+        },
+      ], { onConflict: 'id' })
+      .select();
+
+    if (wikiArticleError) {
+      console.error('创建百科文章失败:', wikiArticleError);
+    }
+
+    // 7. 创建测试证书
+    const { data: certificates, error: certificateError } = await client
+      .from('certificates')
+      .upsert([
+        {
+          id: 1,
+          certificate_no: 'FB-2024-00001',
+          goods_id: 1,
+          merchant_id: 1,
+          issue_date: '2024-01-15',
+          issued_by: '符寶網認證中心',
+          valid_until: '2029-01-15',
+          details: {
+            material: '黃紙朱砂',
+            origin: '江西龍虎山',
+            craftsmanship: '手工繪製',
+            master: '張道長',
+            blessing: '經龍虎山正一道高功法師開光加持',
+          },
+        },
+        {
+          id: 2,
+          certificate_no: 'FB-2024-00002',
+          goods_id: 3,
+          merchant_id: 1,
+          issue_date: '2024-02-20',
+          issued_by: '符寶網認證中心',
+          valid_until: '2029-02-20',
+          details: {
+            material: '百年老桃木',
+            origin: '江西龍虎山',
+            craftsmanship: '手工雕刻',
+            master: '李道長',
+            blessing: '經龍虎山正一道高功法師開光加持',
+          },
+        },
+      ], { onConflict: 'id' })
+      .select();
+
+    if (certificateError) {
+      console.error('创建证书失败:', certificateError);
+    }
+
     return NextResponse.json({
       success: true,
       message: '測試數據初始化成功',
@@ -307,6 +432,9 @@ export async function POST(request: Request) {
         categories: categories?.length || 0,
         goods: insertedGoods?.length || 0,
         banners: banners?.length || 0,
+        wiki_categories: wikiCategories?.length || 0,
+        wiki_articles: wikiArticles?.length || 0,
+        certificates: certificates?.length || 0,
       },
     });
   } catch (error) {
