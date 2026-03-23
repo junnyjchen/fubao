@@ -1,6 +1,18 @@
+/**
+ * @fileoverview 文章详情 API
+ * @description 提供文章的查询、更新和删除接口
+ * @module app/api/articles/[slug]/route
+ */
+
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+/**
+ * 获取文章详情
+ * @param request - 请求对象
+ * @param params - 路由参数
+ * @returns 文章详情响应
+ */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -13,8 +25,7 @@ export async function GET(
     // 先尝试通过 slug 查找
     let query = client
       .from('articles')
-      .select('*')
-      .eq('status', true);
+      .select('*');
 
     // 判断是否为数字 ID
     const isNumericId = /^\d+$/.test(slug);
@@ -31,11 +42,14 @@ export async function GET(
       return NextResponse.json({ error: '文章不存在' }, { status: 404 });
     }
 
-    // 更新阅读量
-    await client
-      .from('articles')
-      .update({ views: article.views + 1 })
-      .eq('id', article.id);
+    // 更新阅读量（仅前台访问时）
+    const referer = request.headers.get('referer') || '';
+    if (!referer.includes('/admin')) {
+      await client
+        .from('articles')
+        .update({ views: article.views + 1 })
+        .eq('id', article.id);
+    }
 
     // 获取相关文章
     const { data: relatedArticles } = await client
@@ -54,7 +68,105 @@ export async function GET(
     });
   } catch (error) {
     return NextResponse.json(
-      { error: '获取文章失败' },
+      { error: '獲取文章失敗' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 更新文章
+ * @param request - 请求对象
+ * @param params - 路由参数
+ * @returns 更新结果
+ */
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+
+  try {
+    const body = await request.json();
+    const client = getSupabaseClient();
+
+    const isNumericId = /^\d+$/.test(slug);
+    const id = isNumericId ? parseInt(slug) : null;
+
+    if (!id) {
+      return NextResponse.json({ error: '無效的文章ID' }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // 只更新提供的字段
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.slug !== undefined) updateData.slug = body.slug;
+    if (body.summary !== undefined) updateData.summary = body.summary;
+    if (body.content !== undefined) updateData.content = body.content;
+    if (body.cover !== undefined) updateData.cover = body.cover;
+    if (body.category_id !== undefined) updateData.category_id = body.category_id;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.is_featured !== undefined) updateData.is_featured = body.is_featured;
+    if (body.sort !== undefined) updateData.sort = body.sort;
+
+    const { data, error } = await client
+      .from('articles')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data, message: '文章更新成功' });
+  } catch (error) {
+    return NextResponse.json(
+      { error: '更新文章失敗' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 删除文章
+ * @param request - 请求对象
+ * @param params - 路由参数
+ * @returns 删除结果
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  const { slug } = await params;
+
+  try {
+    const client = getSupabaseClient();
+
+    const isNumericId = /^\d+$/.test(slug);
+    const id = isNumericId ? parseInt(slug) : null;
+
+    if (!id) {
+      return NextResponse.json({ error: '無效的文章ID' }, { status: 400 });
+    }
+
+    const { error } = await client
+      .from('articles')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '文章刪除成功' });
+  } catch (error) {
+    return NextResponse.json(
+      { error: '刪除文章失敗' },
       { status: 500 }
     );
   }
