@@ -1,9 +1,3 @@
-/**
- * @fileoverview 搜索结果页面
- * @description 全局搜索结果展示
- * @module app/search/page
- */
-
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
@@ -13,64 +7,80 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Search,
+  ChevronRight,
+  ChevronLeft,
   Package,
+  ShoppingCart,
+  Heart,
   FileText,
-  ArrowLeft,
-  Loader2,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
-interface GoodsResult {
+interface SearchResult {
   id: number;
+  type: 'goods' | 'article';
   name: string;
-  price: string;
-  main_image: string | null;
-  sales: number;
-  type: number;
-  purpose: string | null;
+  subtitle?: string;
+  price?: string;
+  image?: string;
+  sales?: number;
+  views?: number;
+  category?: string;
+  merchant_name?: string;
+  is_certified?: boolean;
 }
 
-interface NewsResult {
-  id: number;
-  title: string;
-  summary: string | null;
-  cover_image: string | null;
-  created_at: string;
-}
-
-function SearchContent() {
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const keyword = searchParams.get('keyword') || '';
-  
-  const [searchValue, setSearchValue] = useState(keyword);
-  const [activeTab, setActiveTab] = useState('all');
+  const { t } = useI18n();
+
+  const [searchQuery, setSearchQuery] = useState(keyword);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<{
-    goods: GoodsResult[];
-    news: NewsResult[];
-    total: number;
-  }>({
-    goods: [],
-    news: [],
-    total: 0,
-  });
+  const [searchType, setSearchType] = useState<'all' | 'goods' | 'article'>('all');
+  const [sortBy, setSortBy] = useState('relevance');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     if (keyword) {
-      doSearch(keyword);
+      handleSearch();
     }
-  }, [keyword]);
+  }, [keyword, searchType, sortBy, currentPage]);
 
-  const doSearch = async (kw: string) => {
-    if (!kw.trim()) return;
-    
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
     setLoading(true);
     try {
-      const res = await fetch(`/api/search?keyword=${encodeURIComponent(kw)}&limit=20`);
+      const params = new URLSearchParams({
+        keyword: searchQuery.trim(),
+        type: searchType,
+        sort: sortBy,
+        page: currentPage.toString(),
+        limit: '12',
+      });
+
+      const res = await fetch(`/api/search?${params}`);
       const data = await res.json();
-      setResults(data);
+
+      if (data.results) {
+        setResults(data.results);
+        setTotalResults(data.total || 0);
+        setTotalPages(data.totalPages || 1);
+      }
     } catch (error) {
       console.error('搜索失败:', error);
     } finally {
@@ -78,294 +88,273 @@ function SearchContent() {
     }
   };
 
-  const handleSearch = () => {
-    if (searchValue.trim()) {
-      window.location.href = `/search?keyword=${encodeURIComponent(searchValue.trim())}`;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
   };
 
-  const getTypeLabel = (type: number) => {
-    const types: Record<number, string> = {
-      1: '符箓',
-      2: '法器',
-      3: '開光物品',
-      4: '書籍',
-      5: '其他',
-    };
-    return types[type] || '其他';
+  const handleAddToCart = async (goodsId: number) => {
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goodsId, quantity: 1 }),
+      });
+
+      const data = await res.json();
+      if (data.message) {
+        alert('已加入購物車');
+      }
+    } catch (error) {
+      console.error('加入购物车失败:', error);
+    }
   };
 
-  const getPurposeLabel = (purpose: string | null) => {
-    if (!purpose) return null;
-    const purposes: Record<string, string> = {
-      peace: '平安祈福',
-      wealth: '招財進寶',
-      health: '健康長壽',
-      love: '姻緣和合',
-      career: '事業順利',
-      study: '學業進步',
-      protection: '驅邪避凶',
-    };
-    return purposes[purpose] || purpose;
+  const formatPrice = (price?: string) => {
+    if (!price) return '';
+    return `HK$${parseFloat(price).toFixed(2)}`;
   };
-
-  const filteredGoods = results.goods;
-  const filteredNews = results.news;
 
   return (
     <div className="min-h-screen bg-muted/20">
-      {/* Header */}
-      <header className="bg-background border-b sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-            </Button>
-            <div className="flex-1 flex gap-2">
+      {/* Search Header */}
+      <section className="bg-background border-b py-8">
+        <div className="max-w-5xl mx-auto px-4">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+            <Link href="/" className="hover:text-foreground">首頁</Link>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-foreground">搜索結果</span>
+          </nav>
+
+          {/* Search Box */}
+          <div className="flex gap-4 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                value={searchValue}
-                onChange={e => setSearchValue(e.target.value)}
-                placeholder="搜索商品、資訊..."
-                onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t.common.search}
+                className="pl-12 h-12"
               />
-              <Button onClick={handleSearch}>
-                <Search className="w-4 h-4" />
-              </Button>
             </div>
+            <Button className="h-12 px-8" onClick={handleSearch}>
+              搜索
+            </Button>
+          </div>
+
+          {/* Search Info */}
+          {keyword && (
+            <p className="text-muted-foreground">
+              搜索「<span className="text-foreground font-medium">{keyword}</span>」
+              {totalResults > 0 && (
+                <span className="ml-2">找到 {totalResults} 個結果</span>
+              )}
+            </p>
+          )}
+        </div>
+      </section>
+
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">篩選：</span>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              variant={searchType === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setSearchType('all'); setCurrentPage(1); }}
+            >
+              全部
+            </Button>
+            <Button
+              variant={searchType === 'goods' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setSearchType('goods'); setCurrentPage(1); }}
+            >
+              <Package className="w-4 h-4 mr-1" />
+              商品
+            </Button>
+            <Button
+              variant={searchType === 'article' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setSearchType('article'); setCurrentPage(1); }}
+            >
+              <FileText className="w-4 h-4 mr-1" />
+              文章
+            </Button>
+          </div>
+
+          <div className="ml-auto">
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">相關度</SelectItem>
+                <SelectItem value="sales">銷量</SelectItem>
+                <SelectItem value="price_asc">價格升序</SelectItem>
+                <SelectItem value="price_desc">價格降序</SelectItem>
+                <SelectItem value="newest">最新發布</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+        {/* Results */}
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <div className="text-center py-16 text-muted-foreground">
+            搜索中...
           </div>
-        ) : keyword && results.total === 0 ? (
-          <div className="text-center py-12">
-            <Search className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">未找到相關結果</h2>
-            <p className="text-muted-foreground">
-              沒有找到與「{keyword}」相關的內容
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              試試其他關鍵詞或瀏覽分類
-            </p>
-          </div>
-        ) : !keyword ? (
-          <div className="text-center py-12">
-            <Search className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">輸入關鍵詞開始搜索</h2>
-            <p className="text-muted-foreground">
-              搜索商品、資訊等內容
-            </p>
-          </div>
+        ) : results.length === 0 ? (
+          <Card className="text-center py-16">
+            <CardContent>
+              <Search className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h2 className="text-xl font-semibold mb-2">未找到相關結果</h2>
+              <p className="text-muted-foreground mb-6">
+                嘗試使用其他關鍵詞或調整篩選條件
+              </p>
+              <Button variant="outline" asChild>
+                <Link href="/shop">瀏覽全部商品</Link>
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <>
-            <p className="text-muted-foreground mb-4">
-              找到 {results.total} 個與「{keyword}」相關的結果
-            </p>
-
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-6">
-                <TabsTrigger value="all">
-                  全部 ({results.total})
-                </TabsTrigger>
-                <TabsTrigger value="goods">
-                  <Package className="w-4 h-4 mr-1" />
-                  商品 ({results.goods.length})
-                </TabsTrigger>
-                <TabsTrigger value="news">
-                  <FileText className="w-4 h-4 mr-1" />
-                  資訊 ({results.news.length})
-                </TabsTrigger>
-              </TabsList>
-
-              {/* 全部结果 */}
-              <TabsContent value="all" className="space-y-6">
-                {filteredGoods.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <Package className="w-5 h-5" />
-                      商品
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {filteredGoods.slice(0, 4).map(item => (
-                        <Link key={item.id} href={`/goods/${item.id}`}>
-                          <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                            <div className="aspect-square bg-muted">
-                              {item.main_image ? (
-                                <img
-                                  src={item.main_image}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                  <Package className="w-12 h-12" />
-                                </div>
-                              )}
-                            </div>
-                            <CardContent className="p-3">
-                              <p className="font-medium truncate text-sm">{item.name}</p>
-                              <p className="text-primary font-semibold mt-1">HK${item.price}</p>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
+            {/* Goods Grid */}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
+              {results.map((item) => (
+                <Card key={`${item.type}-${item.id}`} className="group overflow-hidden">
+                  <Link href={item.type === 'goods' ? `/shop/${item.id}` : `/baike/${item.id}`}>
+                    <div className="aspect-square bg-muted relative overflow-hidden">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          {item.type === 'goods' ? (
+                            <Package className="w-12 h-12 text-muted-foreground/50" />
+                          ) : (
+                            <FileText className="w-12 h-12 text-muted-foreground/50" />
+                          )}
+                        </div>
+                      )}
+                      {item.is_certified && (
+                        <Badge className="absolute top-2 left-2 bg-green-600">
+                          已認證
+                        </Badge>
+                      )}
                     </div>
-                    {filteredGoods.length > 4 && (
-                      <Button
-                        variant="link"
-                        className="mt-2"
-                        onClick={() => setActiveTab('goods')}
-                      >
-                        查看全部 {filteredGoods.length} 個商品
-                      </Button>
+                  </Link>
+                  <CardContent className="p-4">
+                    <Link href={item.type === 'goods' ? `/shop/${item.id}` : `/baike/${item.id}`}>
+                      <h3 className="font-medium truncate group-hover:text-primary mb-1">
+                        {item.name}
+                      </h3>
+                    </Link>
+                    {item.subtitle && (
+                      <p className="text-xs text-muted-foreground truncate mb-2">
+                        {item.subtitle}
+                      </p>
                     )}
-                  </div>
-                )}
-
-                {filteredNews.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold mb-3 flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      資訊
-                    </h3>
-                    <div className="space-y-4">
-                      {filteredNews.slice(0, 3).map(item => (
-                        <Link key={item.id} href={`/news/${item.id}`}>
-                          <Card className="hover:shadow-md transition-shadow">
-                            <CardContent className="p-4 flex gap-4">
-                              {item.cover_image && (
-                                <div className="w-24 h-16 bg-muted rounded overflow-hidden flex-shrink-0">
-                                  <img
-                                    src={item.cover_image}
-                                    alt={item.title}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-medium line-clamp-1">{item.title}</h4>
-                                {item.summary && (
-                                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                                    {item.summary}
-                                  </p>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
-                      ))}
-                    </div>
-                    {filteredNews.length > 3 && (
-                      <Button
-                        variant="link"
-                        className="mt-2"
-                        onClick={() => setActiveTab('news')}
-                      >
-                        查看全部 {filteredNews.length} 篇資訊
-                      </Button>
+                    
+                    {item.type === 'goods' ? (
+                      <>
+                        <div className="flex items-baseline gap-2 mb-2">
+                          <span className="text-lg font-semibold text-primary">
+                            {formatPrice(item.price)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+                          <span>銷量 {item.sales || 0}</span>
+                          {item.merchant_name && (
+                            <span className="truncate max-w-[100px]">{item.merchant_name}</span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => handleAddToCart(item.id)}
+                          >
+                            <ShoppingCart className="w-4 h-4 mr-1" />
+                            購物車
+                          </Button>
+                          <Button size="sm" variant="ghost">
+                            <Heart className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{item.category}</span>
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          {item.views || 0} 瀏覽
+                        </span>
+                      </div>
                     )}
-                  </div>
-                )}
-              </TabsContent>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
 
-              {/* 商品结果 */}
-              <TabsContent value="goods">
-                {filteredGoods.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    暫無相關商品
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {filteredGoods.map(item => (
-                      <Link key={item.id} href={`/goods/${item.id}`}>
-                        <Card className="overflow-hidden hover:shadow-md transition-shadow">
-                          <div className="aspect-square bg-muted relative">
-                            {item.main_image ? (
-                              <img
-                                src={item.main_image}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                <Package className="w-12 h-12" />
-                              </div>
-                            )}
-                            <div className="absolute top-2 left-2 flex gap-1">
-                              <Badge variant="secondary" className="text-xs">
-                                {getTypeLabel(item.type)}
-                              </Badge>
-                            </div>
-                          </div>
-                          <CardContent className="p-3">
-                            <p className="font-medium truncate text-sm">{item.name}</p>
-                            {item.purpose && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {getPurposeLabel(item.purpose)}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between mt-2">
-                              <p className="text-primary font-semibold">HK${item.price}</p>
-                              <p className="text-xs text-muted-foreground">
-                                銷量 {item.sales}
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* 资讯结果 */}
-              <TabsContent value="news">
-                {filteredNews.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    暫無相關資訊
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredNews.map(item => (
-                      <Link key={item.id} href={`/news/${item.id}`}>
-                        <Card className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-4 flex gap-4">
-                            {item.cover_image && (
-                              <div className="w-32 h-20 bg-muted rounded overflow-hidden flex-shrink-0">
-                                <img
-                                  src={item.cover_image}
-                                  alt={item.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium line-clamp-1">{item.title}</h4>
-                              {item.summary && (
-                                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                                  {item.summary}
-                                </p>
-                              )}
-                              <p className="text-xs text-muted-foreground mt-2">
-                                {new Date(item.created_at).toLocaleDateString('zh-TW')}
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  上一頁
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  第 {currentPage} / {totalPages} 頁
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  下一頁
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </>
         )}
+
+        {/* Hot Searches */}
+        <section className="mt-12">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-4">熱門搜索</h3>
+              <div className="flex flex-wrap gap-2">
+                {['平安符', '招財符', '太歲符', '文昌符', '桃木劍', '銅錢劍', '八卦鏡', '羅盤'].map((term) => (
+                  <Link key={term} href={`/search?keyword=${encodeURIComponent(term)}`}>
+                    <Badge variant="secondary" className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
+                      {term}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </section>
       </main>
     </div>
   );
@@ -375,10 +364,10 @@ export default function SearchPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <div className="text-muted-foreground">載入中...</div>
       </div>
     }>
-      <SearchContent />
+      <SearchPageContent />
     </Suspense>
   );
 }
