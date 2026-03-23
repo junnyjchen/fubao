@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useI18n } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,48 +15,222 @@ import {
   FileText,
   Settings,
   Bell,
-  Search,
-  Plus,
-  MoreHorizontal,
   TrendingUp,
   DollarSign,
   Eye,
+  Plus,
+  Award,
+  Store,
+  Activity,
 } from 'lucide-react';
 
-// 模拟统计数据
-const stats = [
-  { title: '今日訂單', value: '12', change: '+8%', icon: ShoppingCart },
-  { title: '今日銷售額', value: 'HK$8,640', change: '+12%', icon: DollarSign },
-  { title: '商品總數', value: '8', change: '+2', icon: Package },
-  { title: '本月訪客', value: '1,234', change: '+15%', icon: Eye },
-];
+// 统计数据类型
+interface Stats {
+  orderStats: {
+    total: number;
+    pending: number;
+    paid: number;
+    shipped: number;
+    completed: number;
+    cancelled: number;
+    totalRevenue: number;
+  };
+  goodsStats: {
+    total: number;
+    lowStock: number;
+    totalSales: number;
+  };
+  userStats: {
+    total: number;
+    admins: number;
+    merchants: number;
+    normal: number;
+  };
+  merchantStats: {
+    total: number;
+    active: number;
+    pending: number;
+  };
+  certificateStats: {
+    total: number;
+    valid: number;
+    expired: number;
+    revoked: number;
+  };
+  todayStats: {
+    orders: number;
+    revenue: number;
+  };
+  recentOrders: Array<{
+    id: number;
+    order_no: string;
+    total_amount: string;
+    pay_status: number;
+    order_status: number;
+    created_at: string;
+  }>;
+  hotGoods: Array<{
+    id: number;
+    name: string;
+    sales: number;
+    stock: number;
+  }>;
+}
 
-// 模拟订单数据
-const recentOrders = [
-  { id: 'FB20240001', customer: '張**', amount: 'HK$456', status: '待付款', date: '2024-01-15' },
-  { id: 'FB20240002', customer: '李**', amount: 'HK$888', status: '待發貨', date: '2024-01-15' },
-  { id: 'FB20240003', customer: '王**', amount: 'HK$288', status: '已發貨', date: '2024-01-14' },
-  { id: 'FB20240004', customer: '陳**', amount: 'HK$1,288', status: '已完成', date: '2024-01-14' },
-];
+// 订单状态映射
+const orderStatusMap: Record<number, { label: string; className: string }> = {
+  0: { label: '待付款', className: 'bg-warning/10 text-warning' },
+  1: { label: '待發貨', className: 'bg-primary/10 text-primary' },
+  2: { label: '已發貨', className: 'bg-info/10 text-info' },
+  3: { label: '已完成', className: 'bg-success/10 text-success' },
+  4: { label: '已取消', className: 'bg-muted text-muted-foreground' },
+};
 
-// 模拟商品数据
-const products = [
-  { id: 1, name: '武當鎮宅符', price: 288, stock: 100, sales: 1250, status: '上架' },
-  { id: 2, name: '武當招財符', price: 388, stock: 80, sales: 890, status: '上架' },
-  { id: 3, name: '天師平安符', price: 168, stock: 200, sales: 2560, status: '上架' },
-  { id: 4, name: '開光銅錢劍', price: 1288, stock: 20, sales: 560, status: '上架' },
-];
-
-const statusColors: Record<string, string> = {
-  '待付款': 'bg-yellow-100 text-yellow-800',
-  '待發貨': 'bg-blue-100 text-blue-800',
-  '已發貨': 'bg-purple-100 text-purple-800',
-  '已完成': 'bg-green-100 text-green-800',
+// 支付状态映射
+const payStatusMap: Record<number, { label: string; className: string }> = {
+  0: { label: '未支付', className: 'text-muted-foreground' },
+  1: { label: '已支付', className: 'text-success' },
+  2: { label: '已退款', className: 'text-destructive' },
 };
 
 export function AdminDashboard() {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('overview');
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 加载统计数据
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/admin/stats');
+        if (!response.ok) {
+          throw new Error('獲取統計數據失敗');
+        }
+        const data = await response.json();
+        setStats(data);
+        setError(null);
+      } catch (err) {
+        console.error('加载统计数据失败:', err);
+        setError('無法加載統計數據');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // 格式化金额
+  const formatAmount = (amount: number | string) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    return `HK$${num.toLocaleString()}`;
+  };
+
+  // 格式化日期
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('zh-TW');
+  };
+
+  // 统计卡片数据
+  const getStatCards = () => {
+    if (!stats) return [];
+    return [
+      {
+        title: '今日訂單',
+        value: stats.todayStats.orders.toString(),
+        subValue: formatAmount(stats.todayStats.revenue),
+        icon: ShoppingCart,
+        iconBg: 'bg-primary/10',
+        iconColor: 'text-primary',
+      },
+      {
+        title: '訂單總數',
+        value: stats.orderStats.total.toString(),
+        subValue: `已完成 ${stats.orderStats.completed}`,
+        icon: TrendingUp,
+        iconBg: 'bg-success/10',
+        iconColor: 'text-success',
+      },
+      {
+        title: '商品總數',
+        value: stats.goodsStats.total.toString(),
+        subValue: `總銷量 ${stats.goodsStats.totalSales}`,
+        icon: Package,
+        iconBg: 'bg-info/10',
+        iconColor: 'text-info',
+      },
+      {
+        title: '商戶數量',
+        value: stats.merchantStats.total.toString(),
+        subValue: `活躍 ${stats.merchantStats.active}`,
+        icon: Store,
+        iconBg: 'bg-warning/10',
+        iconColor: 'text-warning',
+      },
+      {
+        title: '用戶總數',
+        value: stats.userStats.total.toString(),
+        subValue: `商戶 ${stats.userStats.merchants}`,
+        icon: Users,
+        iconBg: 'bg-primary/10',
+        iconColor: 'text-primary',
+      },
+      {
+        title: '證書總數',
+        value: stats.certificateStats.total.toString(),
+        subValue: `有效 ${stats.certificateStats.valid}`,
+        icon: Award,
+        iconBg: 'bg-success/10',
+        iconColor: 'text-success',
+      },
+      {
+        title: '總營收',
+        value: formatAmount(stats.orderStats.totalRevenue),
+        subValue: '累計營收',
+        icon: DollarSign,
+        iconBg: 'bg-warning/10',
+        iconColor: 'text-warning',
+      },
+      {
+        title: '待處理訂單',
+        value: (stats.orderStats.pending + stats.orderStats.paid).toString(),
+        subValue: `待付款 ${stats.orderStats.pending}`,
+        icon: Activity,
+        iconBg: 'bg-destructive/10',
+        iconColor: 'text-destructive',
+      },
+    ];
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">加載中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-destructive">{error}</p>
+          <Button className="mt-4" onClick={() => window.location.reload()}>
+            重試
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const statCards = getStatCards();
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -130,20 +304,17 @@ export function AdminDashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {stats.map((stat) => (
-              <Card key={stat.title}>
+            {statCards.map((stat, index) => (
+              <Card key={index}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">{stat.title}</p>
                       <p className="text-2xl font-bold mt-1">{stat.value}</p>
-                      <p className="text-xs text-success mt-1 flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {stat.change}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{stat.subValue}</p>
                     </div>
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <stat.icon className="w-6 h-6 text-primary" />
+                    <div className={`w-12 h-12 rounded-full ${stat.iconBg} flex items-center justify-center`}>
+                      <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
                     </div>
                   </div>
                 </CardContent>
@@ -171,25 +342,29 @@ export function AdminDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {recentOrders.map((order) => (
-                        <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <p className="font-medium text-sm">{order.id}</p>
-                            <p className="text-xs text-muted-foreground">{order.customer}</p>
+                      {stats?.recentOrders && stats.recentOrders.length > 0 ? (
+                        stats.recentOrders.map((order) => (
+                          <div key={order.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                            <div>
+                              <p className="font-medium text-sm">{order.order_no}</p>
+                              <p className="text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-sm">{formatAmount(order.total_amount)}</p>
+                              <Badge className={`text-xs ${orderStatusMap[order.order_status]?.className || ''}`}>
+                                {orderStatusMap[order.order_status]?.label || '未知'}
+                              </Badge>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium text-sm">{order.amount}</p>
-                            <Badge className={`text-xs ${statusColors[order.status]}`}>
-                              {order.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4">暫無訂單數據</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Top Products */}
+                {/* Hot Products */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg">熱銷商品</CardTitle>
@@ -199,21 +374,93 @@ export function AdminDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {products.slice(0, 4).map((product, index) => (
-                        <div key={product.id} className="flex items-center gap-4 py-2 border-b last:border-0">
-                          <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium text-sm">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">HK${product.price}</p>
+                      {stats?.hotGoods && stats.hotGoods.length > 0 ? (
+                        stats.hotGoods.map((product, index) => (
+                          <div key={product.id} className="flex items-center gap-4 py-2 border-b last:border-0">
+                            <span className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
+                              {index + 1}
+                            </span>
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{product.name || `商品 #${product.id}`}</p>
+                              <p className="text-xs text-muted-foreground">庫存: {product.stock}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-sm">{product.sales}</p>
+                              <p className="text-xs text-muted-foreground">銷量</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium text-sm">{product.sales}</p>
-                            <p className="text-xs text-muted-foreground">銷量</p>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-4">暫無商品數據</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="grid md:grid-cols-3 gap-4 mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">訂單狀態分佈</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {Object.entries(orderStatusMap).map(([status, config]) => {
+                        const count = stats?.orderStats[
+                          ['pending', 'paid', 'shipped', 'completed', 'cancelled'][parseInt(status)] as keyof typeof stats.orderStats
+                        ] || 0;
+                        return (
+                          <div key={status} className="flex items-center justify-between">
+                            <Badge className={config.className}>{config.label}</Badge>
+                            <span className="font-medium">{count}</span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">用戶類型分佈</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">管理員</span>
+                        <span className="font-medium">{stats?.userStats.admins || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">商戶</span>
+                        <span className="font-medium">{stats?.userStats.merchants || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">普通用戶</span>
+                        <span className="font-medium">{stats?.userStats.normal || 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">證書狀態</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-success/10 text-success">有效</Badge>
+                        <span className="font-medium">{stats?.certificateStats.valid || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-warning/10 text-warning">過期</Badge>
+                        <span className="font-medium">{stats?.certificateStats.expired || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-destructive/10 text-destructive">撤銷</Badge>
+                        <span className="font-medium">{stats?.certificateStats.revoked || 0}</span>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -231,30 +478,42 @@ export function AdminDashboard() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-3 px-4 font-medium">訂單號</th>
-                          <th className="text-left py-3 px-4 font-medium">客戶</th>
                           <th className="text-left py-3 px-4 font-medium">金額</th>
-                          <th className="text-left py-3 px-4 font-medium">狀態</th>
+                          <th className="text-left py-3 px-4 font-medium">支付狀態</th>
+                          <th className="text-left py-3 px-4 font-medium">訂單狀態</th>
                           <th className="text-left py-3 px-4 font-medium">日期</th>
                           <th className="text-left py-3 px-4 font-medium">操作</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {recentOrders.map((order) => (
-                          <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3 px-4 text-sm">{order.id}</td>
-                            <td className="py-3 px-4 text-sm">{order.customer}</td>
-                            <td className="py-3 px-4 text-sm">{order.amount}</td>
-                            <td className="py-3 px-4">
-                              <Badge className={`text-xs ${statusColors[order.status]}`}>
-                                {order.status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-muted-foreground">{order.date}</td>
-                            <td className="py-3 px-4">
-                              <Button variant="ghost" size="sm">詳情</Button>
+                        {stats?.recentOrders && stats.recentOrders.length > 0 ? (
+                          stats.recentOrders.map((order) => (
+                            <tr key={order.id} className="border-b last:border-0 hover:bg-muted/50">
+                              <td className="py-3 px-4 text-sm">{order.order_no}</td>
+                              <td className="py-3 px-4 text-sm">{formatAmount(order.total_amount)}</td>
+                              <td className="py-3 px-4">
+                                <span className={`text-sm ${payStatusMap[order.pay_status]?.className || ''}`}>
+                                  {payStatusMap[order.pay_status]?.label || '未知'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <Badge className={`text-xs ${orderStatusMap[order.order_status]?.className || ''}`}>
+                                  {orderStatusMap[order.order_status]?.label || '未知'}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-muted-foreground">{formatDate(order.created_at)}</td>
+                              <td className="py-3 px-4">
+                                <Button variant="ghost" size="sm">詳情</Button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="py-8 text-center text-muted-foreground">
+                              暫無訂單數據
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -276,34 +535,38 @@ export function AdminDashboard() {
                     <table className="w-full">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-3 px-4 font-medium">商品名稱</th>
-                          <th className="text-left py-3 px-4 font-medium">價格</th>
-                          <th className="text-left py-3 px-4 font-medium">庫存</th>
+                          <th className="text-left py-3 px-4 font-medium">商品</th>
                           <th className="text-left py-3 px-4 font-medium">銷量</th>
-                          <th className="text-left py-3 px-4 font-medium">狀態</th>
+                          <th className="text-left py-3 px-4 font-medium">庫存</th>
                           <th className="text-left py-3 px-4 font-medium">操作</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {products.map((product) => (
-                          <tr key={product.id} className="border-b last:border-0 hover:bg-muted/50">
-                            <td className="py-3 px-4 text-sm">{product.name}</td>
-                            <td className="py-3 px-4 text-sm">HK${product.price}</td>
-                            <td className="py-3 px-4 text-sm">{product.stock}</td>
-                            <td className="py-3 px-4 text-sm">{product.sales}</td>
-                            <td className="py-3 px-4">
-                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                {product.status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex gap-2">
-                                <Button variant="ghost" size="sm">編輯</Button>
-                                <Button variant="ghost" size="sm">下架</Button>
-                              </div>
+                        {stats?.hotGoods && stats.hotGoods.length > 0 ? (
+                          stats.hotGoods.map((product) => (
+                            <tr key={product.id} className="border-b last:border-0 hover:bg-muted/50">
+                              <td className="py-3 px-4 text-sm">{product.name || `商品 #${product.id}`}</td>
+                              <td className="py-3 px-4 text-sm">{product.sales}</td>
+                              <td className="py-3 px-4">
+                                <span className={`text-sm ${product.stock < 10 ? 'text-destructive' : ''}`}>
+                                  {product.stock}
+                                  {product.stock < 10 && ' (低庫存)'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-2">
+                                  <Button variant="ghost" size="sm">編輯</Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                              暫無商品數據
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
