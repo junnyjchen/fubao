@@ -164,6 +164,8 @@ export default function AdminDashboard() {
     { title: '百科管理', href: '/admin/wiki', icon: FileText },
     { title: '新聞管理', href: '/admin/news', icon: FileText },
     { title: '商戶管理', href: '/admin/merchants', icon: Store },
+    { title: '財務對賬', href: '/admin/finance', icon: DollarSign },
+    { title: '頁面裝修', href: '/admin/page-builder', icon: Package },
     { title: '用戶管理', href: '/admin/users', icon: Users },
     { title: '系統設置', href: '/admin/settings', icon: Package },
   ];
@@ -248,7 +250,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-lg">快捷操作</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
