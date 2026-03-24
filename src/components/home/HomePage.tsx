@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/lib/i18n';
+import { AnnouncementBar } from '@/components/announcement/AnnouncementBar';
 import { 
   ShieldCheck, 
   Building2, 
@@ -266,6 +267,9 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen">
+      {/* 公告栏 */}
+      <AnnouncementBar />
+      
       {/* Hero Banner */}
       <section className="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden">
         {banners.length > 0 ? (
