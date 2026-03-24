@@ -26,6 +26,8 @@ import {
   Bell,
   Award,
   RotateCcw,
+  Clock,
+  MessageSquare,
 } from 'lucide-react';
 
 /** 导航菜单项配置 */
@@ -40,10 +42,12 @@ interface NavItem {
 const navItems: NavItem[] = [
   { key: 'orders', label: '我的訂單', icon: Package, href: '/user/orders' },
   { key: 'favorites', label: '我的收藏', icon: Heart, href: '/user/favorites' },
+  { key: 'history', label: '瀏覽歷史', icon: Clock, href: '/user/history' },
   { key: 'reviews', label: '我的評價', icon: Star, href: '/user/reviews' },
   { key: 'coupons', label: '我的優惠券', icon: Ticket, href: '/user/coupons' },
   { key: 'points', label: '我的積分', icon: Award, href: '/user/points' },
   { key: 'refunds', label: '售後服務', icon: RotateCcw, href: '/user/refunds' },
+  { key: 'tickets', label: '客服工單', icon: MessageSquare, href: '/user/tickets' },
   { key: 'notifications', label: '消息通知', icon: Bell, href: '/user/notifications' },
   { key: 'addresses', label: '收貨地址', icon: MapPin, href: '/user/addresses' },
   { key: 'settings', label: '賬戶設置', icon: Settings, href: '/user/settings' },

@@ -1,295 +1,285 @@
 /**
- * @fileoverview 分享海报组件
- * @description 生成商品分享海报和邀请海报
+ * @fileoverview 商品分享海报组件
+ * @description 生成商品分享海报，支持Canvas绘制和下载
  * @module components/share/SharePoster
  */
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Share2,
-  Copy,
   Download,
+  Copy,
   Loader2,
-  MessageCircle,
-  QrCode,
-  Link as LinkIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface SharePosterProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  type: 'goods' | 'invite';
-  goods?: {
-    id: string;
-    name: string;
-    price: number;
-    image: string;
-    description?: string;
-    shop_name?: string;
-  };
-  inviteCode?: string;
+/** 海报模板 */
+const POSTER_TEMPLATES = [
+  { id: 'classic', name: '經典風格', bg: '#ffffff' },
+  { id: 'dark', name: '深色風格', bg: '#1a1a2e' },
+  { id: 'gradient', name: '漸變風格', bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+  { id: 'minimal', name: '極簡風格', bg: '#f5f5f5' },
+];
+
+/** 商品信息 - 用于海报展示 */
+interface PosterGoods {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  description?: string;
+  shop_name?: string;
 }
 
+/** 组件属性 */
+interface SharePosterProps {
+  /** 商品信息 */
+  goods: PosterGoods;
+  /** 用户ID（用于分销链接） */
+  userId?: string;
+  /** 触发按钮 */
+  trigger?: React.ReactNode;
+  /** 受控：是否打开 */
+  open?: boolean;
+  /** 受控：打开状态变化回调 */
+  onOpenChange?: (open: boolean) => void;
+  /** 类型（保留兼容） */
+  type?: 'goods';
+}
+
+/**
+ * 商品分享海报组件
+ */
 export function SharePoster({
-  open,
-  onOpenChange,
-  type,
   goods,
-  inviteCode,
+  userId,
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
 }: SharePosterProps) {
-  const [loading, setLoading] = useState(true);
-  const [shareUrl, setShareUrl] = useState('');
-  const [posterDataUrl, setPosterDataUrl] = useState('');
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
+  const setOpen = onOpenChange || setUncontrolledOpen;
+
+  const [loading, setLoading] = useState(false);
+  const [template, setTemplate] = useState('classic');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    if (open) {
-      loadShareInfo();
-    }
-  }, [open]);
-
-  const loadShareInfo = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        type,
-        ...(type === 'goods' && goods ? { target_id: goods.id } : {}),
-      });
-      const res = await fetch(`/api/share?${params}`);
-      const result = await res.json();
-      if (result.success) {
-        setShareUrl(result.data.share_url);
-      }
-    } catch (error) {
-      console.error('获取分享信息失败:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!loading && open && canvasRef.current) {
-      generatePoster();
-    }
-  }, [loading, open, goods, inviteCode]);
-
+  // 生成海报
   const generatePoster = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    setLoading(true);
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setLoading(false);
+      return;
+    }
 
-    const width = 375;
-    const height = 667;
-    canvas.width = width;
-    canvas.height = height;
+    const templateConfig = POSTER_TEMPLATES.find((t) => t.id === template)!;
+    const isDark = template === 'dark';
+    const isGradient = template === 'gradient';
 
-    // 背景
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, width, height);
+    try {
+      // 设置画布尺寸
+      canvas.width = 375;
+      canvas.height = 600;
 
-    // 顶部装饰
-    const gradient = ctx.createLinearGradient(0, 0, width, 120);
-    gradient.addColorStop(0, '#f59e0b');
-    gradient.addColorStop(1, '#d97706');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, 120);
+      // 绘制背景
+      if (isGradient) {
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        gradient.addColorStop(0, '#667eea');
+        gradient.addColorStop(1, '#764ba2');
+        ctx.fillStyle = gradient;
+      } else {
+        ctx.fillStyle = templateConfig.bg;
+      }
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Logo/标题
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('符寶網', width / 2, 50);
-    ctx.font = '14px system-ui';
-    ctx.fillText('全球玄門文化科普交易平台', width / 2, 75);
-
-    if (type === 'goods' && goods) {
-      // 商品图片占位
-      ctx.fillStyle = '#f3f4f6';
-      ctx.fillRect(20, 140, width - 40, 300);
-
-      // 尝试加载商品图片
+      // 绘制商品图片
       try {
-        const img = new Image();
+        const img = new window.Image();
         img.crossOrigin = 'anonymous';
         await new Promise<void>((resolve) => {
-          img.onload = () => {
-            ctx.drawImage(img, 20, 140, width - 40, 300);
-            resolve();
-          };
+          img.onload = () => resolve();
           img.onerror = () => resolve();
           img.src = goods.image;
         });
-      } catch (e) {
-        // 使用占位
+
+        // 绘制商品图片区域
+        const imgSize = 320;
+        const imgX = (canvas.width - imgSize) / 2;
+        const imgY = 40;
+        
+        // 圆角矩形裁剪
+        ctx.save();
+        ctx.beginPath();
+        const radius = 12;
+        ctx.moveTo(imgX + radius, imgY);
+        ctx.lineTo(imgX + imgSize - radius, imgY);
+        ctx.quadraticCurveTo(imgX + imgSize, imgY, imgX + imgSize, imgY + radius);
+        ctx.lineTo(imgX + imgSize, imgY + imgSize - radius);
+        ctx.quadraticCurveTo(imgX + imgSize, imgY + imgSize, imgX + imgSize - radius, imgY + imgSize);
+        ctx.lineTo(imgX + radius, imgY + imgSize);
+        ctx.quadraticCurveTo(imgX, imgY + imgSize, imgX, imgY + imgSize - radius);
+        ctx.lineTo(imgX, imgY + radius);
+        ctx.quadraticCurveTo(imgX, imgY, imgX + radius, imgY);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+        ctx.restore();
+      } catch {
+        // 绘制占位符
+        ctx.fillStyle = '#e5e5e5';
+        ctx.fillRect(27, 40, 320, 320);
       }
 
-      // 商品名称
-      ctx.fillStyle = '#1f2937';
+      // 绘制商品名称
+      const textColor = isDark || isGradient ? '#ffffff' : '#1a1a1a';
+      ctx.fillStyle = textColor;
       ctx.font = 'bold 18px system-ui';
-      ctx.textAlign = 'left';
       const name = goods.name.length > 20 ? goods.name.slice(0, 20) + '...' : goods.name;
-      ctx.fillText(name, 20, 480);
+      ctx.fillText(name, 27, 400);
 
-      // 价格
-      ctx.fillStyle = '#dc2626';
-      ctx.font = 'bold 24px system-ui';
-      ctx.fillText(`HK$${goods.price.toFixed(2)}`, 20, 515);
+      // 绘制价格
+      ctx.fillStyle = '#e53935';
+      ctx.font = 'bold 28px system-ui';
+      ctx.fillText(`HK$${goods.price.toFixed(2)}`, 27, 440);
 
-      // 店铺
+      // 绘制商家信息
       if (goods.shop_name) {
-        ctx.fillStyle = '#6b7280';
+        ctx.fillStyle = isDark ? '#cccccc' : '#333333';
         ctx.font = '12px system-ui';
-        ctx.fillText(goods.shop_name, 20, 540);
+        ctx.fillText(goods.shop_name, 27, 470);
       }
-    } else {
-      // 邀请海报内容
-      ctx.fillStyle = '#1f2937';
-      ctx.font = 'bold 24px system-ui';
+
+      // 绘制品牌信息
+      ctx.fillStyle = isDark ? '#666666' : '#cccccc';
+      ctx.font = 'bold 14px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText('邀請好友', width / 2, 200);
-      ctx.fillText('共享佣金獎勵', width / 2, 240);
+      ctx.fillText('符寶網 · 全球玄門文化平台', canvas.width / 2, 550);
+      ctx.textAlign = 'left';
 
-      // 邀请码
-      ctx.fillStyle = '#f3f4f6';
-      ctx.fillRect(50, 280, width - 100, 60);
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = 'bold 28px monospace';
-      ctx.fillText(inviteCode || 'DEMO00', width / 2, 322);
+      // 绘制二维码提示
+      ctx.fillStyle = isDark ? '#888888' : '#999999';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('掃碼查看商品詳情', canvas.width / 2, 570);
+      ctx.textAlign = 'left';
 
-      // 说明
-      ctx.fillStyle = '#6b7280';
-      ctx.font = '14px system-ui';
-      ctx.fillText('掃碼註冊 或 輸入邀請碼', width / 2, 380);
-      ctx.fillText('好友購物 您賺佣金', width / 2, 410);
+      toast.success('海報已生成');
+    } catch (error) {
+      console.error('生成海报失败:', error);
+      toast.error('生成失敗');
+    } finally {
+      setLoading(false);
     }
+  }, [goods, template]);
 
-    // 二维码占位区域
-    ctx.fillStyle = '#f9fafb';
-    ctx.fillRect(width / 2 - 60, height - 150, 120, 120);
-    ctx.strokeStyle = '#e5e7eb';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(width / 2 - 60, height - 150, 120, 120);
+  // 对话框打开时自动生成海报
+  useEffect(() => {
+    if (open) {
+      generatePoster();
+    }
+  }, [open, generatePoster]);
 
-    // 二维码提示
-    ctx.fillStyle = '#9ca3af';
-    ctx.font = '12px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('掃碼查看詳情', width / 2, height - 20);
+  /**
+   * 下载海报
+   */
+  const handleDownload = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const dataUrl = canvas.toDataURL('image/png');
-    setPosterDataUrl(dataUrl);
-  }, [type, goods, inviteCode]);
+    const link = document.createElement('a');
+    link.download = `符寶網_${goods.name.slice(0, 10)}_海報.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast.success('已保存到本地');
+  };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
+  /**
+   * 复制链接
+   */
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/shop/${goods.id}${userId ? `?ref=${userId}` : ''}`;
+    navigator.clipboard.writeText(url);
     toast.success('鏈接已複製');
   };
 
-  const downloadPoster = () => {
-    if (!posterDataUrl) return;
-    const link = document.createElement('a');
-    link.href = posterDataUrl;
-    link.download = type === 'goods' ? `goods-${goods?.id}.png` : 'invite.png';
-    link.click();
-    toast.success('海報已保存');
-  };
-
-  const handleShare = async (channel: string) => {
-    // 记录分享行为
-    await fetch('/api/share', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        share_type: type,
-        target_id: goods?.id,
-        channel,
-      }),
-    });
-
-    toast.success('分享成功');
-  };
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0">
-        <DialogHeader className="p-4 pb-0">
-          <DialogTitle className="flex items-center gap-2">
-            <Share2 className="w-5 h-5" />
-            {type === 'goods' ? '分享商品' : '邀請好友'}
-          </DialogTitle>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>分享商品</DialogTitle>
         </DialogHeader>
 
-        <div className="p-4 space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <>
-              {/* 海报预览 */}
-              <div className="relative rounded-lg overflow-hidden border">
-                <canvas ref={canvasRef} className="w-full" />
-              </div>
+        {/* 模板选择 */}
+        <div className="mb-4">
+          <label className="text-sm font-medium mb-2 block">選擇風格</label>
+          <Select value={template} onValueChange={(v) => { setTemplate(v); generatePoster(); }}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {POSTER_TEMPLATES.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-              {/* 分享按钮 */}
-              <div className="grid grid-cols-4 gap-3">
-                <button
-                  onClick={() => handleShare('wechat')}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                    <MessageCircle className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-xs">微信</span>
-                </button>
-                <button
-                  onClick={() => handleShare('moments')}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">朋</span>
-                  </div>
-                  <span className="text-xs">朋友圈</span>
-                </button>
-                <button
-                  onClick={copyLink}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <LinkIcon className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-xs">複製</span>
-                </button>
-                <button
-                  onClick={downloadPoster}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                    <Download className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="text-xs">保存</span>
-                </button>
-              </div>
+        {/* 画布 */}
+        <div className="flex justify-center mb-4">
+          <canvas
+            ref={canvasRef}
+            className="border rounded-lg shadow-sm max-w-full"
+            style={{ maxWidth: '100%', height: 'auto' }}
+          />
+        </div>
 
-              {/* 链接 */}
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">分享鏈接</p>
-                <p className="text-sm break-all">{shareUrl}</p>
-              </div>
-            </>
-          )}
+        {/* 操作按钮 */}
+        <div className="flex gap-2">
+          <Button
+            className="flex-1"
+            onClick={generatePoster}
+            disabled={loading}
+          >
+            {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            重新生成
+          </Button>
+          <Button variant="outline" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-2" />
+            保存
+          </Button>
+        </div>
+
+        {/* 其他分享方式 */}
+        <div className="flex gap-2 mt-2">
+          <Button variant="ghost" className="flex-1" onClick={handleCopyLink}>
+            <Copy className="w-4 h-4 mr-2" />
+            複製鏈接
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
