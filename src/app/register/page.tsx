@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,21 +18,32 @@ import {
   Loader2,
   ChevronLeft,
   CheckCircle,
+  Gift,
 } from 'lucide-react';
 
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1); // 1: 填写信息, 2: 验证邮箱, 3: 注册成功
+
+  // 从URL获取邀请码
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setInviteCode(ref);
+    }
+  }, [searchParams]);
 
   const validateForm = () => {
     if (!nickname.trim()) {
@@ -78,6 +89,7 @@ export default function RegisterPage() {
           email,
           phone: phone || undefined,
           password,
+          invite_code: inviteCode || undefined,
         }),
       });
 
@@ -257,6 +269,24 @@ export default function RegisterPage() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="inviteCode">邀請碼（選填）</Label>
+                <div className="relative">
+                  <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="inviteCode"
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                    placeholder="請輸入邀請碼（選填）"
+                    className="pl-10 font-mono uppercase"
+                    maxLength={10}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  填寫邀請填寫邀請碼，註冊成功後邀請人可獲得獎勵
+                </p>
+              </div>
+
               <div className="flex items-start gap-2">
                 <Checkbox
                   id="terms"
@@ -297,5 +327,17 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

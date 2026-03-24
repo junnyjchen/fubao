@@ -1,12 +1,24 @@
 /**
  * @fileoverview 用户注册API
- * @description 处理用户注册请求
+ * @description 处理用户注册请求，支持邀请码建立分销关系
  * @module app/api/auth/register/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { hash } from 'bcryptjs';
+
+/**
+ * 生成随机邀请码
+ */
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 /**
  * 用户注册
@@ -16,7 +28,7 @@ import { hash } from 'bcryptjs';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, phone, password } = body;
+    const { name, nickname, email, phone, password, invite_code } = body;
 
     // 验证必填字段
     if (!email || !password) {
@@ -65,7 +77,7 @@ export async function POST(request: NextRequest) {
     const { data: user, error } = await client
       .from('users')
       .insert({
-        name: name || email.split('@')[0], // 使用name字段，默认使用邮箱前缀
+        name: nickname || name || email.split('@')[0], // 支持nickname和name
         email,
         phone: phone || null,
         password: hashedPassword,
@@ -81,6 +93,100 @@ export async function POST(request: NextRequest) {
         { error: '註冊失敗，請稍後重試' },
         { status: 500 }
       );
+    }
+
+    // 处理邀请码，建立分销关系
+    if (invite_code && user) {
+      try {
+        // 查找邀请人
+        const { data: inviter } = await client
+          .from('user_distribution')
+          .select('user_id, parent_id, parent_level_2_id, team_leader_id')
+          .eq('invite_code', invite_code.toUpperCase())
+          .single();
+
+        if (inviter) {
+          // 为新用户生成邀请码
+          const newInviteCode = generateInviteCode();
+
+          // 建立分销关系
+          await client.from('user_distribution').insert({
+            user_id: user.id,
+            invite_code: newInviteCode,
+            parent_id: inviter.user_id,
+            parent_level_2_id: inviter.parent_id || null,
+            parent_level_3_id: inviter.parent_level_2_id || null,
+            team_leader_id: inviter.team_leader_id || inviter.user_id,
+            total_commission: 0,
+            available_commission: 0,
+            frozen_commission: 0,
+            withdrawn_commission: 0,
+            team_count: 0,
+            direct_count: 0,
+            level_2_count: 0,
+            level_3_count: 0,
+            total_team_sales: 0,
+            is_team_leader: false,
+          });
+
+          // 更新邀请人的直推人数
+          await client
+            .from('user_distribution')
+            .update({
+              direct_count: client.rpc('increment', { x: 1 }),
+              team_count: client.rpc('increment', { x: 1 }),
+            })
+            .eq('user_id', inviter.user_id);
+
+          // 更新上上级的二级人数
+          if (inviter.parent_id) {
+            await client
+              .from('user_distribution')
+              .update({
+                level_2_count: client.rpc('increment', { x: 1 }),
+                team_count: client.rpc('increment', { x: 1 }),
+              })
+              .eq('user_id', inviter.parent_id);
+          }
+
+          // 更新上上上级的三级人数
+          if (inviter.parent_level_2_id) {
+            await client
+              .from('user_distribution')
+              .update({
+                level_3_count: client.rpc('increment', { x: 1 }),
+                team_count: client.rpc('increment', { x: 1 }),
+              })
+              .eq('user_id', inviter.parent_level_2_id);
+          }
+
+          console.log(`分销关系建立成功: 用户 ${user.id} 的上级是 ${inviter.user_id}`);
+        }
+      } catch (distError) {
+        // 分销关系建立失败不影响注册
+        console.error('建立分销关系失败:', distError);
+      }
+    } else if (user) {
+      // 没有邀请码，也要为新用户生成邀请码
+      try {
+        const newInviteCode = generateInviteCode();
+        await client.from('user_distribution').insert({
+          user_id: user.id,
+          invite_code: newInviteCode,
+          total_commission: 0,
+          available_commission: 0,
+          frozen_commission: 0,
+          withdrawn_commission: 0,
+          team_count: 0,
+          direct_count: 0,
+          level_2_count: 0,
+          level_3_count: 0,
+          total_team_sales: 0,
+          is_team_leader: false,
+        });
+      } catch (distError) {
+        console.error('创建分销信息失败:', distError);
+      }
     }
 
     return NextResponse.json({
