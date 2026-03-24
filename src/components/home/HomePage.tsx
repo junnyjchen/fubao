@@ -73,6 +73,17 @@ interface Article {
   created_at: string;
 }
 
+interface Video {
+  id: number;
+  title: string;
+  slug: string | null;
+  cover: string | null;
+  duration: number;
+  views: number;
+  author: string;
+  category: { name: string } | null;
+}
+
 // 功能入口组件
 function FeatureCard({ icon: Icon, title, href }: { icon: React.ElementType; title: string; href: string }) {
   return (
@@ -199,11 +210,62 @@ function NewsCard({ item }: { item: News }) {
   );
 }
 
+// 视频卡片组件
+function VideoCard({ item }: { item: Video }) {
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <Link href={`/videos/${item.id}`}>
+      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
+        <div className="relative aspect-video bg-muted">
+          {item.cover ? (
+            <Image
+              src={item.cover}
+              alt={item.title}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
+              <Play className="text-4xl text-primary/30 w-12 h-12" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
+              <Play className="w-6 h-6 text-primary-foreground ml-1" />
+            </div>
+          </div>
+          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+            {formatDuration(item.duration)}
+          </div>
+        </div>
+        <CardContent className="p-4">
+          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+            {item.title}
+          </h3>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{item.author}</span>
+            <span className="flex items-center gap-1">
+              <Eye className="w-3 h-3" />
+              {item.views}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
 export function HomePage() {
   const { t } = useI18n();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [goods, setGoods] = useState<Goods[]>([]);
   const [news, setNews] = useState<News[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [todayArticle, setTodayArticle] = useState<Article | null>(null);
   const [currentBanner, setCurrentBanner] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -212,24 +274,27 @@ export function HomePage() {
     async function fetchData() {
       try {
         // 并行获取数据
-        const [bannersRes, goodsRes, newsRes, wikiRes] = await Promise.all([
+        const [bannersRes, goodsRes, newsRes, wikiRes, videosRes] = await Promise.all([
           fetch('/api/banners?position=home'),
           fetch('/api/goods?hot=true&limit=8'),
           fetch('/api/news?limit=4'),
-          fetch('/api/wiki/articles?limit=1&is_published=true&is_featured=true'),
+          fetch('/api/wiki/articles?limit=1&is_featured=true'),
+          fetch('/api/videos?limit=4&is_featured=true'),
         ]);
 
-        const [bannersData, goodsData, newsData, wikiData] = await Promise.all([
+        const [bannersData, goodsData, newsData, wikiData, videosData] = await Promise.all([
           bannersRes.json(),
           goodsRes.json(),
           newsRes.json(),
           wikiRes.json(),
+          videosRes.json(),
         ]);
 
         if (bannersData.data) setBanners(bannersData.data);
         if (goodsData.data) setGoods(goodsData.data);
         if (newsData.data) setNews(newsData.data);
         if (wikiData.data?.[0]) setTodayArticle(wikiData.data[0]);
+        if (videosData.data) setVideos(videosData.data);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -431,6 +496,31 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* 精选视频 */}
+      {videos.length > 0 && (
+        <section className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Play className="w-5 h-5 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold">精選視頻</h2>
+            </div>
+            <Button variant="ghost" asChild>
+              <Link href="/videos" className="text-muted-foreground hover:text-foreground">
+                更多視頻
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {videos.map((item) => (
+              <VideoCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 玄门头条 */}
       <section className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -467,7 +557,7 @@ export function HomePage() {
               </div>
             </div>
             <Button size="lg" asChild>
-              <Link href="/video">
+              <Link href="/videos">
                 探索視頻
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
