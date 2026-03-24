@@ -20,16 +20,32 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 获取用户积分信息
+    // 获取用户积分信息（从user_profiles表）
     const { data: user, error: userError } = await client
-      .from('users')
+      .from('user_profiles')
       .select('points, level, total_points')
-      .eq('id', parseInt(userId))
+      .eq('user_id', userId)
       .single();
 
-    if (userError) {
-      console.error('查询用户失败:', userError);
-      return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
+    // 如果用户不存在，创建默认数据
+    if (userError || !user) {
+      // 尝试创建用户资料
+      await client
+        .from('user_profiles')
+        .insert({ user_id: userId, points: 0, total_points: 0, level: 1 });
+      
+      return NextResponse.json({
+        points: 0,
+        level: 1,
+        total_points: 0,
+        levelInfo: null,
+        nextLevel: null,
+        progress: 0,
+        records: [],
+        total: 0,
+        page,
+        limit,
+      });
     }
 
     // 获取用户等级信息
