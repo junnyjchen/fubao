@@ -43,22 +43,7 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'goods') {
       let query = client
         .from('goods')
-        .select(`
-          id,
-          name,
-          subtitle,
-          price,
-          original_price,
-          main_image,
-          images,
-          sales,
-          stock,
-          type,
-          purpose,
-          is_certified,
-          category:categories (id, name),
-          merchant:merchants (id, name, type)
-        `, { count: 'exact' })
+        .select('id, name, subtitle, price, original_price, main_image, sales, stock, purpose, is_certified, category_id, merchant_id', { count: 'exact' })
         .eq('status', true)
         .or(`name.ilike.%${searchTerm}%,subtitle.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
 
@@ -91,8 +76,31 @@ export async function GET(request: NextRequest) {
 
       const { data: goods, error: goodsError, count } = await query.range(offset, offset + limit - 1);
 
-      if (!goodsError && goods) {
+      if (!goodsError && goods && goods.length > 0) {
+        // 获取分类和商户信息
+        const categoryIds = [...new Set(goods.map(g => g.category_id).filter(Boolean))];
+        const merchantIds = [...new Set(goods.map(g => g.merchant_id).filter(Boolean))];
+        
+        let categoryMap = new Map();
+        let merchantMap = new Map();
+        
+        if (categoryIds.length > 0) {
+          const { data: categories } = await client
+            .from('categories')
+            .select('id, name');
+          categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
+        }
+        
+        if (merchantIds.length > 0) {
+          const { data: merchants } = await client
+            .from('merchants')
+            .select('id, name, type');
+          merchantMap = new Map(merchants?.map(m => [m.id, m]) || []);
+        }
+
         goods.forEach((g: any) => {
+          const category = categoryMap.get(g.category_id);
+          const merchant = merchantMap.get(g.merchant_id);
           results.push({
             id: g.id,
             type: 'goods',
@@ -101,14 +109,13 @@ export async function GET(request: NextRequest) {
             price: g.price,
             original_price: g.original_price,
             image: g.main_image,
-            images: g.images,
             sales: g.sales,
             stock: g.stock,
-            category_id: g.category?.id,
-            category: g.category?.name || g.purpose,
-            merchant_id: g.merchant?.id,
-            merchant_name: g.merchant?.name,
-            merchant_type: g.merchant?.type,
+            category_id: g.category_id,
+            category: category?.name || g.purpose,
+            merchant_id: g.merchant_id,
+            merchant_name: merchant?.name,
+            merchant_type: merchant?.type,
             is_certified: g.is_certified,
           });
         });
@@ -120,24 +127,35 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'video') {
       const { data: videos, error: videoError, count } = await client
         .from('videos')
-        .select('id, title, description, cover_image, duration, views, category:video_categories (id, name)', { count: 'exact' })
+        .select('id, title, cover, url, duration, views, category_id', { count: 'exact' })
         .eq('status', true)
-        .or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+        .ilike('title', `%${searchTerm}%`)
         .order('views', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (!videoError && videos) {
+        // 获取分类信息
+        const categoryIds = [...new Set(videos.map(v => v.category_id).filter(Boolean))];
+        let categoryMap = new Map();
+        if (categoryIds.length > 0) {
+          const { data: categories } = await client
+            .from('video_categories')
+            .select('id, name');
+          categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
+        }
+
         videos.forEach((v: any) => {
+          const category = categoryMap.get(v.category_id);
           results.push({
             id: v.id,
             type: 'video',
             name: v.title,
-            subtitle: v.description,
-            image: v.cover_image,
+            subtitle: null,
+            image: v.cover,
             duration: v.duration,
             views: v.views,
-            category_id: v.category?.id,
-            category: v.category?.name,
+            category_id: v.category_id,
+            category: category?.name,
           });
         });
         totalCount += count || 0;
@@ -148,14 +166,25 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'article') {
       const { data: articles, error: articleError, count } = await client
         .from('wiki_articles')
-        .select('id, title, summary, cover_image, views, category:wiki_categories (id, name)', { count: 'exact' })
+        .select('id, title, summary, cover_image, views, category_id', { count: 'exact' })
         .eq('status', true)
         .or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
         .order('views', { ascending: false })
         .range(offset, offset + limit - 1);
 
       if (!articleError && articles) {
+        // 获取分类信息
+        const categoryIds = [...new Set(articles.map(a => a.category_id).filter(Boolean))];
+        let categoryMap = new Map();
+        if (categoryIds.length > 0) {
+          const { data: categories } = await client
+            .from('wiki_categories')
+            .select('id, name');
+          categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
+        }
+
         articles.forEach((a: any) => {
+          const category = categoryMap.get(a.category_id);
           results.push({
             id: a.id,
             type: 'article',
@@ -163,8 +192,8 @@ export async function GET(request: NextRequest) {
             subtitle: a.summary,
             image: a.cover_image,
             views: a.views,
-            category_id: a.category?.id,
-            category: a.category?.name,
+            category_id: a.category_id,
+            category: category?.name,
           });
         });
         totalCount += count || 0;
@@ -175,7 +204,7 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'news') {
       const { data: news, error: newsError, count } = await client
         .from('news')
-        .select('id, title, summary, cover_image, views, published_at', { count: 'exact' })
+        .select('id, title, summary, cover, views, published_at', { count: 'exact' })
         .eq('status', true)
         .or(`title.ilike.%${searchTerm}%,summary.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
         .order('published_at', { ascending: false })
@@ -188,7 +217,7 @@ export async function GET(request: NextRequest) {
             type: 'news',
             name: n.title,
             subtitle: n.summary,
-            image: n.cover_image,
+            image: n.cover,
             views: n.views,
             published_at: n.published_at,
           });

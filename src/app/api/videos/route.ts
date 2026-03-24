@@ -10,7 +10,7 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 /**
  * 获取视频列表
  * GET /api/videos
- * Query params: category_id, is_published, is_featured, limit, offset, search
+ * Query params: category_id, status, is_featured, limit, offset, search
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     const categoryId = searchParams.get('category_id');
-    const isPublished = searchParams.get('is_published');
+    const status = searchParams.get('status');
     const isFeatured = searchParams.get('is_featured');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -32,33 +32,28 @@ export async function GET(request: NextRequest) {
         id,
         title,
         slug,
-        description,
-        cover_image,
-        video_url,
+        cover,
+        url,
         duration,
+        category_id,
         author,
-        author_avatar,
-        view_count,
-        like_count,
-        is_published,
+        views,
+        likes,
         is_featured,
-        tags,
-        sort_order,
-        created_at,
-        category:video_categories(id, name, slug)
+        status,
+        sort,
+        published_at,
+        created_at
       `,
         { count: 'exact' }
-      )
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      );
+
+    // 只查询已发布的视频
+    query = query.eq('status', true);
 
     // 应用过滤条件
     if (categoryId) {
       query = query.eq('category_id', parseInt(categoryId));
-    }
-
-    if (isPublished !== null) {
-      query = query.eq('is_published', isPublished === 'true');
     }
 
     if (isFeatured !== null) {
@@ -66,17 +61,37 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
+      query = query.ilike('title', `%${search}%`);
     }
 
-    // 分页
-    query = query.range(offset, offset + limit - 1);
+    // 排序和分页
+    query = query
+      .order('is_featured', { ascending: false })
+      .order('sort', { ascending: true })
+      .order('published_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     const { data, error, count } = await query;
 
     if (error) {
       console.error('查询视频列表失败:', error);
       return NextResponse.json({ data: [], total: 0 });
+    }
+
+    // 获取分类信息
+    if (data && data.length > 0) {
+      const categoryIds = [...new Set(data.map(v => v.category_id).filter(Boolean))];
+      if (categoryIds.length > 0) {
+        const { data: categories } = await client
+          .from('video_categories')
+          .select('id, name, slug')
+          .in('id', categoryIds);
+        
+        const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
+        data.forEach(video => {
+          (video as any).category = categoryMap.get(video.category_id) || null;
+        });
+      }
     }
 
     return NextResponse.json({

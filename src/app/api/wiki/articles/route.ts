@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
     const categoryId = searchParams.get('category_id');
-    const isPublished = searchParams.get('is_published');
     const isFeatured = searchParams.get('is_featured');
     const slug = searchParams.get('slug');
 
@@ -34,27 +33,19 @@ export async function GET(request: NextRequest) {
         content,
         cover_image,
         author,
-        view_count,
-        is_published,
+        views,
         is_featured,
-        tags,
+        status,
         created_at,
-        updated_at,
-        category:wiki_categories (
-          id,
-          name,
-          slug
-        )
-      `)
+        updated_at
+      `, { count: 'exact' })
+      .eq('status', true)
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (categoryId) {
       query = query.eq('category_id', parseInt(categoryId));
-    }
-    if (isPublished !== null) {
-      query = query.eq('is_published', isPublished === 'true');
     }
     if (isFeatured !== null) {
       query = query.eq('is_featured', isFeatured === 'true');
@@ -71,15 +62,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: [], total: 0 });
     }
 
-    // 处理关联数据
-    const articles = (data || []).map((article: any) => ({
-      ...article,
-      category: Array.isArray(article.category) ? article.category[0] : article.category,
-    }));
+    // 获取分类信息
+    if (data && data.length > 0) {
+      const categoryIds = [...new Set(data.map(a => a.category_id).filter(Boolean))];
+      if (categoryIds.length > 0) {
+        const { data: categories } = await client
+          .from('wiki_categories')
+          .select('id, name, slug');
+        
+        const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
+        data.forEach(article => {
+          (article as any).category = categoryMap.get(article.category_id) || null;
+        });
+      }
+    }
 
     return NextResponse.json({
-      data: articles,
-      total: count,
+      data: data || [],
+      total: count || 0,
     });
   } catch (error) {
     console.error('获取文章列表失败:', error);
