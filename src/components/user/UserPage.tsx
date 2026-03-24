@@ -17,6 +17,7 @@ import {
   Clock,
   Truck,
   CheckCircle,
+  TrendingUp,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -196,6 +197,13 @@ export function UserPage() {
                     <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted">
                       <Settings className="w-5 h-5" />
                       <span>賬號設置</span>
+                    </div>
+                  </Link>
+                  <Separator className="my-2" />
+                  <Link href="/distribution">
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted">
+                      <TrendingUp className="w-5 h-5" />
+                      <span>分銷中心</span>
                     </div>
                   </Link>
                 </nav>
