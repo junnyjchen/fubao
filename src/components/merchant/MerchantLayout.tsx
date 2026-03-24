@@ -27,6 +27,7 @@ import {
   Bell,
   Loader2,
   MessageSquare,
+  RotateCcw,
 } from 'lucide-react';
 
 /** 导航菜单项配置 */
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { key: 'dashboard', label: '儀表盤', icon: LayoutDashboard, href: '/merchant/dashboard' },
   { key: 'goods', label: '商品管理', icon: Package, href: '/merchant/dashboard/goods' },
   { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/merchant/dashboard/orders' },
+  { key: 'refunds', label: '售後管理', icon: RotateCcw, href: '/merchant/dashboard/refunds' },
   { key: 'reviews', label: '評價管理', icon: MessageSquare, href: '/merchant/dashboard/reviews' },
   { key: 'finance', label: '財務對賬', icon: DollarSign, href: '/merchant/dashboard/finance' },
   { key: 'certificates', label: '證書管理', icon: FileText, href: '/merchant/dashboard/certificates' },
