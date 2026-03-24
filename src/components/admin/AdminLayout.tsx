@@ -19,6 +19,8 @@ import {
   Settings,
   Database,
   Shield,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
 
 /** 导航菜单项配置 */
@@ -40,6 +42,8 @@ const navItems: NavItem[] = [
   { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/admin/orders' },
   { key: 'merchants', label: '商戶管理', icon: Users, href: '/admin/merchants' },
   { key: 'certificates', label: '證書管理', icon: Shield, href: '/admin/certificates' },
+  { key: 'distribution', label: '分銷管理', icon: TrendingUp, href: '/admin/distribution' },
+  { key: 'withdrawals', label: '提現審核', icon: Wallet, href: '/admin/withdrawals' },
   { key: 'wiki', label: '百科管理', icon: FileText, href: '/admin/wiki' },
   { key: 'content', label: '內容管理', icon: FileText, href: '/admin/content' },
   { key: 'database', label: '數據管理', icon: Database, href: '/admin/database' },

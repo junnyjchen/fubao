@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Store,
   FileText,
+  Wallet,
 } from 'lucide-react';
 import { SalesChart, OrderStatusChart } from '@/components/admin/Charts';
 
@@ -153,6 +154,24 @@ export default function AdminDashboard() {
       bgColor: 'bg-orange-100',
       trend: stats.revenue.trend,
     },
+    {
+      title: '分銷商',
+      value: '1,280',
+      description: '團隊成員 8,650',
+      icon: TrendingUp,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-100',
+      href: '/admin/distribution',
+    },
+    {
+      title: '待提現',
+      value: '12',
+      description: 'HK$66,888.88',
+      icon: Wallet,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-100',
+      href: '/admin/withdrawals',
+    },
   ];
 
   const quickActions = [
@@ -161,12 +180,12 @@ export default function AdminDashboard() {
     { title: '分類管理', href: '/admin/categories', icon: Package },
     { title: '輪播圖管理', href: '/admin/banners', icon: Package },
     { title: '證書管理', href: '/admin/certificates', icon: AlertCircle },
+    { title: '分銷管理', href: '/admin/distribution', icon: TrendingUp },
+    { title: '提現審核', href: '/admin/withdrawals', icon: Wallet },
     { title: '百科管理', href: '/admin/wiki', icon: FileText },
     { title: '新聞管理', href: '/admin/news', icon: FileText },
     { title: '商戶管理', href: '/admin/merchants', icon: Store },
     { title: '財務對賬', href: '/admin/finance', icon: DollarSign },
-    { title: '頁面裝修', href: '/admin/page-builder', icon: Package },
-    { title: '用戶管理', href: '/admin/users', icon: Users },
     { title: '系統設置', href: '/admin/settings', icon: Package },
   ];
 
@@ -191,7 +210,7 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* 统计卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {statCards.map((stat) => {
             const Icon = stat.icon;
             return (
