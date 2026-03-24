@@ -7,11 +7,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Star, ThumbsUp, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import { Star, ThumbsUp, Image as ImageIcon, ChevronRight, Sparkles, Plus, Camera } from 'lucide-react';
 
 interface Review {
   id: number;
@@ -143,6 +144,42 @@ export function ReviewSection({ goodsId, limit = 5 }: ReviewSectionProps) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 如愿 - 晒图分享入口 */}
+      <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200/50">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="font-medium flex items-center gap-2">
+                  如願
+                  <Badge variant="secondary" className="text-xs">曬圖專區</Badge>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  分享您的心願達成，讓更多人見證美好
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href={`/shares?goods_id=${goodsId}`}>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <Camera className="w-4 h-4" />
+                  查看分享
+                </Button>
+              </Link>
+              <Link href={`/shares/publish?goods_id=${goodsId}`}>
+                <Button size="sm" className="gap-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                  <Plus className="w-4 h-4" />
+                  我要分享
+                </Button>
+              </Link>
             </div>
           </div>
         </CardContent>

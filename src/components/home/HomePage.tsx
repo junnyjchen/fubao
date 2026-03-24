@@ -19,6 +19,8 @@ import {
   BookOpen,
   Award,
   Sparkles,
+  Plus,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 // 类型定义
@@ -466,6 +468,45 @@ export function HomePage() {
             </Button>
           </CardContent>
         </Card>
+      </section>
+
+      {/* 如愿 - 晒图分享入口 */}
+      <section className="container mx-auto px-4 py-8 pb-16">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-primary/10">
+          <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-5" />
+          <div className="relative p-8 md:p-12">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                    <span className="text-2xl">🙏</span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold">如願</h3>
+                </div>
+                <p className="text-muted-foreground text-lg mb-4">
+                  心願達成 · 靈驗分享 · 美好記錄
+                </p>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  分享您的心願達成故事，讓更多人見證美好時刻
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link href="/shares">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
+                    <ImageIcon className="w-5 h-5" />
+                    瀏覽分享
+                  </Button>
+                </Link>
+                <Link href="/shares/publish">
+                  <Button size="lg" className="w-full sm:w-auto gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                    <Plus className="w-5 h-5" />
+                    發布分享
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   );
