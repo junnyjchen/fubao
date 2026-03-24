@@ -31,6 +31,7 @@ import {
   Sparkles,
   Loader2,
   Camera,
+  TrendingUp,
 } from 'lucide-react';
 
 export function Header() {
@@ -205,6 +206,13 @@ export function Header() {
                       <Link href="/user/addresses" className="flex items-center gap-2">
                         <Settings className="w-4 h-4" />
                         收貨地址
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/distribution" className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        分銷中心
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
