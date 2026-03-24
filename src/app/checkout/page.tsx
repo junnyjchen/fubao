@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/lib/auth/context';
 import { AuthDialog } from '@/components/auth/AuthDialog';
+import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { 
   CreditCard,
   Smartphone,
@@ -25,6 +26,7 @@ import {
   Lock,
   Package,
   Loader2,
+  Ticket,
 } from 'lucide-react';
 
 interface CartItem {
@@ -75,6 +77,17 @@ function CheckoutContent() {
   // 备注
   const [remark, setRemark] = useState('');
 
+  // 优惠券相关
+  const [showCouponSelector, setShowCouponSelector] = useState(false);
+  const [selectedCoupon, setSelectedCoupon] = useState<{
+    id: number;
+    name: string;
+    discount_value: number;
+    discount_type: string;
+    user_coupon_id?: number;
+  } | null>(null);
+  const [couponDiscount, setCouponDiscount] = useState(0);
+
   // 检查用户登录状态
   useEffect(() => {
     if (!authLoading && !user) {
@@ -123,6 +136,37 @@ function CheckoutContent() {
   const totalAmount = cartItems.reduce((sum, item) => {
     return sum + parseFloat(item.price) * item.quantity;
   }, 0);
+
+  // 计算运费
+  const shippingFee = totalAmount >= 500 ? 0 : 30;
+
+  // 计算优惠券折扣
+  const calculateCouponDiscount = () => {
+    if (!selectedCoupon) return 0;
+    
+    if (selectedCoupon.discount_type === 'percent') {
+      const discount = totalAmount * (selectedCoupon.discount_value / 100);
+      return Math.min(discount, 100); // 假设最大折扣100
+    }
+    return selectedCoupon.discount_value;
+  };
+
+  const couponDiscountAmount = calculateCouponDiscount();
+
+  // 最终支付金额
+  const finalAmount = totalAmount + shippingFee - couponDiscountAmount;
+
+  // 处理优惠券选择
+  const handleCouponSelect = (coupon: typeof selectedCoupon) => {
+    setSelectedCoupon(coupon);
+    if (coupon) {
+      // 验证优惠券
+      if (totalAmount < 100) { // 假设最低消费100
+        alert('訂單金額不滿足優惠券使用條件');
+        return;
+      }
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setShippingInfo(prev => ({ ...prev, [field]: value }));
@@ -349,14 +393,53 @@ function CheckoutContent() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">運費</span>
                   <span className="text-green-600">
-                    {totalAmount >= 500 ? '免運費' : 'HK$30.00'}
+                    {shippingFee === 0 ? '免運費' : `HK$${shippingFee.toFixed(2)}`}
                   </span>
                 </div>
+                
+                {/* 优惠券 */}
+                <div 
+                  className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => setShowCouponSelector(true)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Ticket className="w-4 h-4 text-primary" />
+                    <span>優惠券</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedCoupon ? (
+                      <span className="text-primary font-medium">
+                        -HK${couponDiscountAmount.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {user ? '選擇優惠券' : '登錄後可用'}
+                      </span>
+                    )}
+                    <span className="text-muted-foreground">{'>'}</span>
+                  </div>
+                </div>
+
+                {/* 已选优惠券显示 */}
+                {selectedCoupon && (
+                  <div className="flex items-center justify-between text-sm bg-primary/5 p-2 rounded">
+                    <span className="text-primary">{selectedCoupon.name}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => setSelectedCoupon(null)}
+                    >
+                      取消使用
+                    </Button>
+                  </div>
+                )}
+                
                 <Separator />
                 <div className="flex justify-between text-lg font-semibold">
                   <span>應付金額</span>
                   <span className="text-primary">
-                    HK${(totalAmount + (totalAmount >= 500 ? 0 : 30)).toFixed(2)}
+                    HK${finalAmount.toFixed(2)}
                   </span>
                 </div>
                 
@@ -386,6 +469,17 @@ function CheckoutContent() {
       
       {/* Auth Dialog */}
       <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
+
+      {/* Coupon Selector */}
+      <CouponSelector
+        open={showCouponSelector}
+        onOpenChange={setShowCouponSelector}
+        userId={user?.id}
+        orderAmount={totalAmount}
+        mode="select"
+        selectedCouponId={selectedCoupon?.id}
+        onSelect={handleCouponSelect}
+      />
     </div>
   );
 }

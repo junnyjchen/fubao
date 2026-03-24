@@ -21,6 +21,7 @@ import {
   Shield,
   TrendingUp,
   Wallet,
+  Ticket,
 } from 'lucide-react';
 
 /** 导航菜单项配置 */
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/admin/orders' },
   { key: 'merchants', label: '商戶管理', icon: Users, href: '/admin/merchants' },
   { key: 'certificates', label: '證書管理', icon: Shield, href: '/admin/certificates' },
+  { key: 'coupons', label: '優惠券管理', icon: Ticket, href: '/admin/coupons' },
   { key: 'distribution', label: '分銷管理', icon: TrendingUp, href: '/admin/distribution' },
   { key: 'withdrawals', label: '提現審核', icon: Wallet, href: '/admin/withdrawals' },
   { key: 'wiki', label: '百科管理', icon: FileText, href: '/admin/wiki' },

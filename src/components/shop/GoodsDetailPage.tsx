@@ -35,7 +35,10 @@ import {
 } from 'lucide-react';
 import { ReviewSection } from '@/components/review/ReviewSection';
 import { SharePoster } from '@/components/share/SharePoster';
+import { OrderReminder } from '@/components/shop/OrderReminder';
+import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { toast } from 'sonner';
+import { Ticket } from 'lucide-react';
 
 interface Goods {
   id: number;
@@ -92,6 +95,8 @@ export function GoodsDetailPage() {
   const [addingToCart, setAddingToCart] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showCoupon, setShowCoupon] = useState(false);
+  const [availableCoupons, setAvailableCoupons] = useState(0);
 
   // 从URL获取商品ID
   useEffect(() => {
@@ -397,6 +402,22 @@ export function GoodsDetailPage() {
               </CardContent>
             </Card>
 
+            {/* 优惠券入口 */}
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => setShowCoupon(true)}
+            >
+              <div className="flex items-center gap-2">
+                <Ticket className="w-4 h-4 text-primary" />
+                <span>優惠券</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>3張可領取</span>
+                <span className="text-primary">{'>'}</span>
+              </div>
+            </Button>
+
             {/* 用途标签 */}
             {goods.purpose && (
               <div className="flex items-center gap-2">
@@ -678,6 +699,16 @@ export function GoodsDetailPage() {
           description: goods.subtitle || undefined,
           shop_name: goods.merchant?.name,
         }}
+      />
+
+      {/* 下单提醒飘窗 */}
+      <OrderReminder goodsId={goods.id} goodsName={goods.name} />
+
+      {/* 优惠券选择弹窗 */}
+      <CouponSelector
+        open={showCoupon}
+        onOpenChange={setShowCoupon}
+        mode="receive"
       />
     </div>
   );
