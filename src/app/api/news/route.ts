@@ -30,14 +30,9 @@ export async function GET(request: Request) {
       query = query.eq('status', true);
     }
 
-    // 分类筛选
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    // 排序和分页
+    // 排序和分页（使用is_featured替代is_top）
     query = query
-      .order('is_top', { ascending: false })
+      .order('is_featured', { ascending: false })
       .order('published_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -71,7 +66,7 @@ export async function POST(request: Request) {
     const client = getSupabaseClient();
     const body = await request.json();
 
-    const { title, summary, content, cover_image, category, is_top, status } = body;
+    const { title, summary, content, cover_image, is_featured, status } = body;
 
     if (!title) {
       return NextResponse.json({ error: '請填寫新聞標題' }, { status: 400 });
@@ -83,11 +78,10 @@ export async function POST(request: Request) {
         title,
         summary: summary || null,
         content: content || null,
-        cover_image: cover_image || null,
-        category: category || 'news',
-        is_top: is_top || false,
+        cover: cover_image || null,
+        is_featured: is_featured || false,
         status: status !== false,
-        view_count: 0,
+        views: 0,
         published_at: status !== false ? new Date().toISOString() : null,
         created_at: new Date().toISOString(),
       })
@@ -113,7 +107,7 @@ export async function PUT(request: Request) {
     const client = getSupabaseClient();
     const body = await request.json();
 
-    const { id, title, summary, content, cover_image, category, is_top, status } = body;
+    const { id, title, summary, content, cover_image, is_featured, status } = body;
 
     if (!id) {
       return NextResponse.json({ error: '新聞ID不能為空' }, { status: 400 });
@@ -123,9 +117,8 @@ export async function PUT(request: Request) {
     if (title !== undefined) updateData.title = title;
     if (summary !== undefined) updateData.summary = summary;
     if (content !== undefined) updateData.content = content;
-    if (cover_image !== undefined) updateData.cover_image = cover_image;
-    if (category !== undefined) updateData.category = category;
-    if (is_top !== undefined) updateData.is_top = is_top;
+    if (cover_image !== undefined) updateData.cover = cover_image;
+    if (is_featured !== undefined) updateData.is_featured = is_featured;
     if (status !== undefined) {
       updateData.status = status;
       if (status && !updateData.published_at) {
