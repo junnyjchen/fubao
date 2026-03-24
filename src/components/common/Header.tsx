@@ -17,6 +17,7 @@ import {
 import { useI18n, languages } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth/context';
 import { AuthDialog } from '@/components/auth/AuthDialog';
+import { NotificationBell } from '@/components/notification/NotificationBell';
 import { 
   Search, 
   Menu, 
@@ -32,6 +33,8 @@ import {
   Loader2,
   Camera,
   TrendingUp,
+  Ticket,
+  Bell,
 } from 'lucide-react';
 
 export function Header() {
@@ -166,6 +169,9 @@ export function Header() {
                 </Button>
               </Link>
 
+              {/* Notifications */}
+              <NotificationBell />
+
               {/* User Menu */}
               {loading ? (
                 <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -200,6 +206,18 @@ export function Header() {
                       <Link href="/user/favorites" className="flex items-center gap-2">
                         <Heart className="w-4 h-4" />
                         我的收藏
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/user/notifications" className="flex items-center gap-2">
+                        <Bell className="w-4 h-4" />
+                        消息通知
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/user/coupons" className="flex items-center gap-2">
+                        <Ticket className="w-4 h-4" />
+                        我的優惠券
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

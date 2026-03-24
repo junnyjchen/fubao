@@ -18,6 +18,7 @@ import {
   Truck,
   CheckCircle,
   TrendingUp,
+  Ticket,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -197,6 +198,12 @@ export function UserPage() {
                     <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted">
                       <Settings className="w-5 h-5" />
                       <span>賬號設置</span>
+                    </div>
+                  </Link>
+                  <Link href="/user/coupons">
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-muted">
+                      <Ticket className="w-5 h-5" />
+                      <span>我的優惠券</span>
                     </div>
                   </Link>
                   <Separator className="my-2" />
