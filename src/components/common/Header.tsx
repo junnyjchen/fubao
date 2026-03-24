@@ -30,6 +30,7 @@ import {
   LogOut,
   Sparkles,
   Loader2,
+  Camera,
 } from 'lucide-react';
 
 export function Header() {
@@ -46,6 +47,7 @@ export function Header() {
     { href: '/wiki', label: t.nav.baike || '玄門百科' },
     { href: '/shop', label: t.nav.shop },
     { href: '/video', label: t.nav.video || '視頻學堂' },
+    { href: '/shares', label: '如願', icon: Camera, highlight: true },
     { href: '/news', label: t.nav.news },
     { href: '/verify', label: '證書驗證' },
     { href: '/ai-assistant', label: 'AI助手', icon: Sparkles },
@@ -89,7 +91,11 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                  className={`text-sm font-medium transition-colors flex items-center gap-1 ${
+                    item.highlight 
+                      ? 'text-amber-600 hover:text-amber-700' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
                   {item.icon && <item.icon className="w-4 h-4" />}
                   {item.label}
@@ -264,7 +270,11 @@ export function Header() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2 px-2 rounded-lg hover:bg-muted flex items-center gap-2"
+                    className={`text-sm font-medium transition-colors py-2 px-2 rounded-lg hover:bg-muted flex items-center gap-2 ${
+                      item.highlight 
+                        ? 'text-amber-600 hover:text-amber-700' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
                   >
                     {item.icon && <item.icon className="w-4 h-4" />}
                     {item.label}
