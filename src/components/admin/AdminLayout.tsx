@@ -24,6 +24,7 @@ import {
   Ticket,
   Store,
   ClipboardCheck,
+  Bell,
 } from 'lucide-react';
 
 /** 导航菜单项配置 */
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
   { key: 'merchant-applications', label: '商戶審核', icon: ClipboardCheck, href: '/admin/merchant-applications' },
   { key: 'certificates', label: '證書管理', icon: Shield, href: '/admin/certificates' },
   { key: 'coupons', label: '優惠券管理', icon: Ticket, href: '/admin/coupons' },
+  { key: 'announcements', label: '公告管理', icon: Bell, href: '/admin/announcements' },
   { key: 'distribution', label: '分銷管理', icon: TrendingUp, href: '/admin/distribution' },
   { key: 'withdrawals', label: '提現審核', icon: Wallet, href: '/admin/withdrawals' },
   { key: 'wiki', label: '百科管理', icon: FileText, href: '/admin/wiki' },
