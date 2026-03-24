@@ -10,6 +10,193 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { verifyToken } from '@/lib/auth/utils';
 
 /**
+ * 计算分销佣金
+ * @param orderId - 订单ID
+ * @param buyerId - 买家ID
+ * @param orderAmount - 订单金额
+ * @param orderNo - 订单编号
+ */
+async function calculateDistributionCommission(
+  orderId: number,
+  buyerId: string,
+  orderAmount: number,
+  orderNo: string
+): Promise<void> {
+  const client = getSupabaseClient();
+
+  try {
+    // 获取买家的分销信息
+    const { data: buyerDist } = await client
+      .from('user_distribution')
+      .select('parent_id, parent_level_2_id, parent_level_3_id, team_leader_id')
+      .eq('user_id', buyerId)
+      .single();
+
+    if (!buyerDist) {
+      console.log('买家没有分销信息，跳过佣金计算');
+      return;
+    }
+
+    // 获取分销配置
+    const { data: configs } = await client
+      .from('distribution_config')
+      .select('*')
+      .order('level');
+
+    if (!configs || configs.length === 0) {
+      console.log('未配置分销比例，使用默认值');
+    }
+
+    const getConfig = (level: number) => {
+      return configs?.find(c => c.level === level) || { rate: level === 1 ? 10 : level === 2 ? 5 : 2 };
+    };
+
+    const now = new Date().toISOString();
+    const settleAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7天后结算
+
+    // 一级分销佣金
+    if (buyerDist.parent_id) {
+      const config = getConfig(1);
+      const commission = orderAmount * config.rate / 100;
+
+      await client.from('distribution_commissions').insert({
+        user_id: buyerDist.parent_id,
+        from_user_id: buyerId,
+        order_id: orderId,
+        order_no: orderNo,
+        order_amount: orderAmount,
+        commission_rate: config.rate,
+        commission_amount: commission,
+        level: 1,
+        is_team_leader_bonus: false,
+        status: 0,
+        created_at: now,
+      });
+
+      // 更新上级佣金统计
+      await client
+        .from('user_distribution')
+        .update({
+          total_commission: client.rpc('increment', { x: commission }),
+          frozen_commission: client.rpc('increment', { x: commission }),
+        })
+        .eq('user_id', buyerDist.parent_id);
+
+      console.log(`一级佣金计算完成: 用户 ${buyerDist.parent_id} 获得 HK$${commission.toFixed(2)}`);
+    }
+
+    // 二级分销佣金
+    if (buyerDist.parent_level_2_id) {
+      const config = getConfig(2);
+      const commission = orderAmount * config.rate / 100;
+
+      await client.from('distribution_commissions').insert({
+        user_id: buyerDist.parent_level_2_id,
+        from_user_id: buyerId,
+        order_id: orderId,
+        order_no: orderNo,
+        order_amount: orderAmount,
+        commission_rate: config.rate,
+        commission_amount: commission,
+        level: 2,
+        is_team_leader_bonus: false,
+        status: 0,
+        created_at: now,
+      });
+
+      await client
+        .from('user_distribution')
+        .update({
+          total_commission: client.rpc('increment', { x: commission }),
+          frozen_commission: client.rpc('increment', { x: commission }),
+        })
+        .eq('user_id', buyerDist.parent_level_2_id);
+
+      console.log(`二级佣金计算完成: 用户 ${buyerDist.parent_level_2_id} 获得 HK$${commission.toFixed(2)}`);
+    }
+
+    // 三级分销佣金
+    if (buyerDist.parent_level_3_id) {
+      const config = getConfig(3);
+      const commission = orderAmount * config.rate / 100;
+
+      await client.from('distribution_commissions').insert({
+        user_id: buyerDist.parent_level_3_id,
+        from_user_id: buyerId,
+        order_id: orderId,
+        order_no: orderNo,
+        order_amount: orderAmount,
+        commission_rate: config.rate,
+        commission_amount: commission,
+        level: 3,
+        is_team_leader_bonus: false,
+        status: 0,
+        created_at: now,
+      });
+
+      await client
+        .from('user_distribution')
+        .update({
+          total_commission: client.rpc('increment', { x: commission }),
+          frozen_commission: client.rpc('increment', { x: commission }),
+        })
+        .eq('user_id', buyerDist.parent_level_3_id);
+
+      console.log(`三级佣金计算完成: 用户 ${buyerDist.parent_level_3_id} 获得 HK$${commission.toFixed(2)}`);
+    }
+
+    // 团队长奖励
+    if (buyerDist.team_leader_id && buyerDist.team_leader_id !== buyerDist.parent_id) {
+      const config = getConfig(1);
+      const teamLeaderRate = config.team_leader_rate || 1;
+      const commission = orderAmount * teamLeaderRate / 100;
+
+      await client.from('distribution_commissions').insert({
+        user_id: buyerDist.team_leader_id,
+        from_user_id: buyerId,
+        order_id: orderId,
+        order_no: orderNo,
+        order_amount: orderAmount,
+        commission_rate: teamLeaderRate,
+        commission_amount: commission,
+        level: 1,
+        is_team_leader_bonus: true,
+        status: 0,
+        created_at: now,
+      });
+
+      await client
+        .from('user_distribution')
+        .update({
+          total_commission: client.rpc('increment', { x: commission }),
+          frozen_commission: client.rpc('increment', { x: commission }),
+        })
+        .eq('user_id', buyerDist.team_leader_id);
+
+      console.log(`团队长奖励计算完成: 用户 ${buyerDist.team_leader_id} 获得 HK$${commission.toFixed(2)}`);
+    }
+
+    // 更新团队总销售额
+    const allParents = [buyerDist.parent_id, buyerDist.parent_level_2_id, buyerDist.parent_level_3_id].filter(Boolean);
+    for (const parentId of allParents) {
+      if (parentId) {
+        await client
+          .from('user_distribution')
+          .update({
+            total_team_sales: client.rpc('increment', { x: orderAmount }),
+          })
+          .eq('user_id', parentId);
+      }
+    }
+
+    console.log(`订单 ${orderNo} 佣金计算完成`);
+  } catch (error) {
+    console.error('计算分销佣金失败:', error);
+    throw error;
+  }
+}
+
+/**
  * 获取当前用户ID
  * @returns 用户ID或null
  */
@@ -133,6 +320,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
 
       updateData.order_status = newStatus;
+
+      // 订单完成时计算分销佣金
+      if (newStatus === 3 && currentStatus !== 3) {
+        // 异步计算佣金，不阻塞订单更新
+        calculateDistributionCommission(order.id, order.user_id, order.pay_amount, order.order_no).catch(err => {
+          console.error('计算分销佣金失败:', err);
+        });
+      }
 
       // 取消订单时恢复库存
       if (newStatus === 4 && currentStatus !== 4) {
