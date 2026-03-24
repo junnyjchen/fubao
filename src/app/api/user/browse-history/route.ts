@@ -20,31 +20,69 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    const { data, error, count } = await client
+    // 先查询浏览历史
+    const { data: historyData, error: historyError, count } = await client
       .from('browse_history')
-      .select(`
-        id,
-        goods_id,
-        view_time,
-        view_duration,
-        goods:goods_id (
-          id,
-          name,
-          price,
-          main_image,
-          sales,
-          status,
-          merchant:merchants (name)
-        )
-      `, { count: 'exact' })
+      .select('id, goods_id, view_time, view_duration', { count: 'exact' })
       .eq('user_id', parseInt(userId))
       .order('view_time', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    if (error) {
-      console.error('查询浏览历史失败:', error);
+    if (historyError) {
+      console.error('查询浏览历史失败:', historyError);
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
     }
+
+    if (!historyData || historyData.length === 0) {
+      return NextResponse.json({
+        data: [],
+        total: count || 0,
+        page,
+        limit,
+      });
+    }
+
+    // 获取商品ID列表
+    const goodsIds = historyData.map((h) => h.goods_id);
+
+    // 查询商品信息
+    const { data: goodsData, error: goodsError } = await client
+      .from('goods')
+      .select('id, name, price, main_image, sales, status, merchant_id')
+      .in('id', goodsIds);
+
+    if (goodsError) {
+      console.error('查询商品信息失败:', goodsError);
+    }
+
+    // 查询商户信息
+    const merchantIds = goodsData?.map((g) => g.merchant_id).filter(Boolean) || [];
+    const { data: merchantsData } = await client
+      .from('merchants')
+      .select('id, name')
+      .in('id', merchantIds);
+
+    // 组装数据
+    const data = historyData.map((h) => {
+      const goods = goodsData?.find((g) => g.id === h.goods_id);
+      const merchant = goods ? merchantsData?.find((m) => m.id === goods.merchant_id) : null;
+
+      return {
+        id: h.id,
+        goods_id: h.goods_id,
+        view_time: h.view_time,
+        view_duration: h.view_duration,
+        goods: goods ? {
+          id: goods.id,
+          name: goods.name,
+          price: goods.price,
+          main_image: goods.main_image,
+          sales: goods.sales,
+          status: goods.status,
+          merchant: merchant ? { name: merchant.name } : null,
+        } : null,
+      };
+    });
 
     return NextResponse.json({
       data,
