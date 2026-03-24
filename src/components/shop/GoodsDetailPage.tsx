@@ -34,6 +34,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { ReviewSection } from '@/components/review/ReviewSection';
+import { SharePoster } from '@/components/share/SharePoster';
 import { toast } from 'sonner';
 
 interface Goods {
@@ -90,6 +91,7 @@ export function GoodsDetailPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   // 从URL获取商品ID
   useEffect(() => {
@@ -493,7 +495,7 @@ export function GoodsDetailPage() {
                   <Heart className={`w-4 h-4 mr-2 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
                   {isFavorite ? '已收藏' : '收藏'}
                 </Button>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" onClick={() => setShowShare(true)}>
                   <Share2 className="w-4 h-4 mr-2" />
                   分享
                 </Button>
@@ -662,6 +664,21 @@ export function GoodsDetailPage() {
           </Card>
         )}
       </main>
+
+      {/* 分享弹窗 */}
+      <SharePoster
+        open={showShare}
+        onOpenChange={setShowShare}
+        type="goods"
+        goods={{
+          id: goods.id.toString(),
+          name: goods.name,
+          price: parseFloat(goods.price),
+          image: goods.main_image || '',
+          description: goods.subtitle || undefined,
+          shop_name: goods.merchant?.name,
+        }}
+      />
     </div>
   );
 }
