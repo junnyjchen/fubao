@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '@/lib/auth/context';
+import { AuthDialog } from '@/components/auth/AuthDialog';
 import { 
   CreditCard,
   Smartphone,
@@ -22,6 +24,7 @@ import {
   ChevronLeft,
   Lock,
   Package,
+  Loader2,
 } from 'lucide-react';
 
 interface CartItem {
@@ -53,9 +56,11 @@ const payMethods = [
 function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   
   // 收货信息
   const [shippingInfo, setShippingInfo] = useState({
@@ -69,6 +74,13 @@ function CheckoutContent() {
   
   // 备注
   const [remark, setRemark] = useState('');
+
+  // 检查用户登录状态
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setShowAuthDialog(true);
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
     // 从URL参数获取商品信息
@@ -117,6 +129,12 @@ function CheckoutContent() {
   };
 
   const handleSubmit = async () => {
+    // 检查登录状态
+    if (!user) {
+      setShowAuthDialog(true);
+      return;
+    }
+    
     // 验证收货信息
     if (!shippingInfo.name.trim()) {
       alert('請輸入收貨人姓名');
@@ -159,10 +177,10 @@ function CheckoutContent() {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <div className="text-muted-foreground">載入中...</div>
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -365,6 +383,9 @@ function CheckoutContent() {
           </div>
         </div>
       </main>
+      
+      {/* Auth Dialog */}
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
     </div>
   );
 }

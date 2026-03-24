@@ -6,18 +6,22 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { hash, compare } from 'bcryptjs';
+import { hash } from 'bcryptjs';
 
-// POST - 用户注册
+/**
+ * 用户注册
+ * @param request - 请求对象
+ * @returns 注册结果
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nickname, email, phone, password } = body;
+    const { name, email, phone, password } = body;
 
     // 验证必填字段
-    if (!nickname || !email || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { error: '請填寫完整註冊信息' },
+        { error: '請填寫郵箱和密碼' },
         { status: 400 }
       );
     }
@@ -57,19 +61,18 @@ export async function POST(request: NextRequest) {
     // 加密密码
     const hashedPassword = await hash(password, 10);
 
-    // 创建用户
+    // 创建用户 - 字段名与数据库schema匹配
     const { data: user, error } = await client
       .from('users')
       .insert({
-        nickname,
+        name: name || email.split('@')[0], // 使用name字段，默认使用邮箱前缀
         email,
         phone: phone || null,
         password: hashedPassword,
-        username: email.split('@')[0], // 使用邮箱前缀作为用户名
-        role: 'user',
+        language: 'zh-TW',
         status: true,
       })
-      .select('id, nickname, email, phone, created_at')
+      .select('id, name, email, phone, language, status, created_at')
       .single();
 
     if (error) {

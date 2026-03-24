@@ -5,7 +5,29 @@
  */
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { verifyToken } from '@/lib/auth/utils';
+
+/**
+ * 获取当前用户ID
+ * @returns 用户ID或null
+ */
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    
+    if (!token) {
+      return null;
+    }
+    
+    const payload = verifyToken(token);
+    return payload?.userId || null;
+  } catch {
+    return null;
+  }
+}
 
 /** 临时用户ID（开发环境使用） */
 const TEMP_USER_ID = 'guest-user-001';
@@ -28,6 +50,13 @@ function generateOrderNo(): string {
 export async function GET(request: Request) {
   try {
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+    
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get('status');
@@ -39,7 +68,7 @@ export async function GET(request: Request) {
     let query = client
       .from('orders')
       .select('*', { count: 'exact' })
-      .eq('user_id', TEMP_USER_ID)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -104,6 +133,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+    
     const body = await request.json();
 
     const { cartItemIds, shippingInfo, remark } = body;
@@ -120,6 +156,7 @@ export async function POST(request: Request) {
     const { data: cartItems, error: cartError } = await client
       .from('cart_items')
       .select('*')
+      .eq('user_id', userId)
       .in('id', cartItemIds);
 
     if (cartError || !cartItems || cartItems.length === 0) {
@@ -184,7 +221,7 @@ export async function POST(request: Request) {
       .from('orders')
       .insert({
         order_no: orderNo,
-        user_id: TEMP_USER_ID,
+        user_id: userId,
         merchant_id: merchantId,
         total_amount: totalAmount.toString(),
         pay_amount: payAmount.toString(),

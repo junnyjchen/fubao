@@ -5,8 +5,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { compare } from 'bcryptjs';
+import { generateToken } from '@/lib/auth/utils';
 
 /**
  * 用户登录
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
     // 查找用户
     let query = client
       .from('users')
-      .select('id, nickname, email, phone, password, role, status, avatar')
+      .select('id, name, email, phone, password, status, avatar, language')
       .eq('status', true);
 
     if (email) {
@@ -64,12 +66,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 生成JWT令牌
+    const token = generateToken({
+      userId: user.id,
+      email: user.email || '',
+    });
+
+    // 设置HTTP-only Cookie
+    const cookieStore = await cookies();
+    cookieStore.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.COZE_PROJECT_ENV === 'PROD',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7天
+      path: '/',
+    });
+
     // 返回用户信息（不包含密码）
     const { password: _, ...userWithoutPassword } = user;
 
     return NextResponse.json({
       message: '登錄成功',
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        isGuest: false,
+      },
     });
   } catch (error) {
     console.error('登录失败:', error);
@@ -79,21 +100,11 @@ export async function POST(request: NextRequest) {
 
 /**
  * 用户登出
- * @param request - 请求对象
  * @returns 登出结果
  */
 export async function DELETE() {
-  try {
-    const client = getSupabaseClient();
-    const { error } = await client.auth.signOut();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ message: '登出成功' });
-  } catch (error) {
-    console.error('登出失败:', error);
-    return NextResponse.json({ error: '登出失敗' }, { status: 500 });
-  }
+  const cookieStore = await cookies();
+  cookieStore.delete('auth_token');
+  
+  return NextResponse.json({ message: '登出成功' });
 }

@@ -5,10 +5,29 @@
  */
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { verifyToken } from '@/lib/auth/utils';
 
-/** 用户ID（临时方案，后续从认证获取） */
-const TEMP_USER_ID = 'guest-user-001';
+/**
+ * 获取当前用户ID
+ * @returns 用户ID或null
+ */
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    
+    if (!token) {
+      return null;
+    }
+    
+    const payload = verifyToken(token);
+    return payload?.userId || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 获取购物车列表
@@ -18,6 +37,12 @@ const TEMP_USER_ID = 'guest-user-001';
 export async function GET(request: Request) {
   try {
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
     // 获取购物车项目
     const { data: cartItems, error } = await client
@@ -29,7 +54,7 @@ export async function GET(request: Request) {
         selected,
         created_at
       `)
-      .eq('user_id', TEMP_USER_ID)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -96,6 +121,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
     const { goodsId, quantity = 1 } = body;
 
@@ -122,7 +153,7 @@ export async function POST(request: Request) {
     const { data: existingItem } = await client
       .from('cart_items')
       .select('*')
-      .eq('user_id', TEMP_USER_ID)
+      .eq('user_id', userId)
       .eq('goods_id', goodsId)
       .single();
 
@@ -151,7 +182,7 @@ export async function POST(request: Request) {
       const { error: insertError } = await client
         .from('cart_items')
         .insert({
-          user_id: TEMP_USER_ID,
+          user_id: userId,
           goods_id: goodsId,
           quantity: Math.min(quantity, goods.stock),
           selected: true,
@@ -181,6 +212,12 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
     const { id, quantity, selected } = body;
 
@@ -223,7 +260,7 @@ export async function PUT(request: Request) {
       .from('cart_items')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', TEMP_USER_ID);
+      .eq('user_id', userId);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -248,6 +285,12 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
     if (id) {
       // 删除单个项目
@@ -255,7 +298,7 @@ export async function DELETE(request: Request) {
         .from('cart_items')
         .delete()
         .eq('id', parseInt(id))
-        .eq('user_id', TEMP_USER_ID);
+        .eq('user_id', userId);
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -265,7 +308,7 @@ export async function DELETE(request: Request) {
       const { error } = await client
         .from('cart_items')
         .delete()
-        .eq('user_id', TEMP_USER_ID);
+        .eq('user_id', userId);
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

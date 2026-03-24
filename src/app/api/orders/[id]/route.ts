@@ -5,10 +5,29 @@
  */
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { verifyToken } from '@/lib/auth/utils';
 
-/** 临时用户ID */
-const TEMP_USER_ID = 'guest-user-001';
+/**
+ * 获取当前用户ID
+ * @returns 用户ID或null
+ */
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    
+    if (!token) {
+      return null;
+    }
+    
+    const payload = verifyToken(token);
+    return payload?.userId || null;
+  } catch {
+    return null;
+  }
+}
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -23,6 +42,13 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+    
     const { id } = await params;
 
     // 获取订单
@@ -30,7 +56,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       .from('orders')
       .select('*')
       .eq('id', parseInt(id))
-      .eq('user_id', TEMP_USER_ID)
+      .eq('user_id', userId)
       .single();
 
     if (error || !order) {
@@ -64,6 +90,13 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
     const client = getSupabaseClient();
+    
+    // 获取当前用户ID
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+    
     const { id } = await params;
     const body = await request.json();
 
@@ -72,7 +105,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       .from('orders')
       .select('*')
       .eq('id', parseInt(id))
-      .eq('user_id', TEMP_USER_ID)
+      .eq('user_id', userId)
       .single();
 
     if (orderError || !order) {
