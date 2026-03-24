@@ -25,18 +25,9 @@ export async function GET(request: NextRequest) {
     // 获取评价列表
     const { data: reviews, error, count } = await client
       .from('reviews')
-      .select(`
-        id,
-        order_id,
-        goods_id,
-        user_id,
-        rating,
-        content,
-        images,
-        created_at,
-        user:users (nickname, avatar)
-      `, { count: 'exact' })
+      .select('id, order_id, goods_id, user_id, rating, content, images, status, created_at', { count: 'exact' })
       .eq('goods_id', parseInt(goodsId))
+      .eq('status', true)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -45,11 +36,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
     }
 
+    // 获取用户信息
+    let userMap = new Map();
+    if (reviews && reviews.length > 0) {
+      const userIds = [...new Set(reviews.map(r => r.user_id))];
+      const { data: users } = await client
+        .from('users')
+        .select('id, nickname, avatar')
+        .in('id', userIds);
+      
+      users?.forEach(u => userMap.set(u.id, u));
+    }
+
     // 获取评分统计
     const { data: statsData } = await client
       .from('reviews')
       .select('rating')
-      .eq('goods_id', parseInt(goodsId));
+      .eq('goods_id', parseInt(goodsId))
+      .eq('status', true);
 
     const ratingStats = {
       avg: 0,
@@ -60,7 +64,7 @@ export async function GET(request: NextRequest) {
     if (statsData && statsData.length > 0) {
       const total = statsData.length;
       const sum = statsData.reduce((acc: number, r: any) => acc + r.rating, 0);
-      ratingStats.avg = sum / total;
+      ratingStats.avg = Number((sum / total).toFixed(1));
       ratingStats.total = total;
 
       statsData.forEach((r: any) => {
@@ -71,13 +75,23 @@ export async function GET(request: NextRequest) {
     }
 
     // 格式化评价数据
-    const formattedReviews = reviews?.map((r: any) => ({
-      ...r,
-      user: {
-        name: r.user?.nickname || '匿名用戶',
-        avatar: r.user?.avatar,
-      },
-    })) || [];
+    const formattedReviews = reviews?.map((r: any) => {
+      const user = userMap.get(r.user_id);
+      return {
+        id: r.id,
+        orderId: r.order_id,
+        goodsId: r.goods_id,
+        userId: r.user_id,
+        rating: r.rating,
+        content: r.content,
+        images: r.images,
+        createdAt: r.created_at,
+        user: {
+          name: user?.nickname || '匿名用戶',
+          avatar: user?.avatar || null,
+        },
+      };
+    }) || [];
 
     return NextResponse.json({
       data: formattedReviews,
