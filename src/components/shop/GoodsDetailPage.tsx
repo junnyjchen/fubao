@@ -118,6 +118,8 @@ export function GoodsDetailPage() {
           setGoods(data.data);
           // 检查是否已收藏
           checkFavoriteStatus(parseInt(goodsId));
+          // 记录浏览历史
+          recordBrowseHistory(parseInt(goodsId));
         } else {
           router.push('/shop');
         }
@@ -142,6 +144,24 @@ export function GoodsDetailPage() {
       }
     } catch (error) {
       console.error('检查收藏状态失败:', error);
+    }
+  };
+
+  // 记录浏览历史
+  const recordBrowseHistory = async (goodsId: number) => {
+    try {
+      await fetch('/api/user/browse-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 1, // TODO: 从认证获取
+          goods_id: goodsId,
+          view_duration: 0,
+        }),
+      });
+    } catch (error) {
+      // 忽略错误，不影响用户体验
+      console.error('记录浏览历史失败:', error);
     }
   };
 
