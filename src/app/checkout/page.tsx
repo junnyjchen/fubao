@@ -207,15 +207,28 @@ function CheckoutContent() {
       });
 
       const data = await res.json();
-      if (data.message) {
-        // 跳转到支付页面或订单详情
-        router.push(`/user/orders?highlight=${data.order.id}`);
+      if (data.message && data.order) {
+        // 模拟支付成功（实际项目中需要对接真实支付网关）
+        // 更新订单为已支付
+        await fetch(`/api/orders/${data.order.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pay_status: 1,
+            pay_method: payMethod,
+            pay_time: new Date().toISOString(),
+          }),
+        });
+        
+        // 跳转到支付成功页面
+        router.push(`/payment/success?orderId=${data.order.id}&orderNo=${data.order.order_no}`);
       } else if (data.error) {
-        alert(data.error);
+        // 跳转到支付失败页面
+        router.push(`/payment/fail?error=${encodeURIComponent(data.error)}`);
       }
     } catch (error) {
       console.error('提交订单失败:', error);
-      alert('提交訂單失敗，請重試');
+      router.push(`/payment/fail?error=${encodeURIComponent('提交訂單失敗，請重試')}`);
     } finally {
       setSubmitting(false);
     }
