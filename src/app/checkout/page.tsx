@@ -49,7 +49,13 @@ interface Address {
   isDefault: boolean;
 }
 
+interface UserBalance {
+  balance: number;
+  frozen_balance: number;
+}
+
 const payMethods = [
+  { value: 'balance', label: '餘額支付', icon: Wallet, enabled: true },
   { value: 'alipay', label: '支付寶', icon: Wallet, enabled: false },
   { value: 'wechat', label: '微信支付', icon: Smartphone, enabled: false },
   { value: 'paypal', label: 'PayPal', icon: CreditCard, enabled: true },
@@ -76,6 +82,9 @@ function CheckoutContent() {
   
   // 备注
   const [remark, setRemark] = useState('');
+
+  // 用户余额
+  const [userBalance, setUserBalance] = useState<UserBalance | null>(null);
 
   // 优惠券相关
   const [showCouponSelector, setShowCouponSelector] = useState(false);
@@ -131,6 +140,20 @@ function CheckoutContent() {
       }
     };
     loadAddresses();
+    
+    // 加载用户余额
+    const loadBalance = async () => {
+      try {
+        const res = await fetch('/api/user/balance');
+        const data = await res.json();
+        if (data.data?.balance) {
+          setUserBalance(data.data.balance);
+        }
+      } catch (error) {
+        console.error('加载余额失败:', error);
+      }
+    };
+    loadBalance();
   }, []);
 
   const totalAmount = cartItems.reduce((sum, item) => {
@@ -193,6 +216,14 @@ function CheckoutContent() {
       return;
     }
 
+    // 余额支付时检查余额
+    if (payMethod === 'balance') {
+      if (!userBalance || userBalance.balance < finalAmount) {
+        alert('餘額不足，請選擇其他支付方式或先充值');
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       // 创建订单
@@ -208,22 +239,39 @@ function CheckoutContent() {
 
       const data = await res.json();
       if (data.message && data.order) {
-        // 模拟支付成功（实际项目中需要对接真实支付网关）
-        // 更新订单为已支付
-        await fetch(`/api/orders/${data.order.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pay_status: 1,
-            pay_method: payMethod,
-            pay_time: new Date().toISOString(),
-          }),
-        });
-        
-        // 跳转到支付成功页面
-        router.push(`/payment/success?orderId=${data.order.id}&orderNo=${data.order.order_no}`);
+        // 根据支付方式处理
+        if (payMethod === 'balance') {
+          // 余额支付
+          const payRes = await fetch('/api/payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              order_id: data.order.id,
+              payment_method: 'balance',
+            }),
+          });
+          
+          const payData = await payRes.json();
+          if (payData.data?.status === 'success') {
+            router.push(`/payment/success?orderId=${data.order.id}&orderNo=${data.order.order_no}`);
+          } else {
+            router.push(`/payment/fail?error=${encodeURIComponent(payData.error || '支付失敗')}`);
+          }
+        } else {
+          // 其他支付方式 - 模拟支付成功
+          await fetch(`/api/orders/${data.order.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pay_status: 1,
+              pay_method: payMethod,
+              pay_time: new Date().toISOString(),
+            }),
+          });
+          
+          router.push(`/payment/success?orderId=${data.order.id}&orderNo=${data.order.order_no}`);
+        }
       } else if (data.error) {
-        // 跳转到支付失败页面
         router.push(`/payment/fail?error=${encodeURIComponent(data.error)}`);
       }
     } catch (error) {
@@ -321,18 +369,32 @@ function CheckoutContent() {
                 <RadioGroup value={payMethod} onValueChange={setPayMethod}>
                   {payMethods.map((method) => {
                     const Icon = method.icon;
+                    const isBalancePayment = method.value === 'balance';
+                    const hasEnoughBalance = userBalance && userBalance.balance >= finalAmount;
+                    const balanceEnabled = isBalancePayment ? !!userBalance && hasEnoughBalance : method.enabled;
+                    
                     return (
                       <div
                         key={method.value}
                         className={`flex items-center space-x-3 p-4 rounded-lg border ${
-                          method.enabled ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 cursor-not-allowed'
+                          balanceEnabled ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 cursor-not-allowed'
                         }`}
-                        onClick={() => method.enabled && setPayMethod(method.value)}
+                        onClick={() => balanceEnabled && setPayMethod(method.value)}
                       >
-                        <RadioGroupItem value={method.value} disabled={!method.enabled} />
+                        <RadioGroupItem value={method.value} disabled={!balanceEnabled} />
                         <Icon className="w-5 h-5" />
-                        <span className="flex-1">{method.label}</span>
-                        {!method.enabled && (
+                        <div className="flex-1">
+                          <span>{method.label}</span>
+                          {isBalancePayment && userBalance && (
+                            <span className="text-xs text-muted-foreground ml-2">
+                              (餘額: HK${userBalance.balance.toFixed(2)})
+                            </span>
+                          )}
+                        </div>
+                        {isBalancePayment && userBalance && !hasEnoughBalance && (
+                          <span className="text-xs text-destructive">餘額不足</span>
+                        )}
+                        {!isBalancePayment && !method.enabled && (
                           <span className="text-xs text-muted-foreground">暫未開通</span>
                         )}
                       </div>

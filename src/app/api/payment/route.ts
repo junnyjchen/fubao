@@ -178,8 +178,75 @@ export async function POST(request: Request) {
 
       case 'balance':
         // 余额支付 - 直接扣款
-        // TODO: 实现余额扣款逻辑
-        return NextResponse.json({ error: '餘額支付功能暫未開放' }, { status: 400 });
+        const { data: userBalance, error: balanceError } = await client
+          .from('user_balances')
+          .select('*')
+          .eq('user_id', order.user_id)
+          .single();
+
+        if (balanceError || !userBalance) {
+          return NextResponse.json({ error: '請先開通餘額支付' }, { status: 400 });
+        }
+
+        if (userBalance.balance < parseFloat(order.pay_amount)) {
+          return NextResponse.json({ error: '餘額不足，請先充值' }, { status: 400 });
+        }
+
+        // 扣除余额
+        const newBalance = userBalance.balance - parseFloat(order.pay_amount);
+        await client
+          .from('user_balances')
+          .update({
+            balance: newBalance,
+            total_consumed: (userBalance.total_consumed || 0) + parseFloat(order.pay_amount),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', order.user_id);
+
+        // 记录余额流水
+        await client
+          .from('balance_transactions')
+          .insert({
+            user_id: order.user_id,
+            type: 'consume',
+            amount: -parseFloat(order.pay_amount),
+            balance_before: userBalance.balance,
+            balance_after: newBalance,
+            related_id: order.order_no,
+            remark: `訂單支付 - ${order.order_no}`,
+          });
+
+        // 更新订单状态
+        await client
+          .from('orders')
+          .update({
+            pay_status: 1,
+            order_status: 1,
+            pay_method: 'balance',
+            pay_time: new Date().toISOString(),
+            transaction_id: paymentId,
+          })
+          .eq('id', order_id);
+
+        // 更新支付记录
+        try {
+          await client
+            .from('payments')
+            .update({
+              status: 'success',
+              transaction_id: paymentId,
+              paid_at: new Date().toISOString(),
+            })
+            .eq('payment_id', paymentId);
+        } catch (e) {
+          console.log('Update payment record error:', e);
+        }
+
+        paymentResponse = {
+          ...paymentResponse,
+          status: 'success',
+        };
+        break;
     }
 
     return NextResponse.json({
