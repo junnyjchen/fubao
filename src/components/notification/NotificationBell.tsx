@@ -1,12 +1,12 @@
 /**
  * @fileoverview 消息通知图标组件
- * @description 显示在顶部导航栏，显示未读消息数量
+ * @description 显示在顶部导航栏，显示未读消息数量，支持WebSocket实时推送
  * @module components/notification/NotificationBell
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,18 +21,19 @@ import {
   Ticket,
   TrendingUp,
   Info,
-  Check,
   Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import type { WsMessage } from '@/lib/ws-client';
 
 interface Notification {
-  id: number;
+  id: string;
   type: string;
   title: string;
   content: string;
   link: string | null;
-  is_read: boolean;
+  read: boolean;
   created_at: string;
 }
 
@@ -43,51 +44,85 @@ export function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
+  // WebSocket实时通知
+  const handleWsMessage = useCallback((msg: WsMessage) => {
+    if (msg.type === 'notification' || msg.type === 'broadcast') {
+      const payload = msg.payload as Notification;
+      setNotifications((prev) => [
+        { ...payload, read: false },
+        ...prev.slice(0, 19), // 保留最近20条
+      ]);
+      setUnreadCount((prev) => prev + 1);
+
+      // 显示浏览器通知
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(payload.title, { body: payload.content });
+      }
+    }
+  }, []);
+
+  useWebSocket({
+    path: user?.id ? `/ws/notifications?userId=${user.id}` : '/ws/notifications',
+    onMessage: handleWsMessage,
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (user) {
       fetchNotifications();
+      requestNotificationPermission();
     }
   }, [user]);
+
+  const requestNotificationPermission = async () => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission();
+    }
+  };
 
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/notifications?userId=${user?.id}&pageSize=5`);
+      const res = await fetch('/api/notifications?limit=10');
       const result = await res.json();
       if (result.success) {
         setNotifications(result.data);
         setUnreadCount(result.unreadCount);
       }
     } catch (error) {
-      console.error('加载通知失败:', error);
+      console.error('加載通知失敗:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMarkAsRead = async (notificationId: number) => {
+  const handleMarkAsRead = async (notificationId: string) => {
     try {
       await fetch('/api/notifications', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, notificationId }),
+        body: JSON.stringify({ notificationId }),
       });
-      fetchNotifications();
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('标记已读失败:', error);
+      console.error('標記已讀失敗:', error);
     }
   };
 
   const handleMarkAllRead = async () => {
     try {
       await fetch('/api/notifications', {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id, markAll: true }),
+        body: JSON.stringify({ all: true }),
       });
-      fetchNotifications();
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
     } catch (error) {
-      console.error('标记已读失败:', error);
+      console.error('標記已讀失敗:', error);
     }
   };
 
@@ -164,10 +199,10 @@ export function NotificationBell() {
                 <div
                   key={notification.id}
                   className={`px-4 py-3 hover:bg-muted/50 cursor-pointer ${
-                    !notification.is_read ? 'bg-primary/5' : ''
+                    !notification.read ? 'bg-primary/5' : ''
                   }`}
                   onClick={() => {
-                    if (!notification.is_read) {
+                    if (!notification.read) {
                       handleMarkAsRead(notification.id);
                     }
                     if (notification.link) {
@@ -182,10 +217,10 @@ export function NotificationBell() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className={`text-sm ${!notification.is_read ? 'font-medium' : ''}`}>
+                        <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
                           {notification.title}
                         </p>
-                        {!notification.is_read && (
+                        {!notification.read && (
                           <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />
                         )}
                       </div>
