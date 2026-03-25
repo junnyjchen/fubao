@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inspector } from 'react-dev-inspector';
 import './globals.css';
 import { Header } from '@/components/common/Header';
@@ -7,7 +7,23 @@ import { FloatingAIButton } from '@/components/ai/FloatingAIButton';
 import { MobileNav } from '@/components/MobileNav';
 import { Providers } from '@/components/providers/Providers';
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#8B4513' },
+    { media: '(prefers-color-scheme: dark)', color: '#1a1a1a' },
+  ],
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.COZE_PROJECT_DOMAIN_DEFAULT 
+      ? `https://${process.env.COZE_PROJECT_DOMAIN_DEFAULT.replace(/^https?:\/\//, '')}`
+      : 'https://fubao.ltd'
+  ),
   title: {
     default: '符寶網 | 全球玄門文化科普交易平台',
     template: '%s | 符寶網',
@@ -28,12 +44,32 @@ export const metadata: Metadata = {
     '玄學',
     'Talismans',
     'Spiritual Items',
+    '道家',
+    '法事',
+    '護身符',
+    '鎮宅',
+    '祈福',
   ],
   authors: [{ name: '符寶網', url: 'https://fubao.ltd' }],
+  creator: '符寶網',
+  publisher: '符寶網',
   generator: 'Next.js',
+  applicationName: '符寶網',
+  referrer: 'origin-when-cross-origin',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icons/icon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-16x16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180' },
+    ],
+    other: [
+      { rel: 'mask-icon', url: '/icons/safari-pinned-tab.svg', color: '#8B4513' },
+    ],
   },
+  manifest: '/manifest.webmanifest',
   openGraph: {
     title: '符寶網 | 全球玄門文化科普交易平台',
     description:
@@ -42,16 +78,51 @@ export const metadata: Metadata = {
     siteName: '符寶網',
     locale: 'zh_TW',
     type: 'website',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: '符寶網 - 全球玄門文化科普交易平台',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: '符寶網 | 全球玄門文化科普交易平台',
-    description:
-      '科普先行 · 交易放心 · 一物一證',
+    description: '科普先行 · 交易放心 · 一物一證',
+    images: ['/og-image.png'],
+    creator: '@fubaoweb',
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: 'https://fubao.ltd',
+    languages: {
+      'zh-TW': 'https://fubao.ltd',
+      'zh-CN': 'https://fubao.ltd',
+      'en-US': 'https://fubao.ltd/en',
+    },
+  },
+  category: 'ecommerce',
+  classification: '玄門文化交易平台',
+  other: {
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-title': '符寶網',
+    'format-detection': 'telephone=no',
+    'mobile-web-app-capable': 'yes',
+    'msapplication-TileColor': '#8B4513',
+    'msapplication-tap-highlight': 'no',
   },
 };
 
@@ -63,8 +134,50 @@ export default function RootLayout({
   const isDev = process.env.COZE_PROJECT_ENV === 'DEV';
 
   return (
-    <html lang="zh-TW">
-      <body className={`antialiased min-h-screen flex flex-col`}>
+    <html lang="zh-TW" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'WebSite',
+              name: '符寶網',
+              url: 'https://fubao.ltd',
+              description: '全球玄門文化科普交易平台',
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: 'https://fubao.ltd/search?q={search_term_string}',
+                },
+                'query-input': 'required name=search_term_string',
+              },
+            }),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: '符寶網',
+              url: 'https://fubao.ltd',
+              logo: 'https://fubao.ltd/logo.png',
+              sameAs: [],
+              contactPoint: {
+                '@type': 'ContactPoint',
+                contactType: 'customer service',
+                availableLanguage: ['Chinese', 'English'],
+              },
+            }),
+          }}
+        />
+      </head>
+      <body className="antialiased min-h-screen flex flex-col">
         {isDev && <Inspector />}
         <Providers>
           <Header />
