@@ -24,7 +24,7 @@ import {
   FileText,
   Wallet,
 } from 'lucide-react';
-import { SalesChart, OrderStatusChart } from '@/components/admin/Charts';
+import { DashboardCharts } from '@/components/admin/DashboardCharts';
 
 interface DashboardStats {
   goods: {
@@ -57,25 +57,6 @@ export default function AdminDashboard() {
     revenue: { total: 0, month: 0, trend: 0 },
   });
   const [loading, setLoading] = useState(true);
-
-  // 模拟销售数据
-  const salesData = [
-    { label: '週一', value: 1250 },
-    { label: '週二', value: 1890 },
-    { label: '週三', value: 1560 },
-    { label: '週四', value: 2100 },
-    { label: '週五', value: 2450 },
-    { label: '週六', value: 3200 },
-    { label: '週日', value: 2800 },
-  ];
-
-  // 模拟订单状态数据
-  const orderStatusData = [
-    { label: '待付款', count: stats.orders.pending, color: '#f59e0b' },
-    { label: '待發貨', count: 0, color: '#3b82f6' },
-    { label: '已發貨', count: 0, color: '#8b5cf6' },
-    { label: '已完成', count: stats.orders.total - stats.orders.pending, color: '#10b981' },
-  ];
 
   useEffect(() => {
     loadStats();
@@ -356,10 +337,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* 数据图表 */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <SalesChart title="本週銷售趨勢" data={salesData} loading={loading} />
-          <OrderStatusChart data={orderStatusData} />
-        </div>
+        <DashboardCharts />
 
         {/* 管理入口 */}
         <Card>

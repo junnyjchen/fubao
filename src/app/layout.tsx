@@ -4,6 +4,7 @@ import './globals.css';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { FloatingAIButton } from '@/components/ai/FloatingAIButton';
+import { MobileNav } from '@/components/MobileNav';
 import { Providers } from '@/components/providers/Providers';
 
 export const metadata: Metadata = {
@@ -67,9 +68,10 @@ export default function RootLayout({
         {isDev && <Inspector />}
         <Providers>
           <Header />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
           <Footer />
           <FloatingAIButton />
+          <MobileNav />
         </Providers>
       </body>
     </html>

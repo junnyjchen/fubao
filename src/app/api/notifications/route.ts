@@ -1,229 +1,203 @@
 /**
- * @fileoverview 消息通知 API
- * @description 处理用户消息通知的查询和操作
+ * @fileoverview 用户通知API
+ * @description 获取用户通知列表
  * @module app/api/notifications/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { createClient } from '@supabase/supabase-js';
+import { verifyToken } from '@/lib/auth/utils';
 
-/**
- * 获取消息列表
- * GET /api/notifications
- */
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!
+);
+
 export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
-    const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
-    const type = searchParams.get('type') || 'all';
-    const page = parseInt(searchParams.get('page') || '1');
-    const pageSize = parseInt(searchParams.get('pageSize') || '20');
-
-    if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    // 验证用户身份
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
 
-    let query = client
+    const decoded = await verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: '無效的令牌' }, { status: 401 });
+    }
+
+    const userId = decoded.userId;
+    const { searchParams } = new URL(request.url);
+    const unreadOnly = searchParams.get('unread') === 'true';
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
+
+    // 构建查询
+    let query = supabase
       .from('notifications')
-      .select('*', { count: 'exact' })
+      .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-    if (type !== 'all') {
-      query = query.eq('type', type);
+    if (unreadOnly) {
+      query = query.eq('read', false);
     }
 
-    const { data, error, count } = await query.range(
-      (page - 1) * pageSize,
-      page * pageSize - 1
-    );
+    const { data: notifications, error } = await query;
 
     if (error) {
-      console.error('查询消息失败:', error);
-      // 返回模拟数据
-      return NextResponse.json({
-        success: true,
-        data: getMockNotifications(),
-        unreadCount: getMockNotifications().filter(n => !n.is_read).length,
-        total: 4,
-        page,
-        pageSize,
-      });
+      console.error('获取通知失败:', error);
+      return NextResponse.json(
+        { error: '獲取通知失敗' },
+        { status: 500 }
+      );
     }
 
     // 获取未读数量
-    const { count: unreadCount } = await client
+    const { count: unreadCount } = await supabase
       .from('notifications')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .eq('is_read', false);
+      .eq('read', false);
 
     return NextResponse.json({
       success: true,
-      data: data || [],
+      data: notifications || [],
       unreadCount: unreadCount || 0,
-      total: count || 0,
-      page,
-      pageSize,
     });
   } catch (error) {
-    console.error('消息列表API错误:', error);
-    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
+    console.error('通知API错误:', error);
+    return NextResponse.json(
+      { error: '服務器錯誤' },
+      { status: 500 }
+    );
   }
 }
 
-/**
- * 标记消息已读
- * POST /api/notifications
- */
-export async function POST(request: NextRequest) {
+// 标记通知为已读
+export async function PUT(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
-    const body = await request.json();
-    const { userId, notificationId, markAll } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
 
-    if (markAll) {
-      // 标记所有消息已读
-      const { error } = await client
+    const decoded = await verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: '無效的令牌' }, { status: 401 });
+    }
+
+    const userId = decoded.userId;
+    const body = await request.json();
+    const { notificationId, all } = body;
+
+    if (all) {
+      // 标记所有通知为已读
+      const { error } = await supabase
         .from('notifications')
-        .update({
-          is_read: true,
-          read_at: new Date().toISOString(),
-        })
+        .update({ read: true })
         .eq('user_id', userId)
-        .eq('is_read', false);
+        .eq('read', false);
 
       if (error) {
-        console.error('标记已读失败:', error);
-        return NextResponse.json({ error: '操作失敗' }, { status: 500 });
+        console.error('标记所有通知已读失败:', error);
+        return NextResponse.json(
+          { error: '操作失敗' },
+          { status: 500 }
+        );
       }
-
-      return NextResponse.json({
-        success: true,
-        message: '已全部標為已讀',
-      });
-    }
-
-    if (notificationId) {
-      // 标记单条消息已读
-      const { error } = await client
+    } else if (notificationId) {
+      // 标记单个通知为已读
+      const { error } = await supabase
         .from('notifications')
-        .update({
-          is_read: true,
-          read_at: new Date().toISOString(),
-        })
+        .update({ read: true })
         .eq('id', notificationId)
         .eq('user_id', userId);
 
       if (error) {
-        console.error('标记已读失败:', error);
-        return NextResponse.json({ error: '操作失敗' }, { status: 500 });
+        console.error('标记通知已读失败:', error);
+        return NextResponse.json(
+          { error: '操作失敗' },
+          { status: 500 }
+        );
       }
-
-      return NextResponse.json({
-        success: true,
-        message: '已標為已讀',
-      });
+    } else {
+      return NextResponse.json(
+        { error: '缺少參數' },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ error: '缺少參數' }, { status: 400 });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('标记已读API错误:', error);
-    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
+    return NextResponse.json(
+      { error: '服務器錯誤' },
+      { status: 500 }
+    );
   }
 }
 
-/**
- * 删除消息
- * DELETE /api/notifications?id=xxx&userId=xxx
- */
+// 删除通知
 export async function DELETE(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
-    const searchParams = request.nextUrl.searchParams;
-    const id = searchParams.get('id');
-    const userId = searchParams.get('userId');
-
-    if (!id || !userId) {
-      return NextResponse.json({ error: '缺少參數' }, { status: 400 });
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
 
-    const { error } = await client
-      .from('notifications')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('删除消息失败:', error);
-      return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
+    const decoded = await verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: '無效的令牌' }, { status: 401 });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: '刪除成功',
-    });
+    const userId = decoded.userId;
+    const { searchParams } = new URL(request.url);
+    const notificationId = searchParams.get('id');
+    const all = searchParams.get('all') === 'true';
+
+    if (all) {
+      // 删除所有通知
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('删除所有通知失败:', error);
+        return NextResponse.json(
+          { error: '操作失敗' },
+          { status: 500 }
+        );
+      }
+    } else if (notificationId) {
+      // 删除单个通知
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('删除通知失败:', error);
+        return NextResponse.json(
+          { error: '操作失敗' },
+          { status: 500 }
+        );
+      }
+    } else {
+      return NextResponse.json(
+        { error: '缺少參數' },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除消息API错误:', error);
-    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
+    console.error('删除通知API错误:', error);
+    return NextResponse.json(
+      { error: '服務器錯誤' },
+      { status: 500 }
+    );
   }
-}
-
-// 模拟数据
-function getMockNotifications() {
-  return [
-    {
-      id: 1,
-      user_id: 'user1',
-      type: 'order',
-      title: '訂單發貨通知',
-      content: '您的訂單 #20260324001 已發貨，請注意查收',
-      link: '/user/orders/1',
-      image: null,
-      is_read: false,
-      created_at: '2026-03-24T10:00:00',
-      read_at: null,
-    },
-    {
-      id: 2,
-      user_id: 'user1',
-      type: 'coupon',
-      title: '優惠券即將到期',
-      content: '您的"新用戶專享券"將在7天後到期，快去使用吧！',
-      link: '/user/coupons',
-      image: null,
-      is_read: false,
-      created_at: '2026-03-23T15:00:00',
-      read_at: null,
-    },
-    {
-      id: 3,
-      user_id: 'user1',
-      type: 'system',
-      title: '歡迎加入符寶網',
-      content: '感謝您註冊符寶網，開啟您的玄門文化之旅！',
-      link: null,
-      image: null,
-      is_read: true,
-      created_at: '2026-03-20T09:00:00',
-      read_at: '2026-03-20T10:00:00',
-    },
-    {
-      id: 4,
-      user_id: 'user1',
-      type: 'distribution',
-      title: '分銷佣金到賬',
-      content: '您的好友完成購物，您獲得分銷佣金 HK$15.00',
-      link: '/distribution/commissions',
-      image: null,
-      is_read: false,
-      created_at: '2026-03-22T14:30:00',
-      read_at: null,
-    },
-  ];
 }
