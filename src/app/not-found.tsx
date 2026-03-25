@@ -1,66 +1,76 @@
 /**
- * @fileoverview 404页面未找到
- * @description 当用户访问不存在的页面时显示
+ * @fileoverview 404页面
+ * @description 页面未找到错误页面
  * @module app/not-found
  */
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Home, ArrowLeft, Search, HelpCircle } from 'lucide-react';
+import { Home, Search, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center px-4">
-      <Card className="max-w-lg w-full text-center">
-        <CardContent className="py-12">
-          {/* 404图标 */}
-          <div className="mb-6">
-            <div className="text-8xl font-bold text-primary/20 mb-2">404</div>
-            <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Search className="w-10 h-10 text-primary" />
-            </div>
+    <div className="min-h-[80vh] flex items-center justify-center p-4">
+      <Card className="max-w-md w-full text-center">
+        <CardContent className="pt-12 pb-8 px-6">
+          {/* 图标 */}
+          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+            <span className="text-5xl">🔍</span>
           </div>
-
-          {/* 标题和描述 */}
-          <h1 className="text-2xl font-bold mb-3">頁面未找到</h1>
-          <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-            抱歉，您訪問的頁面不存在或已被移除。<br />
-            請檢查網址是否正確，或返回首頁繼續瀏覽。
+          
+          {/* 错误码 */}
+          <h1 className="text-6xl font-bold text-primary mb-2">404</h1>
+          
+          {/* 标题 */}
+          <h2 className="text-xl font-semibold mb-3">頁面未找到</h2>
+          
+          {/* 描述 */}
+          <p className="text-muted-foreground mb-8">
+            抱歉，您訪問的頁面不存在或已被移除。請檢查網址是否正確，或返回首頁繼續瀏覽。
           </p>
-
-          {/* 快捷链接 */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+          
+          {/* 操作按钮 */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button variant="outline" asChild>
+              <Link href="javascript:history.back()">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                返回上頁
+              </Link>
+            </Button>
+            <Button asChild>
               <Link href="/">
                 <Home className="w-4 h-4 mr-2" />
                 返回首頁
               </Link>
             </Button>
-            <Button variant="outline" asChild>
-              <Link href="/help">
-                <HelpCircle className="w-4 h-4 mr-2" />
-                幫助中心
+            <Button variant="secondary" asChild>
+              <Link href="/search">
+                <Search className="w-4 h-4 mr-2" />
+                搜索商品
               </Link>
             </Button>
           </div>
-
-          {/* 热门链接 */}
-          <div className="pt-6 border-t">
-            <p className="text-sm text-muted-foreground mb-3">您可能在尋找：</p>
+          
+          {/* 快捷链接 */}
+          <div className="mt-8 pt-6 border-t">
+            <p className="text-sm text-muted-foreground mb-3">您可能想訪問：</p>
             <div className="flex flex-wrap justify-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/shop">商品商城</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/wiki">玄門百科</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/video">視頻學堂</Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/verify">證書驗證</Link>
-              </Button>
+              <Link href="/shop" className="text-sm text-primary hover:underline">
+                商品中心
+              </Link>
+              <span className="text-muted-foreground">•</span>
+              <Link href="/wiki" className="text-sm text-primary hover:underline">
+                玄門百科
+              </Link>
+              <span className="text-muted-foreground">•</span>
+              <Link href="/videos" className="text-sm text-primary hover:underline">
+                視頻學堂
+              </Link>
+              <span className="text-muted-foreground">•</span>
+              <Link href="/ai-assistant" className="text-sm text-primary hover:underline">
+                AI助手
+              </Link>
             </div>
           </div>
         </CardContent>

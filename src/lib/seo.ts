@@ -1,146 +1,134 @@
 /**
- * @fileoverview SEO 元数据配置
- * @description 提供网站SEO元数据管理
+ * @fileoverview SEO元数据配置
+ * @description 网站SEO相关配置和工具函数
  * @module lib/seo
  */
 
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 
-/** 网站基础信息 */
+// 网站基础信息
 export const siteConfig = {
   name: '符寶網',
-  description: '全球玄門文化科普交易平台 - 符籙、法器、玄學知識',
-  url: process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'https://fubao.ltd',
+  description: '全球玄門文化科普交易平台，提供符箓法器交易與科普服務',
+  url: 'https://fubao.ltd',
   ogImage: '/og-image.png',
-  keywords: [
-    '符籙',
-    '法器',
-    '玄門文化',
-    '道教',
-    '風水',
-    '開光',
-    '符咒',
-    '護身符',
-    '鎮宅符',
-    '招財符',
-  ],
-  creator: 'Fubao Team',
-  language: 'zh-TW',
+  links: {
+    twitter: 'https://twitter.com/fubaoltd',
+    facebook: 'https://facebook.com/fubaoltd',
+  },
+  creator: '符寶網團隊',
 };
 
-/** 默认元数据 */
-export const defaultMetadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: siteConfig.name,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  keywords: siteConfig.keywords,
-  authors: [{ name: siteConfig.creator }],
-  creator: siteConfig.creator,
-  openGraph: {
-    type: 'website',
-    locale: 'zh_TW',
-    url: siteConfig.url,
-    title: siteConfig.name,
-    description: siteConfig.description,
-    siteName: siteConfig.name,
-    images: [
-      {
-        url: siteConfig.ogImage,
-        width: 1200,
-        height: 630,
-        alt: siteConfig.name,
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: siteConfig.name,
-    description: siteConfig.description,
-    images: [siteConfig.ogImage],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
-  },
-  manifest: '/site.webmanifest',
-  alternates: {
-    canonical: siteConfig.url,
-    languages: {
-      'zh-TW': `${siteConfig.url}?lang=zh-TW`,
-      'zh-CN': `${siteConfig.url}?lang=zh-CN`,
-      en: `${siteConfig.url}?lang=en`,
-    },
-  },
-};
-
-/**
- * 生成页面元数据
- * @param title - 页面标题
- * @param description - 页面描述
- * @param image - 分享图片
- * @param url - 页面URL
- * @returns 元数据对象
- */
-export function generateMetadata({
-  title,
-  description,
-  image,
-  url,
-}: {
-  title?: string;
+// 生成页面元数据
+export function generatePageMetadata(options: {
+  title: string;
   description?: string;
   image?: string;
   url?: string;
+  keywords?: string[];
+  type?: 'website' | 'article' | 'product';
+  publishedTime?: string;
+  modifiedTime?: string;
+  author?: string;
 }): Metadata {
+  const {
+    title,
+    description = siteConfig.description,
+    image = siteConfig.ogImage,
+    url = siteConfig.url,
+    keywords = [],
+    type = 'website',
+    publishedTime,
+    modifiedTime,
+    author,
+  } = options;
+
+  const fullTitle = `${title} | ${siteConfig.name}`;
+  const fullImageUrl = image.startsWith('http') ? image : `${siteConfig.url}${image}`;
+  const fullUrl = url.startsWith('http') ? url : `${siteConfig.url}${url}`;
+
+  const defaultKeywords = [
+    '符寶網',
+    'fubao.ltd',
+    '符箓',
+    '法器',
+    '玄門',
+    '道教',
+    '開光',
+    '一物一證',
+    '道觀',
+    '寺廟',
+    '玄學',
+    'Talismans',
+    'Spiritual Items',
+  ];
+
   return {
-    title: title || siteConfig.name,
-    description: description || siteConfig.description,
+    title: fullTitle,
+    description,
+    keywords: [...defaultKeywords, ...keywords],
+    authors: [{ name: author || siteConfig.creator }],
+    creator: siteConfig.creator,
     openGraph: {
-      title: title || siteConfig.name,
-      description: description || siteConfig.description,
-      images: image ? [{ url: image, width: 1200, height: 630 }] : undefined,
-      url: url ? `${siteConfig.url}${url}` : siteConfig.url,
+      type: type as 'website' | 'article',
+      title: fullTitle,
+      description,
+      url: fullUrl,
+      siteName: siteConfig.name,
+      images: [
+        {
+          url: fullImageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+      locale: 'zh_TW',
+      ...(type === 'article' && {
+        publishedTime,
+        modifiedTime,
+        authors: [author || siteConfig.creator],
+      }),
     },
     twitter: {
-      title: title || siteConfig.name,
-      description: description || siteConfig.description,
-      images: image ? [image] : undefined,
+      card: 'summary_large_image',
+      title: fullTitle,
+      description,
+      images: [fullImageUrl],
+      creator: '@fubaoltd',
     },
     alternates: {
-      canonical: url ? `${siteConfig.url}${url}` : siteConfig.url,
+      canonical: fullUrl,
+      languages: {
+        'zh-TW': fullUrl,
+        'zh-CN': `${fullUrl}?lang=zh-CN`,
+        'en-US': `${fullUrl}?lang=en`,
+      },
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
   };
 }
 
-/**
- * 生成商品结构化数据
- * @param product - 商品信息
- * @returns JSON-LD 结构化数据
- */
+// 生成商品结构化数据
 export function generateProductSchema(product: {
-  id: number;
   name: string;
   description: string;
-  price: string;
+  image: string;
+  price: number;
   currency?: string;
-  availability: 'InStock' | 'OutOfStock';
-  image?: string;
+  availability: 'InStock' | 'OutOfStock' | 'PreOrder';
   brand?: string;
+  sku?: string;
 }) {
   return {
     '@context': 'https://schema.org',
@@ -148,6 +136,7 @@ export function generateProductSchema(product: {
     name: product.name,
     description: product.description,
     image: product.image,
+    sku: product.sku,
     brand: {
       '@type': 'Brand',
       name: product.brand || '符寶網',
@@ -165,18 +154,14 @@ export function generateProductSchema(product: {
   };
 }
 
-/**
- * 生成文章结构化数据
- * @param article - 文章信息
- * @returns JSON-LD 结构化数据
- */
+// 生成文章结构化数据
 export function generateArticleSchema(article: {
   title: string;
   description: string;
-  publishedTime: string;
-  modifiedTime?: string;
+  image: string;
+  datePublished: string;
+  dateModified?: string;
   author: string;
-  image?: string;
   url: string;
 }) {
   return {
@@ -185,8 +170,8 @@ export function generateArticleSchema(article: {
     headline: article.title,
     description: article.description,
     image: article.image,
-    datePublished: article.publishedTime,
-    dateModified: article.modifiedTime || article.publishedTime,
+    datePublished: article.datePublished,
+    dateModified: article.dateModified || article.datePublished,
     author: {
       '@type': 'Person',
       name: article.author,
@@ -201,7 +186,40 @@ export function generateArticleSchema(article: {
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `${siteConfig.url}${article.url}`,
+      '@id': article.url,
+    },
+  };
+}
+
+// 生成面包屑结构化数据
+export function generateBreadcrumbSchema(items: Array<{ name: string; url: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.url.startsWith('http') ? item.url : `${siteConfig.url}${item.url}`,
+    })),
+  };
+}
+
+// 生成网站结构化数据
+export function generateWebSiteSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteConfig.name,
+    url: siteConfig.url,
+    description: siteConfig.description,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
     },
   };
 }
