@@ -23,6 +23,7 @@ import {
   Plus,
   Image as ImageIcon,
   TrendingUp,
+  Gift,
 } from 'lucide-react';
 
 // 类型定义
@@ -320,6 +321,7 @@ export function HomePage() {
     { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
     { icon: TrendingUp, title: '分銷中心', href: '/distribution' },
     { icon: Building2, title: '商戶入駐', href: '/merchant/apply' },
+    { icon: Gift, title: '活動中心', href: '/activity' },
   ];
 
   if (loading) {
