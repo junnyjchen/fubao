@@ -52,6 +52,10 @@ import { SuccessAnimation } from '@/components/free-gifts/SuccessAnimation';
 import { SharePoster } from '@/components/free-gifts/SharePoster';
 import { FavoriteButton, ReminderButton } from '@/components/free-gifts/FavoriteButton';
 import { ReviewList, getMockReviews } from '@/components/free-gifts/ReviewList';
+import { RecommendList } from '@/components/free-gifts/RecommendList';
+import { QuickAddressSelect, AddressManager, Address } from '@/components/free-gifts/AddressManager';
+import { CustomerService, HelpTipCard } from '@/components/free-gifts/CustomerService';
+import { CategoryBadge } from '@/components/free-gifts/CategoryFilter';
 
 interface FreeGift {
   id: number;
@@ -90,6 +94,7 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [claimResult, setClaimResult] = useState<{
     claim_no: string;
     shipping_fee: string;
@@ -98,6 +103,10 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
     pickup_address?: string;
     gift_name?: string;
   } | null>(null);
+
+  // 地址管理
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>();
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -108,6 +117,11 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     loadGift();
+    // 加载保存的地址
+    const savedAddresses = localStorage.getItem('userAddresses');
+    if (savedAddresses) {
+      setAddresses(JSON.parse(savedAddresses));
+    }
   }, [id]);
 
   const loadGift = async () => {
@@ -133,6 +147,35 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 地址管理函数
+  const handleAddAddress = (address: Omit<Address, 'id'>) => {
+    const newAddresses = [...addresses, { ...address, id: Date.now().toString() }];
+    setAddresses(newAddresses);
+    localStorage.setItem('userAddresses', JSON.stringify(newAddresses));
+  };
+
+  const handleUpdateAddress = (address: Address) => {
+    const newAddresses = addresses.map(a => a.id === address.id ? address : a);
+    setAddresses(newAddresses);
+    localStorage.setItem('userAddresses', JSON.stringify(newAddresses));
+  };
+
+  const handleDeleteAddress = (id: string) => {
+    const newAddresses = addresses.filter(a => a.id !== id);
+    setAddresses(newAddresses);
+    localStorage.setItem('userAddresses', JSON.stringify(newAddresses));
+  };
+
+  const handleSelectAddress = (address: Address) => {
+    setSelectedAddressId(address.id);
+    setFormData({
+      shipping_name: address.name,
+      shipping_phone: address.phone,
+      shipping_address: address.address,
+    });
+    setShowAddressDialog(false);
   };
 
   const handleSubmit = async () => {
@@ -460,6 +503,18 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* 快速选择地址 */}
+                  {addresses.length > 0 && (
+                    <div className="mb-4">
+                      <QuickAddressSelect
+                        addresses={addresses}
+                        selectedId={selectedAddressId}
+                        onSelect={handleSelectAddress}
+                        onManageClick={() => setShowAddressDialog(true)}
+                      />
+                    </div>
+                  )}
+                  
                   <div className="space-y-2">
                     <Label htmlFor="name">
                       收貨人姓名 <span className="text-destructive">*</span>
@@ -732,6 +787,29 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 地址管理弹窗 */}
+      <Dialog open={showAddressDialog} onOpenChange={setShowAddressDialog}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              收貨地址管理
+            </DialogTitle>
+          </DialogHeader>
+          <AddressManager
+            addresses={addresses}
+            selectedId={selectedAddressId}
+            onSelect={handleSelectAddress}
+            onAdd={handleAddAddress}
+            onUpdate={handleUpdateAddress}
+            onDelete={handleDeleteAddress}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* 客服入口 */}
+      <CustomerService variant="fab" />
     </>
   );
 }
