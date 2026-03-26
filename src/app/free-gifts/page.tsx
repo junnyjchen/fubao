@@ -29,6 +29,7 @@ import {
   ArrowUp,
   LayoutGrid,
   List,
+  Bell,
 } from 'lucide-react';
 import { SimpleCountdown } from '@/components/free-gifts/CountdownTimer';
 import { GiftListSkeleton } from '@/components/free-gifts/Skeleton';
@@ -41,6 +42,10 @@ import { CategoryFilter, SortSelector, CategoryBadge } from '@/components/free-g
 import { RecommendList, HotRecommendBanner } from '@/components/free-gifts/RecommendList';
 import { RefreshButton } from '@/components/free-gifts/PullToRefresh';
 import { CustomerService } from '@/components/free-gifts/CustomerService';
+import { OnboardingGuide, GuideCard } from '@/components/free-gifts/OnboardingGuide';
+import { EmptyState, ErrorState } from '@/components/free-gifts/EmptyState';
+import { InviteFriend, InviteBanner } from '@/components/free-gifts/InviteFriend';
+import { NotificationCenter, NotificationButton } from '@/components/free-gifts/NotificationCenter';
 
 interface FreeGift {
   id: number;
@@ -80,6 +85,21 @@ export default function FreeGiftsPage() {
   const [sortBy, setSortBy] = useState('default');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  // 新手引导状态
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showGuideCard, setShowGuideCard] = useState(true);
+  
+  // 邀请好友状态
+  const [showInvite, setShowInvite] = useState(false);
+  
+  // 消息通知状态
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: '1', type: 'gift' as const, title: '領取成功', content: '您已成功領取【招財符】', read: false, createdAt: '2024-01-15' },
+    { id: '2', type: 'activity' as const, title: '新活動', content: '春節限定活動已開啟', read: false, createdAt: '2024-01-15' },
+  ]);
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
     loadGifts();
@@ -207,6 +227,11 @@ export default function FreeGiftsPage() {
         </div>
         
         <div className="container mx-auto px-4 py-8 text-center relative">
+          {/* 消息通知按钮 */}
+          <div className="absolute right-4 top-4">
+            <NotificationButton count={unreadCount} onClick={() => setShowNotifications(true)} />
+          </div>
+          
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="relative">
               <Gift className="w-10 h-10" />
@@ -223,6 +248,32 @@ export default function FreeGiftsPage() {
       </div>
 
       <div className="container mx-auto px-4 py-4">
+        {/* 新手引导卡片 */}
+        {showGuideCard && !loading && (
+          <div className="mb-4">
+            <GuideCard
+              title="如何免費領取？"
+              steps={[
+                { icon: <Gift className="w-3 h-3" />, text: '選擇心儀商品' },
+                { icon: <MapPin className="w-3 h-3" />, text: '選擇領取方式' },
+                { icon: <Users className="w-3 h-3" />, text: '到店出示領取碼' },
+              ]}
+              onClose={() => setShowGuideCard(false)}
+            />
+          </div>
+        )}
+
+        {/* 邀请好友横幅 */}
+        {!loading && (
+          <div className="mb-4">
+            <InviteBanner
+              onClick={() => setShowInvite(true)}
+              dismissible
+              onDismiss={() => {}}
+            />
+          </div>
+        )}
+
         {/* 搜索栏 */}
         <div className="mb-4">
           <SearchBar
@@ -376,20 +427,15 @@ export default function FreeGiftsPage() {
 
         {/* 无数据提示 */}
         {!loading && filteredGifts.length === 0 && (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Gift className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {searchKeyword ? `沒有找到「${searchKeyword}」相關商品` : filter === 'all' ? '暫無免費領取商品' : '沒有符合條件的商品'}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">敬請期待更多活動</p>
-              {(filter !== 'all' || searchKeyword || selectedCategory !== 'all') && (
-                <Button variant="outline" className="mt-4" onClick={() => { setFilter('all'); setSearchKeyword(''); setSelectedCategory('all'); }}>
-                  查看全部商品
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          <EmptyState
+            type={searchKeyword ? 'no_search' : filter === 'all' ? 'no_gifts' : 'no_filter'}
+            title={searchKeyword ? `沒有找到「${searchKeyword}」相關商品` : undefined}
+            action={
+              (filter !== 'all' || searchKeyword || selectedCategory !== 'all')
+                ? { label: '查看全部商品', onClick: () => { setFilter('all'); setSearchKeyword(''); setSelectedCategory('all'); } }
+                : undefined
+            }
+          />
         )}
 
         {/* 推荐商品 */}
@@ -439,6 +485,32 @@ export default function FreeGiftsPage() {
           <ArrowUp className="w-5 h-5" />
         </button>
       )}
+
+      {/* 新手引导弹窗 */}
+      <OnboardingGuide
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+        onComplete={() => setShowGuideCard(false)}
+      />
+
+      {/* 邀请好友弹窗 */}
+      <InviteFriend
+        open={showInvite}
+        onOpenChange={setShowInvite}
+        totalInvites={12}
+        successInvites={10}
+        remainingToday={3}
+      />
+
+      {/* 消息通知弹窗 */}
+      <NotificationCenter
+        open={showNotifications}
+        onOpenChange={setShowNotifications}
+        notifications={notifications}
+        onRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+        onReadAll={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+        onClearAll={() => setNotifications([])}
+      />
     </div>
   );
 }

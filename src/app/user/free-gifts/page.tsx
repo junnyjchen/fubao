@@ -34,11 +34,18 @@ import {
   XCircle,
   Package,
   Calendar,
+  Bell,
+  Users,
+  RefreshCw,
+  Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClaimRecordSkeleton } from '@/components/free-gifts/Skeleton';
 import { QRCode } from '@/components/free-gifts/QRCode';
 import { CopyClaimCode } from '@/components/free-gifts/ShareButton';
+import { EmptyState } from '@/components/free-gifts/EmptyState';
+import { InviteFriend, InviteProgress } from '@/components/free-gifts/InviteFriend';
+import { NotificationCenter, NotificationButton } from '@/components/free-gifts/NotificationCenter';
 
 interface ClaimRecord {
   id: number;
@@ -127,6 +134,15 @@ export default function MyFreeGiftsPage() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [payingRecord, setPayingRecord] = useState<ClaimRecord | null>(null);
+  
+  // 邀请好友
+  const [showInvite, setShowInvite] = useState(false);
+  
+  // 消息通知
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications] = useState([
+    { id: '1', type: 'gift' as const, title: '領取成功', content: '您已成功領取商品', read: false, createdAt: '2024-01-15' },
+  ]);
 
   useEffect(() => {
     loadRecords();
@@ -232,12 +248,38 @@ export default function MyFreeGiftsPage() {
         </div>
         
         <div className="container mx-auto px-4 py-8 text-center relative">
+          {/* 消息通知按钮 */}
+          <div className="absolute right-4 top-4">
+            <NotificationButton 
+              count={notifications.filter(n => !n.read).length} 
+              onClick={() => setShowNotifications(true)} 
+            />
+          </div>
+          
           <Gift className="w-10 h-10 mx-auto mb-2" />
           <h1 className="text-xl font-bold">我的免費領</h1>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-6">
+        {/* 邀请进度 */}
+        <Card className="mb-4 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200/50 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowInvite(true)}>
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-medium">邀請好友</p>
+                  <p className="text-xs text-muted-foreground">每成功邀請1位，獲得1次額外領取機會</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 统计卡片 */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           <Card 
@@ -280,19 +322,10 @@ export default function MyFreeGiftsPage() {
 
         {/* 记录列表 */}
         {filteredRecords.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Gift className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                {filterStatus === 'all' ? '暫無領取記錄' : '沒有符合條件的記錄'}
-              </p>
-              <Link href="/free-gifts">
-                <Button className="mt-4 bg-gradient-to-r from-red-500 to-orange-500">
-                  去領取商品
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <EmptyState
+            type="no_records"
+            action={{ label: '去領取商品', href: '/free-gifts' }}
+          />
         ) : (
           <div className="space-y-4">
             {filteredRecords.map((record) => {
@@ -607,6 +640,24 @@ export default function MyFreeGiftsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 邀请好友弹窗 */}
+      <InviteFriend
+        open={showInvite}
+        onOpenChange={setShowInvite}
+        totalInvites={12}
+        successInvites={10}
+        remainingToday={3}
+      />
+
+      {/* 消息通知弹窗 */}
+      <NotificationCenter
+        open={showNotifications}
+        onOpenChange={setShowNotifications}
+        notifications={notifications}
+        onReadAll={() => {}}
+        onClearAll={() => {}}
+      />
     </div>
   );
 }
