@@ -300,7 +300,7 @@ export function UserPage() {
             { label: '待發貨', count: orders.filter(o => o.orderStatus === 1).length, icon: Package, href: '/user/orders?status=unshipped' },
             { label: '已發貨', count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, href: '/user/orders?status=shipped' },
             { label: '待評價', count: orders.filter(o => o.orderStatus === 3).length, icon: Star, href: '/user/reviews/pending' },
-            { label: '我的收藏', icon: Heart, href: '/user/favorites' },
+            { label: '免費領', icon: Gift, href: '/free-gifts', highlight: true },
             { label: '優惠券', icon: Ticket, href: '/user/coupons' },
             { label: '我的積分', icon: Coins, href: '/user/points' },
             { label: '我的錢包', icon: Wallet, href: '/user/wallet' },
@@ -308,13 +308,18 @@ export function UserPage() {
             const Icon = item.icon;
             return (
               <Link key={item.label} href={item.href}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <Card className={`hover:shadow-md transition-shadow cursor-pointer ${item.highlight ? 'bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200/50' : ''}`}>
                   <CardContent className="p-3 text-center">
-                    <Icon className="w-6 h-6 mx-auto mb-1 text-primary" />
+                    <Icon className={`w-6 h-6 mx-auto mb-1 ${item.highlight ? 'text-red-500' : 'text-primary'}`} />
                     <p className="text-xs font-medium">{item.label}</p>
                     {item.count !== undefined && item.count > 0 && (
                       <Badge variant="destructive" className="mt-1 h-5 px-1.5 text-xs">
                         {item.count}
+                      </Badge>
+                    )}
+                    {item.highlight && (
+                      <Badge className="mt-1 h-5 px-1.5 text-xs bg-gradient-to-r from-red-500 to-orange-500">
+                        HOT
                       </Badge>
                     )}
                   </CardContent>
@@ -384,6 +389,21 @@ export function UserPage() {
                     <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
                       <Settings className="w-5 h-5" />
                       <span>賬號設置</span>
+                      <ChevronRight className="w-4 h-4 ml-auto" />
+                    </div>
+                  </Link>
+                  <Separator className="my-2" />
+                  <Link href="/free-gifts">
+                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20">
+                      <Gift className="w-5 h-5 text-red-500" />
+                      <span className="font-medium text-red-600">免費領</span>
+                      <Badge className="ml-auto bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs">HOT</Badge>
+                    </div>
+                  </Link>
+                  <Link href="/user/free-gifts">
+                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
+                      <Gift className="w-5 h-5" />
+                      <span>領取記錄</span>
                       <ChevronRight className="w-4 h-4 ml-auto" />
                     </div>
                   </Link>
