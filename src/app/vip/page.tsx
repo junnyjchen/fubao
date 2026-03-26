@@ -1,6 +1,6 @@
 /**
  * @fileoverview VIP会员页面
- * @description 会员等级和权益介绍
+ * @description VIP会员等级、权益、升级说明
  * @module app/vip/page
  */
 
@@ -8,419 +8,634 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   Crown,
   Star,
   Gift,
-  Percent,
   Truck,
-  Headphones,
-  ChevronRight,
+  Shield,
+  HeadphonesIcon,
+  Percent,
+  Coins,
   Check,
+  ChevronRight,
   Loader2,
   Sparkles,
   Award,
-  Shield,
+  Zap,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
-/** 会员等级 */
-interface MemberLevel {
+interface VIPInfo {
+  level: number;
+  levelName: string;
+  points: number;
+  totalSpent: number;
+  nextLevelPoints: number;
+  nextLevelName: string;
+  progress: number;
+  memberSince: string;
+  expiryDate: string;
+}
+
+interface VIPPrivilege {
   id: number;
   name: string;
-  level: number;
-  min_points: number;
-  max_points: number | null;
-  discount: number;
-  color: string;
-  icon: string;
-  benefits: string[];
+  description: string;
+  icon: typeof Crown;
+  levels: number[]; // 可用等级
 }
 
-/** 用户会员信息 */
-interface MemberInfo {
-  level: number;
-  name: string;
-  points: number;
-  total_points: number;
-  discount: number;
-  next_level: MemberLevel | null;
-  progress: number;
-}
-
-/** 会员权益 */
-const memberBenefits = [
+// VIP等级配置
+const vipLevels = [
   {
-    icon: Percent,
-    title: '專屬折扣',
-    description: '會員等級越高，享受越多折扣優惠',
-    tiers: ['99折', '98折', '97折', '95折', '93折'],
+    level: 1,
+    name: '普通會員',
+    minPoints: 0,
+    minSpent: 0,
+    discount: 1.0,
+    color: 'from-gray-400 to-gray-500',
+    textColor: 'text-gray-600',
+    bgColor: 'bg-gray-100',
+    icon: Star,
+    privileges: ['基礎權益', '積分獲取'],
   },
   {
-    icon: Gift,
-    title: '生日禮券',
-    description: '生日當月專享優惠券',
-    tiers: ['HK$20', 'HK$30', 'HK$50', 'HK$80', 'HK$100'],
+    level: 2,
+    name: '銅牌會員',
+    minPoints: 100,
+    minSpent: 1000,
+    discount: 0.98,
+    color: 'from-orange-500 to-orange-600',
+    textColor: 'text-orange-600',
+    bgColor: 'bg-orange-100',
+    icon: Award,
+    privileges: ['98折優惠', '優先發貨', '生日禮券'],
   },
   {
-    icon: Truck,
-    title: '免運費',
-    description: '訂單滿額免運費',
-    tiers: ['滿$500', '滿$300', '滿$200', '滿$100', '全免'],
+    level: 3,
+    name: '銀牌會員',
+    minPoints: 500,
+    minSpent: 5000,
+    discount: 0.95,
+    color: 'from-gray-300 to-gray-400',
+    textColor: 'text-gray-500',
+    bgColor: 'bg-gray-50',
+    icon: Shield,
+    privileges: ['95折優惠', '專屬客服', '免運費券', '新品優先'],
   },
   {
-    icon: Headphones,
-    title: '專屬客服',
-    description: '優先響應，專人服務',
-    tiers: ['無', '無', '優先響應', '專屬客服', 'VIP管家'],
-  },
-  {
-    icon: Sparkles,
-    title: '專屬活動',
-    description: '會員專屬優先購買權',
-    tiers: ['無', '無', '部分活動', '全部活動', '優先預購'],
-  },
-  {
+    level: 4,
+    name: '金牌會員',
+    minPoints: 2000,
+    minSpent: 20000,
+    discount: 0.92,
+    color: 'from-yellow-400 to-yellow-500',
+    textColor: 'text-yellow-600',
+    bgColor: 'bg-yellow-50',
     icon: Crown,
-    title: '積分加成',
-    description: '購物獲得額外積分獎勵',
-    tiers: ['無', '1.1倍', '1.2倍', '1.5倍', '2倍'],
+    privileges: ['92折優惠', '專屬顧問', '每月禮包', '專享活動', '免息分期'],
+  },
+  {
+    level: 5,
+    name: '鑽石會員',
+    minPoints: 5000,
+    minSpent: 50000,
+    discount: 0.88,
+    color: 'from-blue-500 to-purple-600',
+    textColor: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    icon: Sparkles,
+    privileges: ['88折優惠', '一對一服務', '生日驚喜', '限量預購', '尊享定制', '年度禮遇'],
   },
 ];
 
-/** 会员等级数据 */
-const memberLevels: MemberLevel[] = [
+// 特权列表
+const privileges: VIPPrivilege[] = [
   {
     id: 1,
-    name: '普通會員',
-    level: 1,
-    min_points: 0,
-    max_points: 99,
-    discount: 100,
-    color: '#9CA3AF',
-    icon: '⭐',
-    benefits: ['基礎會員權益'],
+    name: '專屬折扣',
+    description: '根據會員等級享受不同折扣優惠',
+    icon: Percent,
+    levels: [2, 3, 4, 5],
   },
   {
     id: 2,
-    name: '入門信士',
-    level: 2,
-    min_points: 100,
-    max_points: 499,
-    discount: 99,
-    color: '#60A5FA',
-    icon: '✨',
-    benefits: ['基礎會員權益', '生日禮券', '專屬折扣99折'],
+    name: '免運費',
+    description: '每月獲得免運費券',
+    icon: Truck,
+    levels: [3, 4, 5],
   },
   {
     id: 3,
-    name: '虔誠信士',
-    level: 3,
-    min_points: 500,
-    max_points: 1999,
-    discount: 98,
-    color: '#34D399',
-    icon: '🌟',
-    benefits: ['基礎會員權益', '生日禮券', '專屬折扣98折', '優先客服響應'],
+    name: '專屬客服',
+    description: '優先接入專屬客服通道',
+    icon: HeadphonesIcon,
+    levels: [3, 4, 5],
   },
   {
     id: 4,
-    name: '資深信士',
-    level: 4,
-    min_points: 2000,
-    max_points: 4999,
-    discount: 95,
-    color: '#F59E0B',
-    icon: '👑',
-    benefits: ['基礎會員權益', '生日禮券HK$80', '專屬折扣95折', '專屬客服', '會員專屬活動'],
+    name: '生日禮遇',
+    description: '生日當月專享禮品和優惠',
+    icon: Gift,
+    levels: [2, 3, 4, 5],
   },
   {
     id: 5,
-    name: '至尊會員',
-    level: 5,
-    min_points: 5000,
-    max_points: null,
-    discount: 93,
-    color: '#EF4444',
-    icon: '💎',
-    benefits: ['全部權益', '生日禮券HK$100', '專屬折扣93折', 'VIP管家', '優先預購權', '免運費'],
+    name: '積分加倍',
+    description: '購物積分獲取倍率提升',
+    icon: Coins,
+    levels: [3, 4, 5],
+  },
+  {
+    id: 6,
+    name: '新品優先',
+    description: '優先購買限量新品',
+    icon: Zap,
+    levels: [3, 4, 5],
+  },
+  {
+    id: 7,
+    name: '專屬顧問',
+    description: '一對一玄學顧問服務',
+    icon: Crown,
+    levels: [4, 5],
+  },
+  {
+    id: 8,
+    name: '尊享定制',
+    description: '專屬定制符箓服務',
+    icon: Sparkles,
+    levels: [5],
   },
 ];
 
-/**
- * VIP会员页面组件
- */
 export default function VIPPage() {
-  const [memberInfo, setMemberInfo] = useState<MemberInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [vipInfo, setVipInfo] = useState<VIPInfo | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
 
   useEffect(() => {
-    loadMemberInfo();
+    loadVIPInfo();
   }, []);
 
-  const loadMemberInfo = async () => {
+  const loadVIPInfo = async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/user/level');
       const data = await res.json();
       
-      if (data.data) {
-        // 找到当前等级
-        const currentLevel = memberLevels.find(l => l.level === (data.level || 1));
-        const nextLevel = memberLevels.find(l => l.level === (data.level || 1) + 1);
+      if (data.success || data.data || data.level) {
+        const levelData = data.data || data;
+        const currentLevel = vipLevels.find(l => l.level === (levelData.level || 1)) || vipLevels[0];
+        const nextLevel = vipLevels.find(l => l.level === currentLevel.level + 1);
         
-        setMemberInfo({
-          level: data.level || 1,
-          name: currentLevel?.name || '普通會員',
-          points: data.points || 0,
-          total_points: data.total_points || 0,
-          discount: currentLevel?.discount || 100,
-          next_level: nextLevel || null,
-          progress: data.progress || 0,
+        setVipInfo({
+          level: levelData.level || 1,
+          levelName: levelData.name || currentLevel.name,
+          points: levelData.points || 0,
+          totalSpent: levelData.total_spent || 0,
+          nextLevelPoints: nextLevel?.minPoints || 0,
+          nextLevelName: nextLevel?.name || '',
+          progress: levelData.progress || (nextLevel 
+            ? Math.min(((levelData.total_points || 0) / nextLevel.minPoints) * 100, 100) 
+            : 100),
+          memberSince: levelData.member_since || '2024-01-01',
+          expiryDate: levelData.expiry_date || '2025-12-31',
         });
       } else {
-        // 默认数据
-        setMemberInfo({
-          level: 2,
-          name: '入門信士',
-          points: 206,
-          total_points: 206,
-          discount: 99,
-          next_level: memberLevels[2],
-          progress: 27,
+        // 使用默认数据
+        setVipInfo({
+          level: 1,
+          levelName: '普通會員',
+          points: 50,
+          totalSpent: 500,
+          nextLevelPoints: 100,
+          nextLevelName: '銅牌會員',
+          progress: 50,
+          memberSince: '2024-01-01',
+          expiryDate: '2025-12-31',
         });
       }
     } catch (error) {
-      console.error('加载会员信息失败:', error);
-      setMemberInfo({
-        level: 2,
-        name: '入門信士',
-        points: 206,
-        total_points: 206,
-        discount: 99,
-        next_level: memberLevels[2],
-        progress: 27,
+      console.error('加载VIP信息失败:', error);
+      setVipInfo({
+        level: 1,
+        levelName: '普通會員',
+        points: 50,
+        totalSpent: 500,
+        nextLevelPoints: 100,
+        nextLevelName: '銅牌會員',
+        progress: 50,
+        memberSince: '2024-01-01',
+        expiryDate: '2025-12-31',
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleUpgrade = async () => {
+    if (!selectedLevel) return;
+    
+    setUpgrading(true);
+    try {
+      // 模拟升级请求
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      toast.success('升級成功！');
+      setShowUpgradeDialog(false);
+      loadVIPInfo();
+    } catch (error) {
+      toast.error('升級失敗，請稍後重試');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  const currentLevelConfig = vipLevels.find(l => l.level === (vipInfo?.level || 1));
+  const CurrentIcon = currentLevelConfig?.icon || Star;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-muted/20">
-      {/* 头部 */}
-      <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Crown className="w-10 h-10" />
-            <h1 className="text-3xl md:text-4xl font-bold">VIP會員中心</h1>
-          </div>
-          <p className="text-center text-white/80 mb-8">
-            等級越高，權益越多
-          </p>
-
-          {/* 当前会员信息 */}
-          {loading ? (
-            <div className="flex justify-center">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          ) : memberInfo && (
-            <Card className="max-w-md mx-auto bg-white/10 backdrop-blur border-white/20">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
-                      style={{ backgroundColor: memberLevels[memberInfo.level - 1]?.color || '#9CA3AF' }}
-                    >
-                      {memberLevels[memberInfo.level - 1]?.icon || '⭐'}
-                    </div>
-                    <div>
-                      <div className="font-bold text-lg">{memberInfo.name}</div>
-                      <div className="text-sm text-white/70">
-                        累計 {memberInfo.total_points.toLocaleString()} 積分
-                      </div>
-                    </div>
-                  </div>
+      {/* 顶部横幅 */}
+      <div className={`bg-gradient-to-br ${currentLevelConfig?.color || 'from-gray-400 to-gray-500'} text-white`}>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* 当前等级 */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <CurrentIcon className="w-8 h-8" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold">{vipInfo?.levelName}</h1>
                   <Badge className="bg-white/20 text-white">
-                    {memberInfo.discount}折
+                    LV.{vipInfo?.level}
                   </Badge>
                 </div>
+                <p className="text-white/80 text-sm mt-1">
+                  會員有效期至 {vipInfo?.expiryDate}
+                </p>
+              </div>
+            </div>
 
-                {memberInfo.next_level && (
-                  <div className="mt-4">
-                    <div className="flex justify-between text-sm mb-2">
-                      <span>距離 {memberInfo.next_level.name}</span>
-                      <span>{memberInfo.progress}%</span>
-                    </div>
-                    <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-white rounded-full transition-all"
-                        style={{ width: `${memberInfo.progress}%` }}
-                      />
-                    </div>
-                    <div className="text-center text-sm text-white/70 mt-2">
-                      再獲得 {memberInfo.next_level.min_points - memberInfo.points} 積分升級
-                    </div>
+            {/* 升级进度 */}
+            {vipInfo && vipInfo.level < 5 && (
+              <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+                <CardContent className="py-4">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>距離 {vipInfo.nextLevelName} 還需 {vipInfo.nextLevelPoints - vipInfo.points} 積分</span>
+                    <span>{vipInfo.points} / {vipInfo.nextLevelPoints}</span>
                   </div>
-                )}
+                  <Progress value={vipInfo.progress} className="h-2 bg-white/20" />
+                  <div className="flex justify-between mt-3 text-xs text-white/70">
+                    <span>累計消費：HK${vipInfo.totalSpent.toLocaleString()}</span>
+                    <span>入會時間：{vipInfo.memberSince}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-                <Link href="/user/points">
-                  <Button className="w-full mt-4 bg-white text-orange-600 hover:bg-white/90">
-                    查看積分明細
+            {/* 已是最高等级 */}
+            {vipInfo?.level === 5 && (
+              <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+                <CardContent className="py-4 text-center">
+                  <Sparkles className="w-8 h-8 mx-auto mb-2" />
+                  <p className="font-medium">您已是最高等級會員</p>
+                  <p className="text-sm text-white/70 mt-1">享受尊享定制服務和專屬權益</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* 等级展示 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="w-5 h-5" />
+                會員等級
+              </CardTitle>
+              <CardDescription>
+                消費獲取積分，積分升級享更多權益
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-5 gap-2">
+                {vipLevels.map((level) => {
+                  const LevelIcon = level.icon;
+                  const isActive = vipInfo?.level === level.level;
+                  const isUnlocked = (vipInfo?.level || 0) >= level.level;
+                  
+                  return (
+                    <div
+                      key={level.level}
+                      className={`relative p-3 rounded-lg text-center cursor-pointer transition-all ${
+                        isActive 
+                          ? `${level.bgColor} ring-2 ring-primary` 
+                          : isUnlocked
+                            ? 'bg-muted/50 hover:bg-muted'
+                            : 'bg-muted/30 opacity-60'
+                      }`}
+                      onClick={() => {
+                        setSelectedLevel(level.level);
+                        setShowUpgradeDialog(true);
+                      }}
+                    >
+                      {isActive && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                          <Check className="w-3 h-3 text-primary-foreground" />
+                        </div>
+                      )}
+                      <div className={`w-10 h-10 mx-auto rounded-full bg-gradient-to-br ${level.color} flex items-center justify-center mb-2`}>
+                        <LevelIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <p className="text-xs font-medium">{level.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {level.discount < 1 ? `${(level.discount * 100).toFixed(0)}折` : '-'}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 会员权益 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="w-5 h-5" />
+                會員權益
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {privileges.map((privilege) => {
+                  const PrivilegeIcon = privilege.icon;
+                  const isAvailable = privilege.levels.includes(vipInfo?.level || 1);
+                  
+                  return (
+                    <div
+                      key={privilege.id}
+                      className={`p-4 rounded-lg border ${
+                        isAvailable 
+                          ? 'bg-primary/5 border-primary/20' 
+                          : 'bg-muted/30 border-muted opacity-50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full ${
+                        isAvailable ? 'bg-primary/10' : 'bg-muted'
+                      } flex items-center justify-center mb-2`}>
+                        <PrivilegeIcon className={`w-5 h-5 ${
+                          isAvailable ? 'text-primary' : 'text-muted-foreground'
+                        }`} />
+                      </div>
+                      <p className="font-medium text-sm">{privilege.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{privilege.description}</p>
+                      {!isAvailable && (
+                        <p className="text-xs text-primary mt-2">
+                          需升級至 LV.{Math.min(...privilege.levels)}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 升级攻略 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                升級攻略
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Coins className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">購物獲積分</p>
+                  <p className="text-sm text-muted-foreground">
+                    消費 HK$1 = 1 積分，VIP會員享倍數加成
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Gift className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">活動獎勵</p>
+                  <p className="text-sm text-muted-foreground">
+                    參與平台活動、簽到、評價可獲額外積分
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/50">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">邀請好友</p>
+                  <p className="text-sm text-muted-foreground">
+                    邀請好友註冊購物，雙方都可獲得積分獎勵
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+              
+              <div className="text-center">
+                <Link href="/distribution">
+                  <Button variant="outline">
+                    前往分銷中心
                     <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 </Link>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* 等级介绍 */}
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Award className="w-6 h-6 text-amber-500" />
-          會員等級
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {memberLevels.map((level) => (
-            <Card 
-              key={level.id}
-              className={`overflow-hidden ${
-                memberInfo?.level === level.level 
-                  ? 'ring-2 ring-amber-500 shadow-lg' 
-                  : ''
-              }`}
-            >
-              <div 
-                className="h-2"
-                style={{ backgroundColor: level.color }}
-              />
-              <CardContent className="p-4 text-center">
-                <div 
-                  className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center text-2xl"
-                  style={{ backgroundColor: level.color + '20' }}
-                >
-                  {level.icon}
-                </div>
-                <h3 className="font-bold mb-1">{level.name}</h3>
-                <div className="text-sm text-muted-foreground mb-2">
-                  {level.max_points 
-                    ? `${level.min_points}-${level.max_points}積分`
-                    : `${level.min_points}+積分`}
-                </div>
-                <Badge variant="outline" style={{ color: level.color, borderColor: level.color }}>
-                  {level.discount}折
-                </Badge>
-                {memberInfo?.level === level.level && (
-                  <div className="mt-2 text-xs text-amber-600 font-medium">
-                    當前等級
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* 会员权益 */}
-      <div className="container mx-auto px-4 py-8">
-        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-          <Shield className="w-6 h-6 text-amber-500" />
-          會員權益
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {memberBenefits.map((benefit, index) => (
-            <Card key={index}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                    <benefit.icon className="w-6 h-6 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{benefit.title}</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {benefit.description}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {benefit.tiers.map((tier, tierIndex) => (
-                        <Badge 
-                          key={tierIndex}
-                          variant="outline" 
-                          className="text-xs"
-                        >
-                          LV{tierIndex + 1}: {tier}
-                        </Badge>
+          {/* 等级对比 */}
+          <Card>
+            <CardHeader>
+              <CardTitle>等級權益對比</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-2">權益</th>
+                      {vipLevels.map(level => (
+                        <th key={level.level} className="text-center py-3 px-2">
+                          <div className="flex flex-col items-center gap-1">
+                            <level.icon className={`w-4 h-4 ${level.textColor}`} />
+                            <span className="text-xs">{level.name}</span>
+                          </div>
+                        </th>
                       ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="py-3 px-2">折扣優惠</td>
+                      {vipLevels.map(level => (
+                        <td key={level.level} className="text-center py-3 px-2">
+                          {level.discount < 1 ? `${(level.discount * 100).toFixed(0)}折` : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-3 px-2">積分倍率</td>
+                      {vipLevels.map(level => (
+                        <td key={level.level} className="text-center py-3 px-2">
+                          {level.level}x
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-3 px-2">生日禮券</td>
+                      {vipLevels.map(level => (
+                        <td key={level.level} className="text-center py-3 px-2">
+                          {level.level >= 2 ? <Check className="w-4 h-4 mx-auto text-green-600" /> : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-3 px-2">免運費券</td>
+                      {vipLevels.map(level => (
+                        <td key={level.level} className="text-center py-3 px-2">
+                          {level.level >= 3 ? `${level.level - 1}張/月` : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-3 px-2">專屬客服</td>
+                      {vipLevels.map(level => (
+                        <td key={level.level} className="text-center py-3 px-2">
+                          {level.level >= 3 ? <Check className="w-4 h-4 mx-auto text-green-600" /> : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-2">專屬顧問</td>
+                      {vipLevels.map(level => (
+                        <td key={level.level} className="text-center py-3 px-2">
+                          {level.level >= 4 ? <Check className="w-4 h-4 mx-auto text-green-600" /> : '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* 如何升级 */}
-      <div className="container mx-auto px-4 py-8 pb-16">
-        <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="p-6">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-500" />
-              如何升級
-            </h3>
-            <div className="grid md:grid-cols-4 gap-4 text-sm">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-amber-700">1</span>
+      {/* 升级弹窗 */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedLevel && vipLevels.find(l => l.level === selectedLevel)?.name}
+            </DialogTitle>
+            <DialogDescription>
+              查看會員等級詳情和升級條件
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLevel && (() => {
+            const level = vipLevels.find(l => l.level === selectedLevel)!;
+            const LevelIcon = level.icon;
+            const canUpgrade = (vipInfo?.points || 0) >= level.minPoints;
+            
+            return (
+              <div className="space-y-4 py-4">
+                <div className={`p-6 rounded-lg bg-gradient-to-br ${level.color} text-white text-center`}>
+                  <LevelIcon className="w-12 h-12 mx-auto mb-2" />
+                  <p className="font-bold text-lg">{level.name}</p>
+                  <p className="text-sm opacity-80">
+                    {level.discount < 1 ? `享${(level.discount * 100).toFixed(0)}折優惠` : '基礎會員'}
+                  </p>
                 </div>
-                <div>
-                  <p className="font-medium">購物獲得積分</p>
-                  <p className="text-muted-foreground">消費HK$1獲得1積分</p>
+                
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium">升級條件：</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• 累計積分 ≥ {level.minPoints}</li>
+                    <li>• 累計消費 ≥ HK${level.minSpent.toLocaleString()}</li>
+                  </ul>
                 </div>
+                
+                <div className="space-y-2 text-sm">
+                  <p className="font-medium">專屬權益：</p>
+                  <ul className="space-y-1">
+                    {level.privileges.map((p, i) => (
+                      <li key={i} className="flex items-center gap-2 text-muted-foreground">
+                        <Check className="w-4 h-4 text-green-600" />
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>
+                    關閉
+                  </Button>
+                  {canUpgrade && selectedLevel > (vipInfo?.level || 1) && (
+                    <Button onClick={handleUpgrade} disabled={upgrading}>
+                      {upgrading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          升級中...
+                        </>
+                      ) : (
+                        '立即升級'
+                      )}
+                    </Button>
+                  )}
+                </DialogFooter>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-amber-700">2</span>
-                </div>
-                <div>
-                  <p className="font-medium">每日簽到</p>
-                  <p className="text-muted-foreground">每日簽到得5積分</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-amber-700">3</span>
-                </div>
-                <div>
-                  <p className="font-medium">評價商品</p>
-                  <p className="text-muted-foreground">評價得10積分</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-200 flex items-center justify-center flex-shrink-0">
-                  <span className="font-bold text-amber-700">4</span>
-                </div>
-                <div>
-                  <p className="font-medium">分享商品</p>
-                  <p className="text-muted-foreground">分享得5積分</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 text-center">
-              <Link href="/points-mall">
-                <Button className="bg-amber-500 hover:bg-amber-600">
-                  <Gift className="w-4 h-4 mr-2" />
-                  前往積分商城
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

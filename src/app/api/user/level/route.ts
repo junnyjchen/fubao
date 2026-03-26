@@ -27,11 +27,23 @@ export async function GET() {
     // 获取当前用户
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
+    // 如果未登录，返回模拟数据
     if (authError || !user) {
-      return NextResponse.json(
-        { error: '請先登錄' },
-        { status: 401 }
-      );
+      return NextResponse.json({
+        level: 1,
+        name: '普通會員',
+        points: 50,
+        total_points: 250,
+        discount: 100,
+        next_level: {
+          level: 2,
+          name: '銅牌會員',
+          min_points: 100,
+        },
+        progress: 50,
+        member_since: '2024-01-01',
+        expiry_date: '2025-12-31',
+      });
     }
     
     // 获取用户积分
