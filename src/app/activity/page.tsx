@@ -21,6 +21,9 @@ import {
   ArrowRight,
   Clock,
   Loader2,
+  Truck,
+  MapPin,
+  Users,
 } from 'lucide-react';
 
 /** 活动类型 */
@@ -146,6 +149,59 @@ export default function ActivityPage() {
             <TabsTrigger value="festival">節日活動</TabsTrigger>
           </TabsList>
         </Tabs>
+      </div>
+
+      {/* 免费领专属入口 */}
+      <div className="container mx-auto px-4 pb-6">
+        <Link href="/free-gifts">
+          <Card className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group">
+            <CardContent className="p-0">
+              <div className="relative p-6 md:p-8">
+                {/* 背景装饰 */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+                  <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-yellow-300/20 blur-xl" />
+                </div>
+                
+                <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
+                      <Gift className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl md:text-2xl font-bold">免費領好禮</h3>
+                        <Badge className="bg-white/30 text-white border-0 animate-pulse">
+                          限時活動
+                        </Badge>
+                      </div>
+                      <p className="text-white/90 text-sm md:text-base">
+                        精選玄門好物免費領取，支持郵寄或到店自取
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* 特点 */}
+                  <div className="flex items-center gap-4 text-sm text-white/90">
+                    <span className="flex items-center gap-1">
+                      <Truck className="w-4 h-4" />
+                      郵寄僅付運費
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      到店免費領取
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-5 py-2.5 group-hover:bg-white/30 transition-colors">
+                    <span className="font-medium">立即領取</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* 活动列表 */}

@@ -317,11 +317,11 @@ export function HomePage() {
   }, [banners.length]);
 
   const features = [
+    { icon: Gift, title: '免費領取', href: '/free-gifts' },
     { icon: ShieldCheck, title: '證書驗證', href: '/verify' },
     { icon: BookOpen, title: '玄門百科', href: '/wiki' },
     { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
     { icon: TrendingUp, title: '分銷中心', href: '/distribution' },
-    { icon: Gift, title: '活動中心', href: '/activity' },
     { icon: Award, title: 'VIP會員', href: '/vip' },
   ];
 
@@ -476,6 +476,49 @@ export function HomePage() {
           </Link>
         </section>
       )}
+
+      {/* 免费领专属入口 */}
+      <section className="container mx-auto px-4 py-4 -mt-4">
+        <Link href="/free-gifts">
+          <Card className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group">
+            <CardContent className="p-0">
+              <div className="relative p-6 md:p-8">
+                {/* 背景装饰 */}
+                <div className="absolute inset-0 overflow-hidden">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+                  <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-yellow-300/20 blur-xl" />
+                  <Sparkles className="absolute top-4 right-20 w-6 h-6 text-yellow-200/60 animate-pulse" />
+                  <Sparkles className="absolute bottom-6 right-32 w-4 h-4 text-yellow-200/40 animate-pulse delay-500" />
+                </div>
+                
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
+                      <Gift className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-xl md:text-2xl font-bold">免費領好禮</h3>
+                        <Badge className="bg-white/30 text-white border-0 animate-pulse">
+                          限量
+                        </Badge>
+                      </div>
+                      <p className="text-white/90 text-sm md:text-base">
+                        精選玄門好物免費領取 · 郵寄或到店自取
+                      </p>
+                    </div>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-5 py-2.5 group-hover:bg-white/30 transition-colors">
+                    <span className="font-medium">立即領取</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <ArrowRight className="md:hidden w-5 h-5" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </section>
 
       {/* 热门法器 */}
       <section className="container mx-auto px-4 py-8">
