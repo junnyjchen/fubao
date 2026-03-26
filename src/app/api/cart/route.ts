@@ -1,143 +1,147 @@
 /**
- * @fileoverview 购物车 API
- * @description 提供购物车的增删改查接口
+ * @fileoverview 购物车API
+ * @description 购物车CRUD操作
  * @module app/api/cart/route
  */
 
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { verifyToken } from '@/lib/auth/utils';
 
 /**
- * 获取当前用户ID
- * @returns 用户ID或null
+ * GET - 获取购物车列表
  */
-async function getCurrentUserId(): Promise<string | null> {
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
-    
-    if (!token) {
-      return null;
-    }
-    
-    const payload = verifyToken(token);
-    return payload?.userId || null;
-  } catch {
-    return null;
-  }
-}
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('user_id') || '1'; // TODO: 从认证获取
 
-/**
- * 获取购物车列表
- * @param request - 请求对象
- * @returns 购物车列表响应
- */
-export async function GET(request: Request) {
-  try {
     const client = getSupabaseClient();
-    
-    // 获取当前用户ID
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
-    }
 
-    // 获取购物车项目
+    // 获取购物车商品，包含商品详情和商户信息
     const { data: cartItems, error } = await client
       .from('cart_items')
       .select(`
         id,
-        goods_id,
         quantity,
         selected,
-        created_at
+        created_at,
+        goods (
+          id,
+          name,
+          price,
+          original_price,
+          images,
+          stock,
+          status,
+          merchant_id,
+          merchants (
+            id,
+            name,
+            logo,
+            verified
+          )
+        )
       `)
-      .eq('user_id', userId)
+      .eq('user_id', parseInt(userId))
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
     }
 
-    // 如果购物车为空，直接返回
-    if (!cartItems || cartItems.length === 0) {
-      return NextResponse.json({ data: [] });
-    }
+    // 按商户分组
+    const groupedByMerchant = (cartItems || []).reduce((acc: any, item: any) => {
+      const merchant = item.goods?.merchants;
+      if (!merchant) return acc;
 
-    // 获取商品详情
-    const goodsIds = cartItems.map(item => item.goods_id);
-    const { data: goodsData } = await client
-      .from('goods')
-      .select('id, name, price, main_image, stock, status, merchant_id')
-      .in('id', goodsIds);
+      const merchantId = merchant.id;
+      if (!acc[merchantId]) {
+        acc[merchantId] = {
+          merchant: {
+            id: merchant.id,
+            name: merchant.name,
+            logo: merchant.logo,
+            verified: merchant.verified,
+          },
+          items: [],
+          selectedAll: true,
+        };
+      }
 
-    // 获取商户信息
-    const merchantIds = [...new Set(goodsData?.map(g => g.merchant_id) || [])];
-    const { data: merchantsData } = merchantIds.length > 0 
-      ? await client.from('merchants').select('id, name').in('id', merchantIds)
-      : { data: [] };
-
-    // 合并数据
-    const goodsMap = new Map(goodsData?.map(g => [g.id, g]) || []);
-    const merchantsMap = new Map(merchantsData?.map(m => [m.id, m]) || []);
-
-    // 格式化返回数据
-    const formattedItems = cartItems.map((item: Record<string, unknown>) => {
-      const goods = goodsMap.get(item.goods_id as number);
-      const merchant = goods ? merchantsMap.get(goods.merchant_id as number) : null;
-      
-      return {
+      const cartItem = {
         id: item.id,
-        goodsId: item.goods_id,
-        goodsName: goods?.name || '',
-        goodsImage: goods?.main_image || null,
-        price: goods?.price || '0',
         quantity: item.quantity,
-        selected: item.selected ?? true,
-        stock: goods?.stock || 0,
-        merchantId: goods?.merchant_id || 0,
-        merchantName: merchant?.name || '',
-        status: goods?.status ?? true,
+        selected: item.selected,
+        goods: {
+          id: item.goods.id,
+          name: item.goods.name,
+          price: parseFloat(item.goods.price),
+          original_price: item.goods.original_price ? parseFloat(item.goods.original_price) : null,
+          image: item.goods.images?.[0] || null,
+          stock: item.goods.stock,
+          status: item.goods.status,
+        },
       };
+
+      acc[merchantId].items.push(cartItem);
+      if (!cartItem.selected) {
+        acc[merchantId].selectedAll = false;
+      }
+
+      return acc;
+    }, {});
+
+    // 计算汇总信息
+    let totalItems = 0;
+    let selectedItems = 0;
+    let totalPrice = 0;
+    let selectedPrice = 0;
+
+    Object.values(groupedByMerchant).forEach((group: any) => {
+      group.items.forEach((item: any) => {
+        totalItems++;
+        if (item.selected) {
+          selectedItems++;
+          selectedPrice += item.goods.price * item.quantity;
+        }
+        totalPrice += item.goods.price * item.quantity;
+      });
     });
 
-    return NextResponse.json({ data: formattedItems });
+    return NextResponse.json({
+      data: Object.values(groupedByMerchant),
+      summary: {
+        totalItems,
+        selectedItems,
+        totalPrice,
+        selectedPrice,
+      },
+    });
   } catch (error) {
-    return NextResponse.json(
-      { error: '獲取購物車失敗' },
-      { status: 500 }
-    );
+    console.error('获取购物车失败:', error);
+    return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
   }
 }
 
 /**
- * 添加商品到购物车
- * @param request - 请求对象
- * @returns 添加结果
+ * POST - 添加商品到购物车
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const client = getSupabaseClient();
-    
-    // 获取当前用户ID
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
-    }
-
+    const userId = body.user_id || 1; // TODO: 从认证获取
     const { goodsId, quantity = 1 } = body;
 
     if (!goodsId) {
-      return NextResponse.json({ error: '商品ID不能為空' }, { status: 400 });
+      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    // 检查商品是否存在且上架
+    const client = getSupabaseClient();
+
+    // 检查商品是否存在且在售
     const { data: goods, error: goodsError } = await client
       .from('goods')
-      .select('id, stock, status')
+      .select('id, name, price, stock, status')
       .eq('id', goodsId)
       .single();
 
@@ -149,177 +153,161 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '商品已下架' }, { status: 400 });
     }
 
-    // 检查购物车中是否已存在
+    // 检查是否已在购物车中
     const { data: existingItem } = await client
       .from('cart_items')
-      .select('*')
+      .select('id, quantity')
       .eq('user_id', userId)
       .eq('goods_id', goodsId)
       .single();
 
     if (existingItem) {
       // 更新数量
-      const newQuantity = Math.min(
-        (existingItem.quantity || 0) + quantity,
-        goods.stock
-      );
+      const newQuantity = existingItem.quantity + quantity;
+      if (newQuantity > goods.stock) {
+        return NextResponse.json({ error: '庫存不足' }, { status: 400 });
+      }
 
       const { error: updateError } = await client
         .from('cart_items')
-        .update({
-          quantity: newQuantity,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
         .eq('id', existingItem.id);
 
       if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
+        return NextResponse.json({ error: '更新失敗' }, { status: 500 });
       }
 
-      return NextResponse.json({ message: '購物車已更新', quantity: newQuantity });
-    } else {
-      // 新增购物车项目
-      const { error: insertError } = await client
-        .from('cart_items')
-        .insert({
-          user_id: userId,
-          goods_id: goodsId,
-          quantity: Math.min(quantity, goods.stock),
-          selected: true,
-          created_at: new Date().toISOString(),
-        });
-
-      if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
-      }
-
-      return NextResponse.json({ message: '已添加到購物車' });
+      return NextResponse.json({
+        message: '已更新購物車',
+        data: { quantity: newQuantity },
+      });
     }
+
+    // 添加新商品
+    if (quantity > goods.stock) {
+      return NextResponse.json({ error: '庫存不足' }, { status: 400 });
+    }
+
+    const { error: insertError } = await client.from('cart_items').insert({
+      user_id: userId,
+      goods_id: goodsId,
+      quantity,
+      selected: true,
+    });
+
+    if (insertError) {
+      return NextResponse.json({ error: '添加失敗' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      message: '已添加到購物車',
+      data: { quantity },
+    });
   } catch (error) {
-    return NextResponse.json(
-      { error: '添加到購物車失敗' },
-      { status: 500 }
-    );
+    console.error('添加到购物车失败:', error);
+    return NextResponse.json({ error: '添加失敗' }, { status: 500 });
   }
 }
 
 /**
- * 更新购物车项目
- * @param request - 请求对象
- * @returns 更新结果
+ * PUT - 更新购物车商品
  */
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
+    const userId = body.user_id || 1; // TODO: 从认证获取
+    const { cartItemId, quantity, selected } = body;
+
+    if (!cartItemId) {
+      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
+    }
+
     const client = getSupabaseClient();
-    
-    // 获取当前用户ID
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+
+    // 验证购物车项属于当前用户
+    const { data: cartItem, error: itemError } = await client
+      .from('cart_items')
+      .select('id, goods_id, goods(stock)')
+      .eq('id', cartItemId)
+      .eq('user_id', userId)
+      .single();
+
+    if (itemError || !cartItem) {
+      return NextResponse.json({ error: '購物車項不存在' }, { status: 404 });
     }
 
-    const { id, quantity, selected } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: '購物車項目ID不能為空' }, { status: 400 });
-    }
-
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
+    // 更新
+    const updateData: any = { updated_at: new Date().toISOString() };
     if (quantity !== undefined) {
-      // 检查库存
-      const { data: cartItem } = await client
-        .from('cart_items')
-        .select('goods_id')
-        .eq('id', id)
-        .single();
-
-      if (cartItem) {
-        const { data: goods } = await client
-          .from('goods')
-          .select('stock')
-          .eq('id', cartItem.goods_id)
-          .single();
-
-        if (goods && quantity > goods.stock) {
-          return NextResponse.json({ error: '庫存不足' }, { status: 400 });
-        }
+      if (quantity > (cartItem.goods as any).stock) {
+        return NextResponse.json({ error: '庫存不足' }, { status: 400 });
       }
-
-      updateData.quantity = Math.max(1, quantity);
+      updateData.quantity = quantity;
     }
-
     if (selected !== undefined) {
       updateData.selected = selected;
     }
 
-    const { error } = await client
+    const { error: updateError } = await client
       .from('cart_items')
       .update(updateData)
-      .eq('id', id)
-      .eq('user_id', userId);
+      .eq('id', cartItemId);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (updateError) {
+      return NextResponse.json({ error: '更新失敗' }, { status: 500 });
     }
 
     return NextResponse.json({ message: '更新成功' });
   } catch (error) {
-    return NextResponse.json(
-      { error: '更新購物車失敗' },
-      { status: 500 }
-    );
+    console.error('更新购物车失败:', error);
+    return NextResponse.json({ error: '更新失敗' }, { status: 500 });
   }
 }
 
 /**
- * 删除购物车项目
- * @param request - 请求对象
- * @returns 删除结果
+ * DELETE - 删除购物车商品
  */
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const userId = searchParams.get('user_id') || '1'; // TODO: 从认证获取
+    const cartItemId = searchParams.get('cartItemId');
+    const clearAll = searchParams.get('clearAll');
+
     const client = getSupabaseClient();
-    
-    // 获取当前用户ID
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
-    }
 
-    if (id) {
-      // 删除单个项目
-      const { error } = await client
-        .from('cart_items')
-        .delete()
-        .eq('id', parseInt(id))
-        .eq('user_id', userId);
-
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-    } else {
+    if (clearAll === 'true') {
       // 清空购物车
-      const { error } = await client
+      const { error: deleteError } = await client
         .from('cart_items')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', parseInt(userId));
 
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+      if (deleteError) {
+        return NextResponse.json({ error: '清空失敗' }, { status: 500 });
       }
+
+      return NextResponse.json({ message: '購物車已清空' });
     }
 
-    return NextResponse.json({ message: '刪除成功' });
+    if (!cartItemId) {
+      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
+    }
+
+    // 删除单个商品
+    const { error: deleteError } = await client
+      .from('cart_items')
+      .delete()
+      .eq('id', parseInt(cartItemId))
+      .eq('user_id', parseInt(userId));
+
+    if (deleteError) {
+      return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: '已刪除' });
   } catch (error) {
-    return NextResponse.json(
-      { error: '刪除購物車項目失敗' },
-      { status: 500 }
-    );
+    console.error('删除购物车商品失败:', error);
+    return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
   }
 }
