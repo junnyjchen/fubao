@@ -1,168 +1,154 @@
 /**
  * @fileoverview 用户浏览历史API
- * @description 记录和查询浏览历史
+ * @description 记录和查询用户浏览历史
  * @module app/api/user/browse-history/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { createClient } from '@/lib/supabase/server';
 
 /**
- * GET - 获取浏览历史
+ * GET /api/user/browse-history
+ * 获取用户浏览历史
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id') || '1'; // TODO: 从认证获取
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = (page - 1) * limit;
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
 
-    const client = getSupabaseClient();
-
-    // 先查询浏览历史
-    const { data: historyData, error: historyError, count } = await client
+    // 获取浏览历史
+    const { data: history, error } = await supabase
       .from('browse_history')
-      .select('id, goods_id, view_time, view_duration', { count: 'exact' })
-      .eq('user_id', parseInt(userId))
-      .order('view_time', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .select(`
+        id,
+        goods_id,
+        view_duration,
+        created_at,
+        goods (
+          id,
+          name,
+          price,
+          main_image,
+          sales
+        )
+      `)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-    if (historyError) {
-      console.error('查询浏览历史失败:', historyError);
-      return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
+    if (error) {
+      console.error('获取浏览历史失败:', error);
+      return NextResponse.json({ data: [] });
     }
 
-    if (!historyData || historyData.length === 0) {
-      return NextResponse.json({
-        data: [],
-        total: count || 0,
-        page,
-        limit,
-      });
-    }
-
-    // 获取商品ID列表
-    const goodsIds = historyData.map((h) => h.goods_id);
-
-    // 查询商品信息
-    const { data: goodsData, error: goodsError } = await client
-      .from('goods')
-      .select('id, name, price, main_image, sales, status, merchant_id')
-      .in('id', goodsIds);
-
-    if (goodsError) {
-      console.error('查询商品信息失败:', goodsError);
-    }
-
-    // 查询商户信息
-    const merchantIds = goodsData?.map((g) => g.merchant_id).filter(Boolean) || [];
-    const { data: merchantsData } = await client
-      .from('merchants')
-      .select('id, name')
-      .in('id', merchantIds);
-
-    // 组装数据
-    const data = historyData.map((h) => {
-      const goods = goodsData?.find((g) => g.id === h.goods_id);
-      const merchant = goods ? merchantsData?.find((m) => m.id === goods.merchant_id) : null;
-
-      return {
-        id: h.id,
-        goods_id: h.goods_id,
-        view_time: h.view_time,
-        view_duration: h.view_duration,
-        goods: goods ? {
-          id: goods.id,
-          name: goods.name,
-          price: goods.price,
-          main_image: goods.main_image,
-          sales: goods.sales,
-          status: goods.status,
-          merchant: merchant ? { name: merchant.name } : null,
-        } : null,
-      };
-    });
-
-    return NextResponse.json({
-      data,
-      total: count || 0,
-      page,
-      limit,
-    });
+    return NextResponse.json({ data: history || [] });
   } catch (error) {
-    console.error('获取浏览历史失败:', error);
-    return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
+    console.error('浏览历史API错误:', error);
+    return NextResponse.json({ data: [] });
   }
 }
 
 /**
- * POST - 记录浏览历史
+ * POST /api/user/browse-history
+ * 记录浏览历史
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      // 未登录用户不记录
+      return NextResponse.json({ success: true });
+    }
+
     const body = await request.json();
-    const { user_id, goods_id, view_duration } = body;
+    const { goods_id, view_duration } = body;
 
-    if (!user_id || !goods_id) {
-      return NextResponse.json({ error: '參數不完整' }, { status: 400 });
+    if (!goods_id) {
+      return NextResponse.json(
+        { error: '商品ID不能為空' },
+        { status: 400 }
+      );
     }
 
-    const client = getSupabaseClient();
-
-    // 使用 upsert 更新或插入
-    const { error } = await client
+    // 检查是否已存在
+    const { data: existing } = await supabase
       .from('browse_history')
-      .upsert({
-        user_id: parseInt(user_id),
-        goods_id: parseInt(goods_id),
-        view_duration: view_duration || 0,
-        view_time: new Date().toISOString(),
-      }, {
-        onConflict: 'user_id,goods_id',
-      });
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('goods_id', goods_id)
+      .single();
 
-    if (error) {
-      console.error('记录浏览历史失败:', error);
-      return NextResponse.json({ error: '記錄失敗' }, { status: 500 });
+    if (existing) {
+      // 更新浏览时间
+      await supabase
+        .from('browse_history')
+        .update({
+          created_at: new Date().toISOString(),
+          view_duration: view_duration || 0,
+        })
+        .eq('id', existing.id);
+    } else {
+      // 创建新记录
+      await supabase
+        .from('browse_history')
+        .insert({
+          user_id: user.id,
+          goods_id,
+          view_duration: view_duration || 0,
+          created_at: new Date().toISOString(),
+        });
     }
 
-    return NextResponse.json({ message: '記錄成功' });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('记录浏览历史失败:', error);
-    return NextResponse.json({ error: '記錄失敗' }, { status: 500 });
+    console.error('记录浏览历史错误:', error);
+    return NextResponse.json({ success: true });
   }
 }
 
 /**
- * DELETE - 清空浏览历史
+ * DELETE /api/user/browse-history
+ * 清除浏览历史
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id');
-    const goodsId = searchParams.get('goods_id');
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    const client = getSupabaseClient();
+    if (authError || !user) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const goodsId = searchParams.get('goods_id');
 
     if (goodsId) {
       // 删除单条记录
-      await client
+      await supabase
         .from('browse_history')
         .delete()
-        .eq('user_id', parseInt(userId || '1'))
-        .eq('goods_id', parseInt(goodsId));
+        .eq('user_id', user.id)
+        .eq('goods_id', goodsId);
     } else {
-      // 清空所有记录
-      await client
+      // 清空所有历史
+      await supabase
         .from('browse_history')
         .delete()
-        .eq('user_id', parseInt(userId || '1'));
+        .eq('user_id', user.id);
     }
 
-    return NextResponse.json({ message: '刪除成功' });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('删除浏览历史失败:', error);
-    return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
+    console.error('清除浏览历史错误:', error);
+    return NextResponse.json({ error: '清除失敗' }, { status: 500 });
   }
 }
