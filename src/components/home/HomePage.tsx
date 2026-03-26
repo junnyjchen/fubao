@@ -321,7 +321,7 @@ export function HomePage() {
     { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
     { icon: TrendingUp, title: '分銷中心', href: '/distribution' },
     { icon: Gift, title: '活動中心', href: '/activity' },
-    { icon: Building2, title: '商戶入駐', href: '/merchant/apply' },
+    { icon: Award, title: 'VIP會員', href: '/vip' },
   ];
 
   if (loading) {

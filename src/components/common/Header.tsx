@@ -35,6 +35,7 @@ import {
   TrendingUp,
   Ticket,
   Bell,
+  Crown,
 } from 'lucide-react';
 
 export function Header() {
@@ -53,6 +54,7 @@ export function Header() {
     { href: '/video', label: t.nav.video || '視頻學堂' },
     { href: '/shares', label: '如願', icon: Camera, highlight: true },
     { href: '/points-mall', label: '積分商城', icon: Ticket },
+    { href: '/vip', label: 'VIP會員', icon: Crown },
     { href: '/news', label: t.nav.news },
     { href: '/verify', label: '證書驗證' },
     { href: '/ai-assistant', label: 'AI助手', icon: Sparkles },
