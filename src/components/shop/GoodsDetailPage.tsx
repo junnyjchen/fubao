@@ -37,6 +37,7 @@ import { ReviewSection } from '@/components/review/ReviewSection';
 import { SharePoster } from '@/components/share/SharePoster';
 import { OrderReminder } from '@/components/shop/OrderReminder';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
+import { DetailRecommendations } from '@/components/shop/ProductRecommendations';
 import { toast } from 'sonner';
 import { Ticket } from 'lucide-react';
 
@@ -716,6 +717,12 @@ export function GoodsDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* 推荐商品 */}
+        <DetailRecommendations 
+          currentProductId={goods.id} 
+          categoryId={goods.category?.id} 
+        />
       </main>
 
       {/* 分享弹窗 */}

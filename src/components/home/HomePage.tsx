@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/lib/i18n';
 import { AnnouncementBar } from '@/components/announcement/AnnouncementBar';
+import { HomeRecommendations } from '@/components/shop/ProductRecommendations';
 import { 
   ShieldCheck, 
   Building2, 
@@ -496,6 +497,11 @@ export function HomePage() {
             </div>
           )}
         </div>
+      </section>
+
+      {/* 精选推荐 */}
+      <section className="bg-muted/30 py-8">
+        <HomeRecommendations />
       </section>
 
       {/* 精选视频 */}
