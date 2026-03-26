@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { HighlightText } from '@/components/search/HighlightText';
 import {
   Search,
   Package,
@@ -257,7 +258,9 @@ function SearchPageContent() {
                               )}
                             </div>
                             <CardContent className="p-3">
-                              <h3 className="text-sm font-medium line-clamp-2">{item.name}</h3>
+                              <h3 className="text-sm font-medium line-clamp-2">
+                                <HighlightText text={item.name} keyword={keyword} />
+                              </h3>
                               <p className="text-primary font-bold mt-1">HK${item.price}</p>
                             </CardContent>
                           </Card>
@@ -290,7 +293,9 @@ function SearchPageContent() {
                                 </div>
                               )}
                               <div className="flex-1 min-w-0">
-                                <h3 className="font-medium line-clamp-1">{item.title}</h3>
+                                <h3 className="font-medium line-clamp-1">
+                                  <HighlightText text={item.title} keyword={keyword} />
+                                </h3>
                                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.summary}</p>
                                 <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                   <Badge variant="outline">{item.category_name}</Badge>
@@ -334,7 +339,9 @@ function SearchPageContent() {
                               )}
                             </div>
                             <CardContent className="p-3">
-                              <h3 className="text-sm font-medium line-clamp-2">{item.title}</h3>
+                              <h3 className="text-sm font-medium line-clamp-2">
+                                <HighlightText text={item.title} keyword={keyword} />
+                              </h3>
                               <p className="text-xs text-muted-foreground mt-1">講師：{item.author}</p>
                             </CardContent>
                           </Card>
@@ -409,7 +416,9 @@ function SearchPageContent() {
                             )}
                           </div>
                           <CardContent className="p-3">
-                            <h3 className="text-sm font-medium line-clamp-2">{item.name}</h3>
+                            <h3 className="text-sm font-medium line-clamp-2">
+                              <HighlightText text={item.name} keyword={keyword} />
+                            </h3>
                             <p className="text-xs text-muted-foreground mt-1">{item.merchant_name}</p>
                             <div className="flex items-end justify-between mt-2">
                               <p className="text-primary font-bold">HK${item.price}</p>
