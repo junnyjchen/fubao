@@ -28,7 +28,6 @@ import {
   Gift,
   Truck,
   MapPin,
-  Loader2,
   ChevronLeft,
   CheckCircle2,
   Store,
@@ -40,12 +39,19 @@ import {
   Navigation,
   Clock,
   Sparkles,
+  Star,
+  MessageCircle,
+  Heart,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { GiftDetailSkeleton } from '@/components/free-gifts/Skeleton';
 import { ClaimCodeDisplay, QRCode } from '@/components/free-gifts/QRCode';
 import { CopyClaimCode } from '@/components/free-gifts/ShareButton';
 import { SuccessAnimation } from '@/components/free-gifts/SuccessAnimation';
+import { SharePoster } from '@/components/free-gifts/SharePoster';
+import { FavoriteButton, ReminderButton } from '@/components/free-gifts/FavoriteButton';
+import { ReviewList, getMockReviews } from '@/components/free-gifts/ReviewList';
 
 interface FreeGift {
   id: number;
@@ -58,6 +64,9 @@ interface FreeGift {
   limit_per_user: number;
   shipping_fee: string;
   is_active: boolean;
+  is_new_user_only?: boolean;
+  rating?: number;
+  review_count?: number;
   merchant?: {
     id: number;
     name: string;
@@ -80,6 +89,7 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [claimResult, setClaimResult] = useState<{
     claim_no: string;
     shipping_fee: string;
@@ -107,7 +117,12 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
       const data = await res.json();
       const giftData = (data.data || []).find((g: FreeGift) => g.id === parseInt(id));
       if (giftData) {
-        setGift(giftData);
+        setGift({
+          ...giftData,
+          is_new_user_only: parseInt(id) === 1,
+          rating: 4.5 + Math.random() * 0.5,
+          review_count: Math.floor(Math.random() * 100) + 20,
+        });
       } else {
         toast.error('商品不存在');
         router.push('/free-gifts');
@@ -167,10 +182,8 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
           setShowSuccessAnimation(false);
           
           if (data.data.need_pay) {
-            // 需要支付运费
             setShowPaymentDialog(true);
           } else {
-            // 到店自取，直接显示成功
             setShowSuccessDialog(true);
           }
         }, 1500);
@@ -186,7 +199,6 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
   };
 
   const handlePayment = async () => {
-    // 模拟支付流程
     toast.info('正在處理支付...');
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -201,6 +213,9 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
       window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
     }
   };
+
+  // 模拟评价
+  const mockReviews = getMockReviews();
 
   if (loading) {
     return <GiftDetailSkeleton />;
@@ -228,11 +243,32 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
       <div className="min-h-screen bg-gradient-to-b from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 pb-8">
         {/* 顶部导航 */}
         <div className="bg-white/80 backdrop-blur sticky top-0 z-10 border-b">
-          <div className="container mx-auto px-4 py-3 flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => router.back()}>
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <h1 className="font-semibold">填寫領取信息</h1>
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
+              <h1 className="font-semibold">商品詳情</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <FavoriteButton
+                giftId={gift.id}
+                giftName={gift.name}
+              />
+              <ReminderButton
+                giftId={gift.id}
+                giftName={gift.name}
+                endTime={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()}
+              />
+              <SharePoster
+                gift={gift}
+                trigger={
+                  <Button variant="ghost" size="icon">
+                    <Share2 className="w-5 h-5" />
+                  </Button>
+                }
+              />
+            </div>
           </div>
         </div>
 
@@ -240,35 +276,95 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
           <div className="max-w-lg mx-auto space-y-4">
             {/* 商品信息 */}
             <Card className="overflow-hidden">
+              {/* 商品图片 */}
+              <div className="relative aspect-video bg-gradient-to-br from-red-100 to-orange-100">
+                {gift.image ? (
+                  <Image src={gift.image} alt={gift.name} fill className="object-cover" />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full">
+                    <Gift className="w-20 h-20 text-red-300" />
+                  </div>
+                )}
+                
+                {/* 标签 */}
+                <div className="absolute top-3 left-3 flex gap-2">
+                  <Badge className="bg-red-500 text-white">免費</Badge>
+                  {gift.is_new_user_only && (
+                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                      新人專享
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* 原价 */}
+                <div className="absolute top-3 right-3 bg-black/50 text-white text-sm px-2 py-1 rounded backdrop-blur-sm">
+                  原價 HK${gift.original_price}
+                </div>
+              </div>
+              
               <CardContent className="p-4">
-                <div className="flex gap-4">
-                  <div className="w-24 h-24 rounded-lg overflow-hidden bg-gradient-to-br from-red-100 to-orange-100 flex-shrink-0 relative">
-                    {gift.image ? (
-                      <Image src={gift.image} alt={gift.name} fill className="object-cover" />
-                    ) : (
-                      <div className="flex items-center justify-center w-full h-full">
-                        <Gift className="w-10 h-10 text-red-300" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="font-semibold mb-1">{gift.name}</h2>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge className="bg-red-500">免費</Badge>
-                      <span className="text-sm text-muted-foreground line-through">
-                        HK${gift.original_price}
-                      </span>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h2 className="font-semibold text-xl">{gift.name}</h2>
+                  {gift.rating && (
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                      <span className="font-medium">{gift.rating.toFixed(1)}</span>
+                      {gift.review_count && (
+                        <span className="text-xs text-muted-foreground">
+                          ({gift.review_count})
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>每人限領 {gift.limit_per_user} 件</span>
-                      <span>·</span>
-                      <span>剩餘 {gift.stock} 件</span>
-                    </div>
-                  </div>
+                  )}
+                </div>
+                
+                <p className="text-sm text-muted-foreground mb-3">
+                  {gift.description}
+                </p>
+                
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    每人限領 {gift.limit_per_user} 件
+                  </span>
+                  <span>·</span>
+                  <span className={gift.stock < 20 ? 'text-orange-600' : ''}>
+                    剩餘 {gift.stock} 件
+                  </span>
                 </div>
               </CardContent>
             </Card>
+
+            {/* 用户评价 */}
+            {gift.rating && (
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setShowReviewDialog(true)}
+              >
+                <CardContent className="py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                        <span className="font-bold text-lg">{gift.rating.toFixed(1)}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {gift.review_count}條評價
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      查看全部
+                      <ChevronLeft className="w-4 h-4 rotate-180" />
+                    </div>
+                  </div>
+                  {mockReviews.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-2 line-clamp-1">
+                      「{mockReviews[0].content}」
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* 领取方式选择 */}
             <Card>
@@ -445,7 +541,7 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
             >
               {submitting ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <Sparkles className="w-5 h-5 mr-2 animate-spin" />
                   提交中...
                 </>
               ) : isExpired ? (
@@ -473,6 +569,19 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* 评价弹窗 */}
+      <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5" />
+              用戶評價
+            </DialogTitle>
+          </DialogHeader>
+          <ReviewList reviews={mockReviews} showGiftName={true} />
+        </DialogContent>
+      </Dialog>
+
       {/* 支付弹窗 */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-md">
@@ -487,7 +596,6 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
           </DialogHeader>
 
           <div className="py-4 space-y-4">
-            {/* 金额 */}
             <div className="text-center p-4 bg-muted rounded-lg">
               <p className="text-sm text-muted-foreground mb-1">運費金額</p>
               <p className="text-3xl font-bold text-primary">
@@ -495,7 +603,6 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
               </p>
             </div>
 
-            {/* 支付方式（模拟） */}
             <div className="space-y-2">
               <div className="p-4 border rounded-lg flex items-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors">
                 <div className="w-10 h-10 rounded bg-green-500 flex items-center justify-center text-white font-bold text-sm">

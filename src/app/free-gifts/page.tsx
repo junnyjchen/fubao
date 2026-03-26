@@ -18,18 +18,22 @@ import {
   Gift,
   Truck,
   MapPin,
-  Loader2,
   ChevronRight,
   Users,
   Tag,
   Zap,
   Flame,
-  Clock,
   Sparkles,
+  UserPlus,
+  RefreshCw,
 } from 'lucide-react';
 import { SimpleCountdown } from '@/components/free-gifts/CountdownTimer';
 import { GiftListSkeleton } from '@/components/free-gifts/Skeleton';
 import { ShareButton } from '@/components/free-gifts/ShareButton';
+import { SearchBar } from '@/components/free-gifts/SearchBar';
+import { ActionButtons } from '@/components/free-gifts/FavoriteButton';
+import { ReviewPreview } from '@/components/free-gifts/ReviewList';
+import { getMockReviews } from '@/components/free-gifts/ReviewList';
 
 interface FreeGift {
   id: number;
@@ -45,6 +49,10 @@ interface FreeGift {
   start_time: string;
   end_time: string;
   merchant_id: number;
+  is_new_user_only?: boolean;
+  category?: string;
+  rating?: number;
+  review_count?: number;
   merchant?: {
     id: number;
     name: string;
@@ -52,15 +60,22 @@ interface FreeGift {
   };
 }
 
-type FilterType = 'all' | 'hot' | 'ending_soon' | 'pickup';
+type FilterType = 'all' | 'hot' | 'ending_soon' | 'new_user' | 'pickup';
 
 export default function FreeGiftsPage() {
   const [gifts, setGifts] = useState<FreeGift[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   useEffect(() => {
     loadGifts();
+    // 加载最近搜索
+    const saved = localStorage.getItem('recentSearches');
+    if (saved) {
+      setRecentSearches(JSON.parse(saved));
+    }
   }, []);
 
   const loadGifts = async () => {
@@ -69,7 +84,15 @@ export default function FreeGiftsPage() {
       const res = await fetch('/api/free-gifts');
       const data = await res.json();
       if (data.success || data.data) {
-        setGifts(data.data || []);
+        // 添加额外字段
+        const giftsData = (data.data || []).map((g: FreeGift, idx: number) => ({
+          ...g,
+          is_new_user_only: idx === 0, // 第一个是新人专享
+          category: ['符箓', '飾品', '香薰', '掛件'][idx % 4],
+          rating: 4.5 + Math.random() * 0.5,
+          review_count: Math.floor(Math.random() * 100) + 20,
+        }));
+        setGifts(giftsData);
       }
     } catch (error) {
       console.error('加载免费商品失败:', error);
@@ -94,17 +117,45 @@ export default function FreeGiftsPage() {
     return days;
   };
 
+  const handleSearch = (keyword: string) => {
+    setSearchKeyword(keyword);
+    if (keyword.trim()) {
+      // 保存搜索记录
+      const newSearches = [keyword, ...recentSearches.filter(s => s !== keyword)].slice(0, 5);
+      setRecentSearches(newSearches);
+      localStorage.setItem('recentSearches', JSON.stringify(newSearches));
+    }
+  };
+
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('recentSearches');
+  };
+
   // 过滤商品
   const filteredGifts = gifts.filter((gift) => {
     if (isExpired(gift) || gift.stock <= 0) return false;
     
+    // 搜索过滤
+    if (searchKeyword) {
+      const kw = searchKeyword.toLowerCase();
+      if (
+        !gift.name.toLowerCase().includes(kw) &&
+        !gift.description.toLowerCase().includes(kw)
+      ) {
+        return false;
+      }
+    }
+    
     switch (filter) {
       case 'hot':
-        return getProgress(gift) >= 70; // 热门：已领超过70%
+        return getProgress(gift) >= 70;
       case 'ending_soon':
-        return getRemainingDays(gift) <= 3; // 即将结束：3天内
+        return getRemainingDays(gift) <= 3;
+      case 'new_user':
+        return gift.is_new_user_only;
       case 'pickup':
-        return true; // 所有都支持到店自取
+        return true;
       default:
         return true;
     }
@@ -123,7 +174,11 @@ export default function FreeGiftsPage() {
     total: gifts.filter(g => !isExpired(g) && g.stock > 0).length,
     hot: gifts.filter(g => getProgress(g) >= 70 && !isExpired(g) && g.stock > 0).length,
     endingSoon: gifts.filter(g => getRemainingDays(g) <= 3 && !isExpired(g) && g.stock > 0).length,
+    newUser: gifts.filter(g => g.is_new_user_only && !isExpired(g) && g.stock > 0).length,
   };
+
+  // 模拟评价
+  const mockReviews = getMockReviews();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20">
@@ -160,6 +215,16 @@ export default function FreeGiftsPage() {
       </div>
 
       <div className="container mx-auto px-4 py-6">
+        {/* 搜索栏 */}
+        <div className="mb-4">
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder="搜索商品名稱..."
+            recentKeywords={recentSearches}
+            onClearRecent={clearRecentSearches}
+          />
+        </div>
+
         {/* 活动规则 */}
         <Card className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 border-orange-200/50">
           <CardContent className="py-4">
@@ -187,24 +252,44 @@ export default function FreeGiftsPage() {
         </Card>
 
         {/* 筛选标签 */}
-        <div className="mb-6">
+        <div className="mb-6 overflow-x-auto scrollbar-hide">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
-            <TabsList className="bg-white/80 backdrop-blur">
-              <TabsTrigger value="all" className="gap-1.5">
+            <TabsList className="bg-white/80 backdrop-blur w-full justify-start">
+              <TabsTrigger value="all" className="gap-1.5 whitespace-nowrap">
                 <Gift className="w-4 h-4" />
                 全部 ({stats.total})
               </TabsTrigger>
-              <TabsTrigger value="hot" className="gap-1.5">
+              <TabsTrigger value="hot" className="gap-1.5 whitespace-nowrap">
                 <Flame className="w-4 h-4" />
                 熱門 ({stats.hot})
               </TabsTrigger>
-              <TabsTrigger value="ending_soon" className="gap-1.5">
+              <TabsTrigger value="ending_soon" className="gap-1.5 whitespace-nowrap">
                 <Zap className="w-4 h-4" />
                 即將結束 ({stats.endingSoon})
+              </TabsTrigger>
+              <TabsTrigger value="new_user" className="gap-1.5 whitespace-nowrap">
+                <UserPlus className="w-4 h-4" />
+                新人專享 ({stats.newUser})
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
+
+        {/* 搜索结果提示 */}
+        {searchKeyword && (
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              搜索「{searchKeyword}」共找到 {filteredGifts.length} 個商品
+            </p>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSearchKeyword('')}
+            >
+              清除搜索
+            </Button>
+          </div>
+        )}
 
         {/* 商品列表 */}
         {loading ? (
@@ -242,13 +327,19 @@ export default function FreeGiftsPage() {
                       <Badge className="bg-red-500 text-white">
                         免費
                       </Badge>
-                      {isHot && (
-                        <Badge className="bg-orange-500 text-white animate-pulse">
+                      {gift.is_new_user_only && (
+                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse">
+                          <UserPlus className="w-3 h-3 mr-1" />
+                          新人專享
+                        </Badge>
+                      )}
+                      {isHot && !gift.is_new_user_only && (
+                        <Badge className="bg-orange-500 text-white">
                           <Flame className="w-3 h-3 mr-1" />
                           熱門
                         </Badge>
                       )}
-                      {isEndingSoon && (
+                      {isEndingSoon && !isHot && !gift.is_new_user_only && (
                         <Badge className="bg-yellow-500 text-white">
                           <Zap className="w-3 h-3 mr-1" />
                           即將結束
@@ -261,6 +352,15 @@ export default function FreeGiftsPage() {
                       原價 HK${gift.original_price}
                     </div>
                     
+                    {/* 操作按钮 */}
+                    <div className="absolute top-3 right-3 mt-10 flex flex-col gap-1">
+                      <ActionButtons
+                        giftId={gift.id}
+                        giftName={gift.name}
+                        endTime={gift.end_time}
+                      />
+                    </div>
+                    
                     {/* 倒计时 */}
                     <div className="absolute bottom-3 left-3 right-3">
                       <div className="bg-black/50 backdrop-blur-sm rounded-lg px-3 py-1.5 text-white text-xs flex items-center justify-between">
@@ -270,10 +370,18 @@ export default function FreeGiftsPage() {
                   </div>
 
                   <CardContent className="p-4">
-                    {/* 商品名称 */}
-                    <h3 className="font-semibold text-lg mb-2 line-clamp-1 group-hover:text-primary transition-colors">
-                      {gift.name}
-                    </h3>
+                    {/* 商品名称和评分 */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
+                        {gift.name}
+                      </h3>
+                      {gift.rating && (
+                        <div className="flex items-center gap-1 text-xs flex-shrink-0">
+                          <span className="text-yellow-500">★</span>
+                          <span className="font-medium">{gift.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </div>
                     
                     {/* 商品描述 */}
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
@@ -337,18 +445,35 @@ export default function FreeGiftsPage() {
             <CardContent>
               <Gift className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {filter === 'all' ? '暫無免費領取商品' : '沒有符合條件的商品'}
+                {searchKeyword 
+                  ? `沒有找到「${searchKeyword}」相關商品` 
+                  : filter === 'all' ? '暫無免費領取商品' : '沒有符合條件的商品'}
               </p>
               <p className="text-sm text-muted-foreground mt-1">敬請期待更多活動</p>
-              {filter !== 'all' && (
+              {(filter !== 'all' || searchKeyword) && (
                 <Button 
                   variant="outline" 
                   className="mt-4"
-                  onClick={() => setFilter('all')}
+                  onClick={() => {
+                    setFilter('all');
+                    setSearchKeyword('');
+                  }}
                 >
                   查看全部商品
                 </Button>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 用户评价展示 */}
+        {!loading && filteredGifts.length > 0 && (
+          <Card className="mt-8">
+            <CardContent className="py-6">
+              <ReviewPreview 
+                reviews={mockReviews}
+                onViewAll={() => {}}
+              />
             </CardContent>
           </Card>
         )}
