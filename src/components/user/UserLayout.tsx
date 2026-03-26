@@ -47,6 +47,7 @@ interface NavItem {
 /** 导航菜单配置 */
 const navItems: NavItem[] = [
   { key: 'orders', label: '我的訂單', icon: Package, href: '/user/orders' },
+  { key: 'free-gifts', label: '免費領取', icon: Gift, href: '/user/free-gifts' },
   { key: 'favorites', label: '我的收藏', icon: Heart, href: '/user/favorites' },
   { key: 'history', label: '瀏覽歷史', icon: Clock, href: '/user/history' },
   { key: 'reviews', label: '我的評價', icon: Star, href: '/user/reviews' },

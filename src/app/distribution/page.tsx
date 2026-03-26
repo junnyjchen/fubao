@@ -164,6 +164,14 @@ export default function DistributionCenterPage() {
 
   const menuItems = [
     {
+      icon: Gift,
+      title: '免費領推廣',
+      description: '推廣免費領活動，獲取獎勵',
+      href: '/free-gifts',
+      color: 'text-red-600',
+      bg: 'bg-red-100',
+    },
+    {
       icon: Users,
       title: '我的團隊',
       description: `直推 ${data.direct_count} 人 · 團隊 ${data.team_count} 人`,
