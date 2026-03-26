@@ -1,6 +1,6 @@
 /**
- * @fileoverview 结账页面
- * @description 用户结算购物车商品
+ * @fileoverview 结算页面
+ * @description 订单结算、地址选择、支付方式选择
  * @module app/checkout/page
  */
 
@@ -11,33 +11,27 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/lib/auth/context';
-import { AuthDialog } from '@/components/auth/AuthDialog';
+import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
-import { 
+import {
+  MapPin,
+  Plus,
+  ChevronRight,
   CreditCard,
-  Smartphone,
   Wallet,
-  ChevronLeft,
-  Lock,
+  Shield,
+  Truck,
   Package,
   Loader2,
   Ticket,
+  MessageSquare,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface CartItem {
-  id: number;
-  goodsId: number;
-  goodsName: string;
-  goodsImage: string | null;
-  price: string;
-  quantity: number;
-}
-
+/** 地址 */
 interface Address {
   id: number;
   name: string;
@@ -46,243 +40,173 @@ interface Address {
   city: string;
   district: string;
   address: string;
-  isDefault: boolean;
+  is_default: boolean;
 }
 
-interface UserBalance {
-  balance: number;
-  frozen_balance: number;
+/** 购物车商品 */
+interface CartGoods {
+  id: number;
+  name: string;
+  price: number;
+  image: string | null;
 }
 
-const payMethods = [
-  { value: 'balance', label: '餘額支付', icon: Wallet, enabled: true },
-  { value: 'alipay', label: '支付寶', icon: Wallet, enabled: false },
-  { value: 'wechat', label: '微信支付', icon: Smartphone, enabled: false },
-  { value: 'paypal', label: 'PayPal', icon: CreditCard, enabled: true },
-];
+/** 购物车项 */
+interface CartItem {
+  id: number;
+  goods_id: number;
+  quantity: number;
+  goods: CartGoods;
+  merchant_id: number;
+  merchant_name: string;
+}
 
-function CheckoutContent() {
+/** 优惠券 */
+interface Coupon {
+  id: number;
+  name: string;
+  discount_type: string;
+  discount_value: number;
+  min_amount: number;
+  max_discount: number | null;
+}
+
+function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading } = useAuth();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const cartItemIds = searchParams.get('cartItemIds')?.split(',').map(Number) || [];
+  const couponId = searchParams.get('couponId');
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-  
-  // 收货信息
-  const [shippingInfo, setShippingInfo] = useState({
-    name: '',
-    phone: '',
-    address: '',
-  });
-  
-  // 支付方式
-  const [payMethod, setPayMethod] = useState('paypal');
-  
-  // 备注
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
+  const [showCouponSelector, setShowCouponSelector] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat' | 'balance'>('alipay');
   const [remark, setRemark] = useState('');
 
-  // 用户余额
-  const [userBalance, setUserBalance] = useState<UserBalance | null>(null);
-
-  // 优惠券相关
-  const [showCouponSelector, setShowCouponSelector] = useState(false);
-  const [selectedCoupon, setSelectedCoupon] = useState<{
-    id: number;
-    name: string;
-    discount_value: number;
-    discount_type: string;
-    user_coupon_id?: number;
-  } | null>(null);
-  const [couponDiscount, setCouponDiscount] = useState(0);
-
-  // 检查用户登录状态
   useEffect(() => {
-    if (!authLoading && !user) {
-      setShowAuthDialog(true);
-    }
-  }, [user, authLoading]);
+    loadData();
+  }, [cartItemIds]);
 
-  useEffect(() => {
-    // 从URL参数获取商品信息
-    const itemsParam = searchParams.get('items');
-    if (itemsParam) {
-      try {
-        const items = JSON.parse(decodeURIComponent(itemsParam));
-        setCartItems(items);
-      } catch (e) {
-        console.error('解析商品信息失败:', e);
-        router.push('/cart');
-      }
-    } else {
-      router.push('/cart');
-    }
-    setLoading(false);
-  }, [searchParams, router]);
-
-  // 加载用户地址
-  useEffect(() => {
-    const loadAddresses = async () => {
-      try {
-        const res = await fetch('/api/addresses');
-        const data = await res.json();
-        if (data.data && data.data.length > 0) {
-          const defaultAddr = data.data.find((a: Address) => a.isDefault) || data.data[0];
-          setShippingInfo({
-            name: defaultAddr.name,
-            phone: defaultAddr.phone,
-            address: `${defaultAddr.province}${defaultAddr.city}${defaultAddr.district}${defaultAddr.address}`,
-          });
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // 加载地址
+      const addrRes = await fetch('/api/addresses');
+      const addrData = await addrRes.json();
+      if (addrData.data) {
+        setAddresses(addrData.data);
+        // 默认选择默认地址
+        const defaultAddr = addrData.data.find((a: Address) => a.is_default);
+        if (defaultAddr) {
+          setSelectedAddressId(defaultAddr.id);
+        } else if (addrData.data.length > 0) {
+          setSelectedAddressId(addrData.data[0].id);
         }
-      } catch (error) {
-        console.error('加载地址失败:', error);
       }
-    };
-    loadAddresses();
-    
-    // 加载用户余额
-    const loadBalance = async () => {
-      try {
-        const res = await fetch('/api/user/balance');
-        const data = await res.json();
-        if (data.data?.balance) {
-          setUserBalance(data.data.balance);
+
+      // 加载购物车商品
+      if (cartItemIds.length > 0) {
+        const cartRes = await fetch('/api/cart');
+        const cartData = await cartRes.json();
+        if (cartData.data) {
+          // 过滤选中的商品
+          const allItems = cartData.data.flatMap((g: any) =>
+            g.items.map((item: any) => ({
+              ...item,
+              merchant_id: g.merchant.id,
+              merchant_name: g.merchant.name,
+            }))
+          );
+          const selectedItems = allItems.filter((item: CartItem) =>
+            cartItemIds.includes(item.id)
+          );
+          setCartItems(selectedItems);
         }
-      } catch (error) {
-        console.error('加载余额失败:', error);
       }
-    };
-    loadBalance();
-  }, []);
 
-  const totalAmount = cartItems.reduce((sum, item) => {
-    return sum + parseFloat(item.price) * item.quantity;
-  }, 0);
-
-  // 计算运费
-  const shippingFee = totalAmount >= 500 ? 0 : 30;
-
-  // 计算优惠券折扣
-  const calculateCouponDiscount = () => {
-    if (!selectedCoupon) return 0;
-    
-    if (selectedCoupon.discount_type === 'percent') {
-      const discount = totalAmount * (selectedCoupon.discount_value / 100);
-      return Math.min(discount, 100); // 假设最大折扣100
+      // 如果有优惠券ID，加载优惠券
+      if (couponId) {
+        // TODO: 加载优惠券详情
+      }
+    } catch (error) {
+      console.error('加载数据失败:', error);
+    } finally {
+      setLoading(false);
     }
-    return selectedCoupon.discount_value;
   };
 
-  const couponDiscountAmount = calculateCouponDiscount();
+  // 计算金额
+  const goodsAmount = cartItems.reduce(
+    (sum, item) => sum + item.goods.price * item.quantity,
+    0
+  );
 
-  // 最终支付金额
-  const finalAmount = totalAmount + shippingFee - couponDiscountAmount;
+  let discountAmount = 0;
+  if (selectedCoupon) {
+    if (selectedCoupon.discount_type === 'fixed') {
+      discountAmount = selectedCoupon.discount_value;
+    } else if (selectedCoupon.discount_type === 'percent') {
+      discountAmount = goodsAmount * (selectedCoupon.discount_value / 100);
+      if (selectedCoupon.max_discount) {
+        discountAmount = Math.min(discountAmount, selectedCoupon.max_discount);
+      }
+    }
+  }
 
-  // 处理优惠券选择
-  const handleCouponSelect = (coupon: typeof selectedCoupon) => {
+  const shippingFee = goodsAmount >= 500 ? 0 : 30;
+  const totalAmount = goodsAmount - discountAmount + shippingFee;
+  const totalQuantity = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const handleSelectCoupon = (coupon: Coupon | null) => {
     setSelectedCoupon(coupon);
-    if (coupon) {
-      // 验证优惠券
-      if (totalAmount < 100) { // 假设最低消费100
-        alert('訂單金額不滿足優惠券使用條件');
-        return;
-      }
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setShippingInfo(prev => ({ ...prev, [field]: value }));
+    setShowCouponSelector(false);
   };
 
   const handleSubmit = async () => {
-    // 检查登录状态
-    if (!user) {
-      setShowAuthDialog(true);
-      return;
-    }
-    
-    // 验证收货信息
-    if (!shippingInfo.name.trim()) {
-      alert('請輸入收貨人姓名');
-      return;
-    }
-    if (!shippingInfo.phone.trim()) {
-      alert('請輸入聯繫電話');
-      return;
-    }
-    if (!shippingInfo.address.trim()) {
-      alert('請輸入收貨地址');
+    if (!selectedAddressId) {
+      toast.error('請選擇收貨地址');
       return;
     }
 
-    // 余额支付时检查余额
-    if (payMethod === 'balance') {
-      if (!userBalance || userBalance.balance < finalAmount) {
-        alert('餘額不足，請選擇其他支付方式或先充值');
-        return;
-      }
+    if (cartItems.length === 0) {
+      toast.error('購物車為空');
+      return;
     }
 
     setSubmitting(true);
     try {
-      // 创建订单
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cartItemIds: cartItems.map(item => item.id),
-          shippingInfo,
-          remark,
+          address_id: selectedAddressId,
+          cart_item_ids: cartItemIds,
+          coupon_id: selectedCoupon?.id,
+          payment_method: paymentMethod,
+          remark: remark.trim() || undefined,
         }),
       });
 
       const data = await res.json();
-      if (data.message && data.order) {
-        // 根据支付方式处理
-        if (payMethod === 'balance') {
-          // 余额支付
-          const payRes = await fetch('/api/payment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              order_id: data.order.id,
-              payment_method: 'balance',
-            }),
-          });
-          
-          const payData = await payRes.json();
-          if (payData.data?.status === 'success') {
-            router.push(`/payment/success?orderId=${data.order.id}&orderNo=${data.order.order_no}`);
-          } else {
-            router.push(`/payment/fail?error=${encodeURIComponent(payData.error || '支付失敗')}`);
-          }
-        } else {
-          // 其他支付方式 - 模拟支付成功
-          await fetch(`/api/orders/${data.order.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pay_status: 1,
-              pay_method: payMethod,
-              pay_time: new Date().toISOString(),
-            }),
-          });
-          
-          router.push(`/payment/success?orderId=${data.order.id}&orderNo=${data.order.order_no}`);
-        }
+      if (data.data) {
+        // 跳转到支付页面
+        router.push(`/payment?orderId=${data.data.id}`);
       } else if (data.error) {
-        router.push(`/payment/fail?error=${encodeURIComponent(data.error)}`);
+        toast.error(data.error);
       }
     } catch (error) {
       console.error('提交订单失败:', error);
-      router.push(`/payment/fail?error=${encodeURIComponent('提交訂單失敗，請重試')}`);
+      toast.error('提交失敗，請重試');
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-muted/20 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -296,8 +220,9 @@ function CheckoutContent() {
         <Card className="max-w-md">
           <CardContent className="py-12 text-center">
             <Package className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">沒有選中商品</h2>
-            <Button asChild className="mt-4">
+            <h2 className="text-xl font-semibold mb-2">購物車為空</h2>
+            <p className="text-muted-foreground mb-6">請先選擇要購買的商品</p>
+            <Button asChild>
               <Link href="/cart">返回購物車</Link>
             </Button>
           </CardContent>
@@ -306,254 +231,325 @@ function CheckoutContent() {
     );
   }
 
+  const selectedAddress = addresses.find(a => a.id === selectedAddressId);
+
   return (
     <div className="min-h-screen bg-muted/20">
       {/* Header */}
       <header className="bg-background border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ChevronLeft className="w-5 h-5" />
-          </Button>
+        <div className="max-w-4xl mx-auto px-4 py-4">
           <h1 className="text-xl font-semibold">確認訂單</h1>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-4 py-6">
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* 左侧：收货信息和支付方式 */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* 收货信息 */}
+          {/* 左侧内容 */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* 收货地址 */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">收貨信息</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">收貨人姓名 *</Label>
-                    <Input
-                      id="name"
-                      value={shippingInfo.name}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      placeholder="請輸入收貨人姓名"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">聯繫電話 *</Label>
-                    <Input
-                      id="phone"
-                      value={shippingInfo.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      placeholder="請輸入聯繫電話"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="address">詳細地址 *</Label>
-                  <Input
-                    id="address"
-                    value={shippingInfo.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="請輸入詳細收貨地址"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 支付方式 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">支付方式</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MapPin className="w-4 h-4" />
+                  收貨地址
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <RadioGroup value={payMethod} onValueChange={setPayMethod}>
-                  {payMethods.map((method) => {
-                    const Icon = method.icon;
-                    const isBalancePayment = method.value === 'balance';
-                    const hasEnoughBalance = userBalance && userBalance.balance >= finalAmount;
-                    const balanceEnabled = isBalancePayment ? !!userBalance && hasEnoughBalance : method.enabled;
-                    
-                    return (
-                      <div
-                        key={method.value}
-                        className={`flex items-center space-x-3 p-4 rounded-lg border ${
-                          balanceEnabled ? 'cursor-pointer hover:bg-muted/50' : 'opacity-50 cursor-not-allowed'
-                        }`}
-                        onClick={() => balanceEnabled && setPayMethod(method.value)}
-                      >
-                        <RadioGroupItem value={method.value} disabled={!balanceEnabled} />
-                        <Icon className="w-5 h-5" />
-                        <div className="flex-1">
-                          <span>{method.label}</span>
-                          {isBalancePayment && userBalance && (
-                            <span className="text-xs text-muted-foreground ml-2">
-                              (餘額: HK${userBalance.balance.toFixed(2)})
-                            </span>
+                {selectedAddress ? (
+                  <div
+                    className="p-4 border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                    onClick={() => router.push('/user/addresses?select=true')}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium">{selectedAddress.name}</span>
+                          <span className="text-muted-foreground">{selectedAddress.phone}</span>
+                          {selectedAddress.is_default && (
+                            <Badge variant="secondary">默認</Badge>
                           )}
                         </div>
-                        {isBalancePayment && userBalance && !hasEnoughBalance && (
-                          <span className="text-xs text-destructive">餘額不足</span>
-                        )}
-                        {!isBalancePayment && !method.enabled && (
-                          <span className="text-xs text-muted-foreground">暫未開通</span>
-                        )}
+                        <p className="text-sm text-muted-foreground">
+                          {selectedAddress.province}
+                          {selectedAddress.city}
+                          {selectedAddress.district}
+                          {selectedAddress.address}
+                        </p>
                       </div>
-                    );
-                  })}
-                </RadioGroup>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => router.push('/user/addresses/new')}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    添加收貨地址
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    {addresses.map((addr) => (
+                      <div
+                        key={addr.id}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedAddressId === addr.id
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedAddressId(addr.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <RadioGroupItem value={addr.id.toString()} checked={selectedAddressId === addr.id} />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium">{addr.name}</span>
+                              <span className="text-muted-foreground">{addr.phone}</span>
+                              {addr.is_default && (
+                                <Badge variant="secondary">默認</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {addr.province}
+                              {addr.city}
+                              {addr.district}
+                              {addr.address}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* 订单备注 */}
+            {/* 商品清单 */}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">訂單備註</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Package className="w-4 h-4" />
+                  商品清單
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <Input
-                  value={remark}
-                  onChange={(e) => setRemark(e.target.value)}
-                  placeholder="選填，請輸入訂單備註信息"
-                  maxLength={200}
-                />
-              </CardContent>
-            </Card>
-
-            {/* 商品列表 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">商品明細</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 divide-y">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex gap-4 p-4 border-b last:border-0">
-                    <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center text-muted-foreground text-xs">
-                      {item.goodsImage ? (
-                        <img src={item.goodsImage} alt={item.goodsName} className="w-full h-full object-cover rounded-lg" />
+                  <div key={item.id} className="flex gap-4 p-4">
+                    <div className="w-20 h-20 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                      {item.goods.image ? (
+                        <img
+                          src={item.goods.image}
+                          alt={item.goods.name}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        '暫無圖片'
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <Package className="w-6 h-6" />
+                        </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{item.goodsName}</p>
-                      <p className="text-sm text-muted-foreground">數量：{item.quantity}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-primary">HK${item.price}</p>
-                      <p className="text-sm text-muted-foreground">
-                        小計：HK${(parseFloat(item.price) * item.quantity).toFixed(2)}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium line-clamp-2">{item.goods.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {item.merchant_name}
                       </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-primary font-semibold">
+                          HK${item.goods.price.toFixed(2)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          x{item.quantity}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
-          </div>
 
-          {/* 右侧：订单汇总 */}
-          <div>
-            <Card className="sticky top-20">
-              <CardHeader>
-                <CardTitle>訂單匯總</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">商品數量</span>
-                  <span>{cartItems.reduce((sum, item) => sum + item.quantity, 0)}件</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">商品金額</span>
-                  <span>HK${totalAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">運費</span>
-                  <span className="text-green-600">
-                    {shippingFee === 0 ? '免運費' : `HK$${shippingFee.toFixed(2)}`}
-                  </span>
-                </div>
-                
-                {/* 优惠券 */}
-                <div 
-                  className="flex justify-between items-center text-sm p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+            {/* 优惠券 */}
+            <Card>
+              <CardContent className="py-4">
+                <Button
+                  variant="outline"
+                  className="w-full justify-between"
                   onClick={() => setShowCouponSelector(true)}
                 >
                   <div className="flex items-center gap-2">
                     <Ticket className="w-4 h-4 text-primary" />
                     <span>優惠券</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {selectedCoupon ? (
-                      <span className="text-primary font-medium">
-                        -HK${couponDiscountAmount.toFixed(2)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        {user ? '選擇優惠券' : '登錄後可用'}
-                      </span>
-                    )}
-                    <span className="text-muted-foreground">{'>'}</span>
+                  {selectedCoupon ? (
+                    <span className="text-primary">-HK${discountAmount.toFixed(2)}</span>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      {goodsAmount >= 100 ? '有可用優惠券' : '選擇優惠券'}
+                    </span>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* 支付方式 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CreditCard className="w-4 h-4" />
+                  支付方式
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}>
+                  <div className="space-y-3">
+                    <label
+                      className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'alipay' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                    >
+                      <RadioGroupItem value="alipay" />
+                      <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs font-bold">
+                        支
+                      </div>
+                      <div>
+                        <p className="font-medium">支付寶</p>
+                        <p className="text-xs text-muted-foreground">推薦使用</p>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'wechat' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                    >
+                      <RadioGroupItem value="wechat" />
+                      <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center text-white text-xs font-bold">
+                        微
+                      </div>
+                      <div>
+                        <p className="font-medium">微信支付</p>
+                        <p className="text-xs text-muted-foreground">掃碼支付</p>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'balance' ? 'border-primary bg-primary/5' : ''
+                      }`}
+                    >
+                      <RadioGroupItem value="balance" />
+                      <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-white">
+                        <Wallet className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium">餘額支付</p>
+                        <p className="text-xs text-muted-foreground">當前餘額：HK$0.00</p>
+                      </div>
+                    </label>
                   </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+
+            {/* 订单备注 */}
+            <Card>
+              <CardContent className="py-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">訂單備註</span>
+                </div>
+                <textarea
+                  value={remark}
+                  onChange={(e) => setRemark(e.target.value)}
+                  placeholder="選填，請輸入您的特殊需求..."
+                  className="w-full border rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  rows={2}
+                  maxLength={200}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* 右侧结算面板 */}
+          <div>
+            <Card className="sticky top-20">
+              <CardHeader>
+                <CardTitle>訂單匯總</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      商品金額 ({totalQuantity}件)
+                    </span>
+                    <span>HK${goodsAmount.toFixed(2)}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>優惠券抵扣</span>
+                      <span>-HK${discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">運費</span>
+                    {shippingFee === 0 ? (
+                      <span className="text-green-600">免運費</span>
+                    ) : (
+                      <span>HK${shippingFee.toFixed(2)}</span>
+                    )}
+                  </div>
+                  {shippingFee > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      滿 HK$500 免運費
+                    </p>
+                  )}
                 </div>
 
-                {/* 已选优惠券显示 */}
-                {selectedCoupon && (
-                  <div className="flex items-center justify-between text-sm bg-primary/5 p-2 rounded">
-                    <span className="text-primary">{selectedCoupon.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-xs"
-                      onClick={() => setSelectedCoupon(null)}
-                    >
-                      取消使用
-                    </Button>
-                  </div>
-                )}
-                
                 <Separator />
+
                 <div className="flex justify-between text-lg font-semibold">
                   <span>應付金額</span>
-                  <span className="text-primary">
-                    HK${finalAmount.toFixed(2)}
-                  </span>
+                  <span className="text-primary">HK${totalAmount.toFixed(2)}</span>
                 </div>
-                
-                <Button 
-                  className="w-full" 
+
+                <Button
+                  className="w-full"
                   size="lg"
                   onClick={handleSubmit}
-                  disabled={submitting}
+                  disabled={submitting || !selectedAddressId}
                 >
-                  <Lock className="w-4 h-4 mr-2" />
-                  {submitting ? '提交中...' : '提交訂單'}
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      提交中...
+                    </>
+                  ) : (
+                    '提交訂單'
+                  )}
                 </Button>
-                
-                <div className="text-xs text-muted-foreground text-center space-y-1">
-                  <p>提交訂單即表示您同意</p>
-                  <p>
-                    <Link href="/terms" className="text-primary hover:underline">《用戶協議》</Link>
-                    {' '}和{' '}
-                    <Link href="/privacy" className="text-primary hover:underline">《隱私政策》</Link>
-                  </p>
+
+                {/* 服务保障 */}
+                <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    正品保證
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Truck className="w-3 h-3" />
+                    快速發貨
+                  </span>
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
       </main>
-      
-      {/* Auth Dialog */}
-      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
 
-      {/* Coupon Selector */}
+      {/* 优惠券选择器 */}
       <CouponSelector
         open={showCouponSelector}
         onOpenChange={setShowCouponSelector}
-        userId={user?.id}
-        orderAmount={totalAmount}
         mode="select"
-        selectedCouponId={selectedCoupon?.id}
-        onSelect={handleCouponSelect}
+        orderAmount={goodsAmount}
+        onSelect={handleSelectCoupon}
       />
     </div>
   );
@@ -561,8 +557,14 @@ function CheckoutContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">載入中...</div>}>
-      <CheckoutContent />
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <CheckoutPageContent />
     </Suspense>
   );
 }

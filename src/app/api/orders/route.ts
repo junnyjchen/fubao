@@ -142,14 +142,32 @@ export async function POST(request: Request) {
     
     const body = await request.json();
 
-    const { cartItemIds, shippingInfo, remark } = body;
+    const { cartItemIds, address_id, shippingInfo, coupon_id, remark } = body;
 
     if (!cartItemIds || cartItemIds.length === 0) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    if (!shippingInfo) {
-      return NextResponse.json({ error: '請填寫收貨信息' }, { status: 400 });
+    // 获取收货地址
+    let shippingData = shippingInfo;
+    if (address_id && !shippingInfo) {
+      const { data: address } = await client
+        .from('addresses')
+        .select('*')
+        .eq('id', address_id)
+        .single();
+      
+      if (address) {
+        shippingData = {
+          name: address.name,
+          phone: address.phone,
+          address: `${address.province}${address.city}${address.district}${address.address}`,
+        };
+      }
+    }
+
+    if (!shippingData) {
+      return NextResponse.json({ error: '請選擇收貨地址' }, { status: 400 });
     }
 
     // 获取购物车项目
@@ -227,9 +245,9 @@ export async function POST(request: Request) {
         pay_amount: payAmount.toString(),
         pay_status: 0,
         order_status: 0,
-        shipping_name: shippingInfo.name,
-        shipping_phone: shippingInfo.phone,
-        shipping_address: shippingInfo.address,
+        shipping_name: shippingData.name,
+        shipping_phone: shippingData.phone,
+        shipping_address: shippingData.address,
         remark: remark || null,
         created_at: new Date().toISOString(),
       })
@@ -274,7 +292,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: '訂單創建成功',
-      order: {
+      data: {
         ...order,
         items: orderItems,
       },
