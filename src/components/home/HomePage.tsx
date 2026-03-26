@@ -320,8 +320,8 @@ export function HomePage() {
     { icon: BookOpen, title: '玄門百科', href: '/wiki' },
     { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
     { icon: TrendingUp, title: '分銷中心', href: '/distribution' },
-    { icon: Building2, title: '商戶入駐', href: '/merchant/apply' },
     { icon: Gift, title: '活動中心', href: '/activity' },
+    { icon: Building2, title: '商戶入駐', href: '/merchant/apply' },
   ];
 
   if (loading) {
