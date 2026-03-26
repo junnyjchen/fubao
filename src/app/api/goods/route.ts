@@ -48,11 +48,6 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${keyword.trim()}%,subtitle.ilike.%${keyword.trim()}%,description.ilike.%${keyword.trim()}%`);
     }
 
-    // 排序
-    query = query
-      .order('sort', { ascending: true })
-      .order('created_at', { ascending: false });
-
     // 筛选条件
     if (type) {
       query = query.eq('type', parseInt(type));
@@ -66,6 +61,29 @@ export async function GET(request: NextRequest) {
     if (categoryId) {
       query = query.eq('category_id', parseInt(categoryId));
     }
+
+    // 排序
+    const sort = searchParams.get('sort') || 'default';
+    switch (sort) {
+      case 'sales':
+        query = query.order('sales', { ascending: false });
+        break;
+      case 'price_asc':
+        query = query.order('price', { ascending: true });
+        break;
+      case 'price_desc':
+        query = query.order('price', { ascending: false });
+        break;
+      case 'newest':
+        query = query.order('created_at', { ascending: false });
+        break;
+      case 'hot':
+      case 'default':
+      default:
+        query = query.order('sort', { ascending: true }).order('sales', { ascending: false });
+        break;
+    }
+    
     if (isHot) {
       query = query.order('sales', { ascending: false });
     }

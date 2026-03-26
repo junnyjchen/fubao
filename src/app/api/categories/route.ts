@@ -10,20 +10,54 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
 /**
  * 获取分类列表
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const parentId = searchParams.get('parentId');
+    const withCount = searchParams.get('withCount') === 'true';
+
     const client = getSupabaseClient();
 
-    const { data: categories, error } = await client
+    let query = client
       .from('categories')
       .select('*')
       .order('sort', { ascending: true });
+
+    // 根据parentId筛选
+    if (parentId) {
+      query = query.eq('parent_id', parseInt(parentId));
+    }
+
+    const { data: categories, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data: categories || [] });
+    // 如果需要商品数量
+    let categoriesWithCount = categories || [];
+    if (withCount && categories && categories.length > 0) {
+      const categoryIds = categories.map(c => c.id);
+      const { data: goodsCount } = await client
+        .from('goods')
+        .select('category_id')
+        .in('category_id', categoryIds)
+        .eq('status', true);
+
+      const countMap: Record<number, number> = {};
+      if (goodsCount) {
+        goodsCount.forEach(g => {
+          countMap[g.category_id] = (countMap[g.category_id] || 0) + 1;
+        });
+      }
+
+      categoriesWithCount = categories.map(c => ({
+        ...c,
+        count: countMap[c.id] || 0,
+      }));
+    }
+
+    return NextResponse.json({ data: categoriesWithCount });
   } catch (error) {
     console.error('获取分类失败:', error);
     return NextResponse.json({ error: '獲取分類失敗' }, { status: 500 });
