@@ -1,80 +1,68 @@
 /**
  * @fileoverview 全局错误页面
- * @description 服务器错误页面
+ * @description 捕获并显示应用错误
  * @module app/error
  */
 
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Home, RefreshCw, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Home, ArrowLeft } from 'lucide-react';
 
-export default function Error({
-  error,
-  reset,
-}: {
+interface ErrorPageProps {
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}
+
+export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    // 将错误记录到错误报告服务
-    console.error('页面错误:', error);
+    // 记录错误到错误追踪服务
+    console.error('应用错误:', error);
   }, [error]);
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <Card className="max-w-md w-full text-center">
-        <CardContent className="pt-12 pb-8 px-6">
-          {/* 图标 */}
-          <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertTriangle className="w-12 h-12 text-destructive" />
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
+      <Card className="max-w-md w-full">
+        <CardContent className="p-8 text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-destructive/10 flex items-center justify-center">
+            <AlertTriangle className="w-10 h-10 text-destructive" />
           </div>
           
-          {/* 错误码 */}
-          <h1 className="text-6xl font-bold text-destructive mb-2">500</h1>
-          
-          {/* 标题 */}
-          <h2 className="text-xl font-semibold mb-3">服務器錯誤</h2>
-          
-          {/* 描述 */}
-          <p className="text-muted-foreground mb-8">
-            抱歉，服務器發生了錯誤。我們的技術團隊已收到通知，正在緊急處理中。請稍後再試。
+          <h1 className="text-2xl font-bold mb-2">出錯了</h1>
+          <p className="text-muted-foreground mb-6">
+            抱歉，應用程式遇到了一個錯誤。請嘗試刷新頁面或返回首頁。
           </p>
           
-          {/* 错误详情（开发环境） */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mb-6 p-4 bg-muted rounded-lg text-left">
-              <p className="text-xs font-mono text-muted-foreground break-all">
+              <p className="text-sm font-mono text-destructive break-all">
                 {error.message}
               </p>
+              {error.digest && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  錯誤ID: {error.digest}
+                </p>
+              )}
             </div>
           )}
           
-          {/* 操作按钮 */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="outline" onClick={reset}>
-              <RefreshCw className="w-4 h-4 mr-2" />
+            <Button onClick={reset} className="gap-2">
+              <RefreshCw className="w-4 h-4" />
               重試
             </Button>
-            <Button asChild>
-              <Link href="/">
-                <Home className="w-4 h-4 mr-2" />
-                返回首頁
-              </Link>
+            <Button variant="outline" onClick={() => window.history.back()} className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              返回
             </Button>
-          </div>
-          
-          {/* 帮助链接 */}
-          <div className="mt-8 pt-6 border-t">
-            <p className="text-sm text-muted-foreground">
-              如果問題持續存在，請
-              <Link href="/contact" className="text-primary hover:underline ml-1">
-                聯繫我們
-              </Link>
-            </p>
+            <Button variant="outline" asChild className="gap-2">
+              <a href="/">
+                <Home className="w-4 h-4" />
+                首頁
+              </a>
+            </Button>
           </div>
         </CardContent>
       </Card>
