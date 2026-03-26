@@ -36,6 +36,8 @@ import {
   Ticket,
   Bell,
   Crown,
+  Zap,
+  FileSearch,
 } from 'lucide-react';
 
 export function Header() {
@@ -153,6 +155,22 @@ export function Header() {
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Heart className="h-4 w-4" />
                   <span className="sr-only">收藏</span>
+                </Button>
+              </Link>
+
+              {/* Quick Order */}
+              <Link href="/quick-order" className="hidden sm:block">
+                <Button variant="ghost" size="icon" className="h-9 w-9" title="快速下單">
+                  <Zap className="h-4 w-4" />
+                  <span className="sr-only">快速下單</span>
+                </Button>
+              </Link>
+
+              {/* Order Query */}
+              <Link href="/order/query" className="hidden sm:block">
+                <Button variant="ghost" size="icon" className="h-9 w-9" title="訂單查詢">
+                  <FileSearch className="h-4 w-4" />
+                  <span className="sr-only">訂單查詢</span>
                 </Button>
               </Link>
 

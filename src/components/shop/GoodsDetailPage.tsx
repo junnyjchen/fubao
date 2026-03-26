@@ -509,7 +509,7 @@ export function GoodsDetailPage() {
               </div>
 
               {/* 按钮组 */}
-              <div className="flex gap-4">
+              <div className="flex gap-3">
                 <Button
                   variant="outline"
                   className="flex-1"
@@ -529,6 +529,18 @@ export function GoodsDetailPage() {
                   立即購買
                 </Button>
               </div>
+
+              {/* 快速下单按钮 */}
+              <Link href={`/quick-order?goods_id=${goods.id}`} className="block">
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  size="lg"
+                >
+                  <Package className="w-5 h-5 mr-2" />
+                  快速下單（免登錄）
+                </Button>
+              </Link>
 
               {/* 功能按钮 */}
               <div className="flex gap-4 justify-center">
