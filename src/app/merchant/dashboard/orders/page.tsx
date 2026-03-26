@@ -185,13 +185,29 @@ export default function MerchantOrdersPage() {
 
     setShipping(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success('發貨成功');
-      setShipDialog(false);
-      setLogisticsCompany('');
-      setLogisticsNo('');
-      loadOrders();
+      const res = await fetch('/api/merchant/orders/ship', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: currentOrder.id,
+          logistics_company: logisticsCompany,
+          logistics_no: logisticsNo,
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (data.message) {
+        toast.success('發貨成功');
+        setShipDialog(false);
+        setLogisticsCompany('');
+        setLogisticsNo('');
+        loadOrders();
+      } else {
+        toast.error(data.error || '發貨失敗');
+      }
     } catch (error) {
+      console.error('发货失败:', error);
       toast.error('發貨失敗');
     } finally {
       setShipping(false);
