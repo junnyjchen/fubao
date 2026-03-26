@@ -56,6 +56,9 @@ import { RecommendList } from '@/components/free-gifts/RecommendList';
 import { QuickAddressSelect, AddressManager, Address } from '@/components/free-gifts/AddressManager';
 import { CustomerService, HelpTipCard } from '@/components/free-gifts/CustomerService';
 import { CategoryBadge } from '@/components/free-gifts/CategoryFilter';
+import { InviteFriend, InviteBanner } from '@/components/free-gifts/InviteFriend';
+import { NotificationButton, NotificationCenter } from '@/components/free-gifts/NotificationCenter';
+import { Bell } from 'lucide-react';
 
 interface FreeGift {
   id: number;
@@ -107,6 +110,16 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
   // 地址管理
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>();
+
+  // 邀请好友
+  const [showInvite, setShowInvite] = useState(false);
+  
+  // 消息通知
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: '1', type: 'gift' as const, title: '領取成功', content: '您已成功領取商品', read: false, createdAt: '2024-01-15' },
+  ]);
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   // 表单数据
   const [formData, setFormData] = useState({
@@ -294,6 +307,7 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
               <h1 className="font-semibold">商品詳情</h1>
             </div>
             <div className="flex items-center gap-1">
+              <NotificationButton count={unreadCount} onClick={() => setShowNotifications(true)} />
               <FavoriteButton
                 giftId={gift.id}
                 giftName={gift.name}
@@ -620,6 +634,11 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
               <p>• 每人每件商品限領 {gift.limit_per_user} 次</p>
               <p>• 如有問題請聯繫客服</p>
             </div>
+
+            {/* 邀请好友入口 */}
+            <div onClick={() => setShowInvite(true)}>
+              <InviteBanner onClick={() => {}} />
+            </div>
           </div>
         </div>
       </div>
@@ -807,6 +826,25 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
           />
         </DialogContent>
       </Dialog>
+
+      {/* 邀请好友弹窗 */}
+      <InviteFriend
+        open={showInvite}
+        onOpenChange={setShowInvite}
+        totalInvites={12}
+        successInvites={10}
+        remainingToday={3}
+      />
+
+      {/* 消息通知弹窗 */}
+      <NotificationCenter
+        open={showNotifications}
+        onOpenChange={setShowNotifications}
+        notifications={notifications}
+        onRead={(id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))}
+        onReadAll={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+        onClearAll={() => setNotifications([])}
+      />
 
       {/* 客服入口 */}
       <CustomerService variant="fab" />
