@@ -12,7 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
 // 验证用户登录
 async function verifyUser(request: NextRequest): Promise<string | null> {
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('auth_token')?.value;
   if (!token) return null;
 
   try {

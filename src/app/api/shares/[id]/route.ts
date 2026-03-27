@@ -96,7 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const shareId = resolvedParams.id;
 
   // 验证登录
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('auth_token')?.value;
   if (!token) {
     return NextResponse.json({ error: '請先登錄' }, { status: 401 });
   }
@@ -200,7 +200,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const shareId = resolvedParams.id;
 
   // 验证登录
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('auth_token')?.value;
   if (!token) {
     return NextResponse.json({ error: '請先登錄' }, { status: 401 });
   }

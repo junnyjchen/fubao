@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
 async function verifyAdmin(request: NextRequest): Promise<{ userId: string; role: string } | null> {
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('auth_token')?.value;
   if (!token) return null;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; role: string };

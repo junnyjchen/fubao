@@ -16,7 +16,7 @@ const supabase = createClient(
 export async function GET(request: NextRequest) {
   try {
     // 验证用户身份
-    const token = request.cookies.get('token')?.value;
+    const token = request.cookies.get('auth_token')?.value;
     if (!token) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 // 标记通知为已读
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
+    const token = request.cookies.get('auth_token')?.value;
     if (!token) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
@@ -141,7 +141,7 @@ export async function PUT(request: NextRequest) {
 // 删除通知
 export async function DELETE(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
+    const token = request.cookies.get('auth_token')?.value;
     if (!token) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }

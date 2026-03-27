@@ -16,7 +16,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 export async function POST(request: NextRequest) {
   try {
     // 验证用户登录状态
-    const token = request.cookies.get('token')?.value;
+    const token = request.cookies.get('auth_token')?.value;
     let userId: string | null = null;
 
     if (token) {
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
  * GET /api/merchant/apply - 查询申请状态
  */
 export async function GET(request: NextRequest) {
-  const token = request.cookies.get('token')?.value;
+  const token = request.cookies.get('auth_token')?.value;
 
   if (!token) {
     return NextResponse.json({ error: '未登錄' }, { status: 401 });
