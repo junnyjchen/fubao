@@ -23,6 +23,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import {
   ArrowLeft,
   User,
   Bell,
@@ -31,6 +40,12 @@ import {
   Save,
   Eye,
   EyeOff,
+  Link2,
+  Loader2,
+  ExternalLink,
+  Unlink,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,9 +60,55 @@ interface UserSettings {
   promotionNotification: boolean;
 }
 
+/** OAuth提供商绑定状态 */
+interface OAuthProviderStatus {
+  provider: string;
+  display_name: string;
+  enabled: boolean;
+  icon_url: string | null;
+  bound: boolean;
+  account: {
+    id: string;
+    email: string | null;
+    name: string | null;
+    avatar: string | null;
+    bound_at: string;
+  } | null;
+}
+
+/** 提供商图标和样式 */
+const PROVIDER_STYLES: Record<string, { icon: string; color: string; bgColor: string }> = {
+  google: {
+    icon: 'G',
+    color: 'text-white',
+    bgColor: 'bg-red-500',
+  },
+  facebook: {
+    icon: 'f',
+    color: 'text-white',
+    bgColor: 'bg-blue-600',
+  },
+  wechat: {
+    icon: '微',
+    color: 'text-white',
+    bgColor: 'bg-green-500',
+  },
+  x: {
+    icon: '𝕏',
+    color: 'text-white',
+    bgColor: 'bg-black',
+  },
+};
+
 export default function UserSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [oauthProviders, setOauthProviders] = useState<OAuthProviderStatus[]>([]);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [unbindDialog, setUnbindDialog] = useState<{ open: boolean; provider: string | null }>({
+    open: false,
+    provider: null,
+  });
   
   const [settings, setSettings] = useState<UserSettings>({
     nickname: '',
@@ -68,7 +129,65 @@ export default function UserSettingsPage() {
 
   useEffect(() => {
     loadUserSettings();
+    loadOAuthProviders();
   }, []);
+
+  const loadOAuthProviders = async () => {
+    try {
+      const res = await fetch('/api/user/oauth-accounts');
+      const data = await res.json();
+      if (data.providers) {
+        setOauthProviders(data.providers);
+      }
+    } catch (error) {
+      console.error('加载OAuth提供商失败:', error);
+    }
+  };
+
+  const handleOAuthBind = async (provider: string) => {
+    setOauthLoading(provider);
+    try {
+      const res = await fetch(`/api/oauth/authorize?provider=${provider}&redirect=${encodeURIComponent('/user/settings')}`);
+      const data = await res.json();
+
+      if (data.authorizeUrl) {
+        window.location.href = data.authorizeUrl;
+      } else {
+        toast.error(data.error || '獲取授權鏈接失敗');
+        setOauthLoading(null);
+      }
+    } catch (error) {
+      console.error('OAuth绑定失败:', error);
+      toast.error('綁定失敗');
+      setOauthLoading(null);
+    }
+  };
+
+  const handleOAuthUnbind = async () => {
+    if (!unbindDialog.provider) return;
+    
+    setOauthLoading(unbindDialog.provider);
+    try {
+      const res = await fetch(`/api/user/oauth-accounts?provider=${unbindDialog.provider}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      
+      if (data.message) {
+        toast.success('解綁成功');
+        loadOAuthProviders();
+      } else {
+        toast.error(data.error || '解綁失敗');
+      }
+    } catch (error) {
+      console.error('解绑失败:', error);
+      toast.error('解綁失敗');
+    } finally {
+      setOauthLoading(null);
+      setUnbindDialog({ open: false, provider: null });
+    }
+  };
 
   const loadUserSettings = async () => {
     try {
@@ -204,7 +323,7 @@ export default function UserSettingsPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full max-w-md">
+          <TabsList className="grid grid-cols-5 w-full max-w-lg">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="w-4 h-4" />
               <span className="hidden sm:inline">個人資料</span>
@@ -212,6 +331,10 @@ export default function UserSettingsPage() {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
               <span className="hidden sm:inline">賬號安全</span>
+            </TabsTrigger>
+            <TabsTrigger value="oauth" className="flex items-center gap-2">
+              <Link2 className="w-4 h-4" />
+              <span className="hidden sm:inline">第三方賬號</span>
             </TabsTrigger>
             <TabsTrigger value="notification" className="flex items-center gap-2">
               <Bell className="w-4 h-4" />
@@ -354,6 +477,117 @@ export default function UserSettingsPage() {
             </Card>
           </TabsContent>
 
+          {/* 第三方账号 */}
+          <TabsContent value="oauth">
+            <Card>
+              <CardHeader>
+                <CardTitle>第三方賬號綁定</CardTitle>
+                <CardDescription>管理您的第三方登錄賬號綁定</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {oauthProviders.length === 0 ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {oauthProviders.map((provider) => {
+                      const style = PROVIDER_STYLES[provider.provider] || {
+                        icon: '?',
+                        color: 'text-white',
+                        bgColor: 'bg-gray-500',
+                      };
+
+                      return (
+                        <div
+                          key={provider.provider}
+                          className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Logo */}
+                            <div
+                              className={`w-10 h-10 rounded-lg ${style.bgColor} ${style.color} flex items-center justify-center font-bold`}
+                            >
+                              {style.icon}
+                            </div>
+
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{provider.display_name}</span>
+                                {provider.bound ? (
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    已綁定
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary">
+                                    未綁定
+                                  </Badge>
+                                )}
+                              </div>
+                              {provider.bound && provider.account && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {provider.account.email || provider.account.name || '已綁定賬號'}
+                                </p>
+                              )}
+                              {!provider.enabled && !provider.bound && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  此登錄方式暫未開放
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {provider.bound ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setUnbindDialog({ open: true, provider: provider.provider })}
+                                disabled={oauthLoading === provider.provider}
+                              >
+                                {oauthLoading === provider.provider ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Unlink className="w-4 h-4 mr-1" />
+                                    解綁
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOAuthBind(provider.provider)}
+                                disabled={oauthLoading === provider.provider || !provider.enabled}
+                              >
+                                {oauthLoading === provider.provider ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Link2 className="w-4 h-4 mr-1" />
+                                    綁定
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    綁定第三方賬號後，您可以使用該賬號快速登錄。解綁後將無法使用該方式登錄，但不會影響您已綁定的其他登錄方式。
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* 通知设置 */}
           <TabsContent value="notification">
             <Card>
@@ -462,6 +696,36 @@ export default function UserSettingsPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* 解绑确认对话框 */}
+      <Dialog open={unbindDialog.open} onOpenChange={(open) => setUnbindDialog({ open, provider: open ? unbindDialog.provider : null })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              確認解綁
+            </DialogTitle>
+            <DialogDescription>
+              確定要解綁 {unbindDialog.provider ? oauthProviders.find(p => p.provider === unbindDialog.provider)?.display_name : ''} 賬號嗎？解綁後將無法使用該方式登錄。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnbindDialog({ open: false, provider: null })}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleOAuthUnbind} disabled={oauthLoading === unbindDialog.provider}>
+              {oauthLoading === unbindDialog.provider ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  解綁中...
+                </>
+              ) : (
+                '確認解綁'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -33,6 +33,9 @@ import {
   CheckCircle,
   XCircle,
   ExternalLink,
+  Copy,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -103,6 +106,22 @@ export default function OAuthConfigPage() {
   const [saving, setSaving] = useState<number | null>(null);
   const [editingProvider, setEditingProvider] = useState<OAuthProvider | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // 获取回调地址
+  const callbackUrl = `${process.env.NEXT_PUBLIC_COZE_PROJECT_DOMAIN_DEFAULT || window.location.origin}/api/oauth/callback`;
+
+  const handleCopyCallbackUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(callbackUrl);
+      setCopied(true);
+      toast.success('回調地址已複製');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('复制失败:', error);
+      toast.error('複製失敗');
+    }
+  };
 
   useEffect(() => {
     loadProviders();
@@ -294,11 +313,39 @@ export default function OAuthConfigPage() {
           <CardHeader>
             <CardTitle className="text-base">配置說明</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>1. 在對應的開發者平台創建應用，獲取 Client ID 和 Client Secret</p>
-            <p>2. 在開發者平台配置回調地址：<code className="bg-muted px-1 rounded">{'${COZE_PROJECT_DOMAIN_DEFAULT}'}/api/oauth/callback</code></p>
-            <p>3. 在上方配置對應的 Client ID、Client Secret 和回調地址</p>
-            <p>4. 開啟啟用開關，用戶即可使用該方式登錄</p>
+          <CardContent className="text-sm space-y-4">
+            <div className="space-y-2">
+              <p className="text-muted-foreground">1. 在對應的開發者平台創建應用，獲取 Client ID 和 Client Secret</p>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-muted-foreground">2. 在開發者平台配置回調地址：</p>
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                <code className="flex-1 text-sm break-all">{callbackUrl}</code>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCopyCallbackUrl}
+                  className="shrink-0"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            <p className="text-muted-foreground">3. 在上方配置對應的 Client ID、Client Secret</p>
+            <p className="text-muted-foreground">4. 開啟啟用開關，用戶即可使用該方式登錄</p>
+            
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg text-amber-800 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <p className="text-xs">
+                注意：回調地址必須與開發者平台配置的地址完全一致，否則授權將失敗。
+              </p>
+            </div>
           </CardContent>
         </Card>
       </main>

@@ -168,7 +168,26 @@ export async function GET(request: NextRequest) {
 
     // 解析state
     const state = JSON.parse(Buffer.from(stateStr, 'base64url').toString());
-    const { provider, redirect } = state;
+    const { provider, redirect, nonce } = state;
+
+    // 获取cookie store（在整个函数中复用）
+    const cookieStore = await cookies();
+
+    // 验证state中的nonce，防止CSRF攻击
+    const storedNonce = cookieStore.get(`oauth_state_${provider}`)?.value;
+    
+    if (!storedNonce || storedNonce !== nonce) {
+      console.error('State验证失败:', { storedNonce, nonce });
+      return NextResponse.redirect(new URL('/login?error=授權驗證失敗，請重試', request.url));
+    }
+
+    // 删除已使用的state cookie
+    cookieStore.delete(`oauth_state_${provider}`);
+
+    // 检查state是否过期（10分钟）
+    if (Date.now() - state.timestamp > 10 * 60 * 1000) {
+      return NextResponse.redirect(new URL('/login?error=授權已過期，請重試', request.url));
+    }
 
     // 获取提供商配置
     const client = getSupabaseClient();
@@ -287,7 +306,6 @@ export async function GET(request: NextRequest) {
     });
 
     // 设置Cookie
-    const cookieStore = await cookies();
     cookieStore.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.COZE_PROJECT_ENV === 'PROD',
