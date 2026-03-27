@@ -80,6 +80,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: data || [],
       total: count || 0,
+      page: Math.floor(offset / limit) + 1,
+      limit,
+      total_pages: count ? Math.ceil(count / limit) : 0,
     });
   } catch (error) {
     console.error('获取文章列表失败:', error);

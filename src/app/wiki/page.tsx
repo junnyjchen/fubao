@@ -30,6 +30,7 @@ import {
   TrendingUp,
   Flame,
 } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface WikiArticle {
   id: number;
@@ -63,10 +64,14 @@ export default function WikiPage() {
   const [keyword, setKeyword] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 20;
 
   useEffect(() => {
     loadData();
-  }, [selectedCategory, sortBy]);
+  }, [selectedCategory, sortBy, currentPage]);
 
   const loadData = async () => {
     setLoading(true);
@@ -83,6 +88,8 @@ export default function WikiPage() {
       setCategories(catData.data || []);
       setArticles(articlesData.data || []);
       setFeaturedArticles(articlesData.data?.filter((a: WikiArticle) => a.is_featured).slice(0, 3) || []);
+      setTotalItems(articlesData.total || 0);
+      setTotalPages(articlesData.total_pages || 0);
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {
@@ -92,7 +99,8 @@ export default function WikiPage() {
 
   const buildParams = () => {
     const params = new URLSearchParams();
-    params.set('limit', '20');
+    params.set('limit', pageSize.toString());
+    params.set('offset', ((currentPage - 1) * pageSize).toString());
     if (keyword) params.set('keyword', keyword);
     if (selectedCategory !== 'all') params.set('category_id', selectedCategory);
     if (sortBy) params.set('sort', sortBy);
@@ -175,7 +183,7 @@ export default function WikiPage() {
                     className={`flex items-center justify-between p-3 hover:bg-muted/50 transition-colors ${
                       selectedCategory === 'all' ? 'bg-primary/5 text-primary' : ''
                     }`}
-                    onClick={() => setSelectedCategory('all')}
+                    onClick={() => { setSelectedCategory('all'); setCurrentPage(1); }}
                   >
                     <span>全部文章</span>
                     <Badge variant="secondary">
@@ -189,7 +197,7 @@ export default function WikiPage() {
                       className={`flex items-center justify-between p-3 hover:bg-muted/50 transition-colors ${
                         selectedCategory === cat.id.toString() ? 'bg-primary/5 text-primary' : ''
                       }`}
-                      onClick={() => setSelectedCategory(cat.id.toString())}
+                      onClick={() => { setSelectedCategory(cat.id.toString()); setCurrentPage(1); }}
                     >
                       <span>{cat.name}</span>
                       <Badge variant="secondary">{cat.article_count}</Badge>
@@ -250,7 +258,7 @@ export default function WikiPage() {
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-lg">全部文章</h2>
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setCurrentPage(1); }}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -325,10 +333,17 @@ export default function WikiPage() {
                 </div>
               )}
 
-              {/* 加载更多 */}
-              {articles.length >= 20 && (
-                <div className="text-center mt-8">
-                  <Button variant="outline">加載更多</Button>
+              {/* 分页 */}
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-8">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    showTotal
+                    total={totalItems}
+                    pageSize={pageSize}
+                  />
                 </div>
               )}
             </section>
