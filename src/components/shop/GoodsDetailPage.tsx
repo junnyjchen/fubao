@@ -38,6 +38,7 @@ import { SharePoster } from '@/components/share/SharePoster';
 import { OrderReminder } from '@/components/shop/OrderReminder';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { DetailRecommendations } from '@/components/shop/ProductRecommendations';
+import { GoodsDetailSkeleton } from '@/components/shop/GoodsDetailSkeleton';
 import { toast } from 'sonner';
 import { Ticket } from 'lucide-react';
 
@@ -269,11 +270,7 @@ export function GoodsDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <GoodsDetailSkeleton />;
   }
 
   if (!goods) {

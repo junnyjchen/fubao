@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/lib/i18n';
 import { AnnouncementBar } from '@/components/announcement/AnnouncementBar';
 import { HomeRecommendations } from '@/components/shop/ProductRecommendations';
+import { HomeSkeleton } from '@/components/home/HomeSkeleton';
 import { 
   ShieldCheck, 
   Building2, 
@@ -326,11 +327,7 @@ export function HomePage() {
   ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-pulse text-muted-foreground">{t.common.loading}</div>
-      </div>
-    );
+    return <HomeSkeleton />;
   }
 
   return (
