@@ -20,7 +20,6 @@ import {
   Calendar,
   ArrowRight,
   Clock,
-  Loader2,
   Truck,
   MapPin,
   Users,
@@ -29,6 +28,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { ShareButton } from '@/components/free-gifts/ShareButton';
+import { ActivitySkeleton } from '@/components/common/PageSkeletons';
 
 /** 活动类型 */
 type ActivityType = 'seckill' | 'discount' | 'new_user' | 'festival';
@@ -312,9 +312,7 @@ export default function ActivityPage() {
       {/* 活动列表 */}
       <div className="container mx-auto px-4 py-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <ActivitySkeleton />
         ) : filteredActivities.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Gift className="w-12 h-12 mx-auto mb-4 text-gray-300" />

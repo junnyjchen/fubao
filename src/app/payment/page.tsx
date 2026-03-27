@@ -18,13 +18,13 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Loader2,
   Package,
   Shield,
   Copy,
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PaymentSkeleton } from '@/components/common/PageSkeletons';
 
 /** 订单信息 */
 interface Order {
@@ -232,11 +232,7 @@ function PaymentPageContent() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PaymentSkeleton />;
   }
 
   if (!order && !paymentInfo) {
@@ -457,13 +453,7 @@ function PaymentPageContent() {
 
 export default function PaymentPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PaymentSkeleton />}>
       <PaymentPageContent />
     </Suspense>
   );

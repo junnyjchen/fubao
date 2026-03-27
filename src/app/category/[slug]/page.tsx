@@ -26,11 +26,11 @@ import {
   Star,
   Shield,
   ChevronRight,
-  Loader2,
   Filter,
   SlidersHorizontal,
 } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
+import { CategorySkeleton } from '@/components/common/PageSkeletons';
 
 /** 分类信息 */
 interface Category {
@@ -153,11 +153,7 @@ function CategoryPageContent({ slug }: { slug: string }) {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <CategorySkeleton />;
   }
 
   if (!category) {

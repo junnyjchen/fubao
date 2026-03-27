@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShareButton } from '@/components/free-gifts/ShareButton';
+import { SeckillSkeleton } from '@/components/common/PageSkeletons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -393,9 +394,7 @@ export default function SeckillPage() {
       {/* 商品列表 */}
       <div className="container mx-auto px-4 py-6">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-red-500" />
-          </div>
+          <SeckillSkeleton />
         ) : seckillGoods.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />

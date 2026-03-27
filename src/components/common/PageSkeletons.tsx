@@ -752,3 +752,279 @@ export function DistributionSubSkeleton() {
     </div>
   );
 }
+
+/**
+ * 搜索页面骨架屏
+ */
+export function SearchSkeleton() {
+  return (
+    <div className="min-h-screen bg-muted/20">
+      {/* 搜索框 */}
+      <div className="bg-card border-b p-4">
+        <div className="max-w-4xl mx-auto flex gap-2">
+          <Skeleton variant="rounded" className="flex-1 h-10" />
+          <Skeleton variant="rounded" className="w-20 h-10" />
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-card border-b">
+        <div className="max-w-4xl mx-auto px-4 py-2">
+          <div className="flex gap-2">
+            {['全部', '商品', '百科', '視頻', '商戶'].map((_, i) => (
+              <Skeleton key={i} variant="rounded" className="h-8 w-16" />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* 搜索结果 */}
+        <div className="space-y-4">
+          {/* 商品结果 */}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-lg border bg-card p-4 flex gap-4">
+              <Skeleton variant="rounded" className="w-20 h-20 flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton variant="text" className="h-5 w-3/4" />
+                <Skeleton variant="text" className="h-4 w-1/2" />
+                <div className="flex items-center gap-4">
+                  <Skeleton variant="text" className="h-4 w-20" />
+                  <Skeleton variant="text" className="h-4 w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 百科页面骨架屏
+ */
+export function WikiSkeleton() {
+  return (
+    <div className="min-h-screen bg-muted/20">
+      {/* Banner */}
+      <div className="h-48 bg-gradient-to-r from-primary/20 to-primary/5 relative">
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <Skeleton variant="text" className="h-8 w-48 mx-auto" />
+            <Skeleton variant="text" className="h-4 w-64 mx-auto" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* 搜索 */}
+        <Skeleton variant="rounded" className="h-10 w-full max-w-md mx-auto" />
+
+        {/* 分类 */}
+        <div className="flex gap-2 flex-wrap">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} variant="rounded" className="h-8 w-16" />
+          ))}
+        </div>
+
+        {/* 文章列表 */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-lg border bg-card overflow-hidden">
+              <Skeleton variant="rectangular" className="aspect-video" />
+              <div className="p-4 space-y-2">
+                <Skeleton variant="rounded" className="h-5 w-20" />
+                <Skeleton variant="text" className="h-5 w-full" />
+                <Skeleton variant="text" className="h-4 w-full" />
+                <Skeleton variant="text" className="h-4 w-2/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 活动页面骨架屏
+ */
+export function ActivitySkeleton() {
+  return (
+    <div className="min-h-screen bg-muted/20">
+      {/* Banner */}
+      <div className="h-48 relative">
+        <Skeleton variant="rectangular" className="absolute inset-0" />
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* 活动卡片 */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="rounded-lg border bg-card overflow-hidden">
+              <Skeleton variant="rectangular" className="aspect-[2/1]" />
+              <div className="p-4 space-y-2">
+                <Skeleton variant="text" className="h-5 w-3/4" />
+                <Skeleton variant="text" className="h-4 w-1/2" />
+                <div className="flex justify-between items-center pt-2">
+                  <Skeleton variant="text" className="h-4 w-20" />
+                  <Skeleton variant="rounded" className="h-8 w-20" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 秒杀活动骨架屏
+ */
+export function SeckillSkeleton() {
+  return (
+    <div className="min-h-screen bg-red-50/50">
+      {/* 顶部倒计时 */}
+      <div className="bg-red-600 text-white p-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-center gap-4">
+          <Skeleton variant="text" className="h-6 w-24 bg-white/30" />
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} variant="rounded" className="h-8 w-8 bg-white/30" />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* 商品列表 */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="rounded-lg border bg-card overflow-hidden">
+              <Skeleton variant="rectangular" className="aspect-square" />
+              <div className="p-3 space-y-2">
+                <Skeleton variant="text" className="h-4 w-3/4" />
+                <div className="flex items-center gap-2">
+                  <Skeleton variant="text" className="h-5 w-16" />
+                  <Skeleton variant="text" className="h-3 w-12" />
+                </div>
+                <div className="flex justify-between items-center">
+                  <Skeleton variant="rounded" className="h-2 w-16" />
+                  <Skeleton variant="rounded" className="h-6 w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 支付页面骨架屏
+ */
+export function PaymentSkeleton() {
+  return (
+    <div className="min-h-screen bg-muted/20">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
+        {/* 订单信息 */}
+        <div className="rounded-lg border bg-card p-6 text-center">
+          <Skeleton variant="text" className="h-4 w-24 mx-auto mb-4" />
+          <Skeleton variant="text" className="h-10 w-32 mx-auto mb-2" />
+          <Skeleton variant="text" className="h-4 w-48 mx-auto" />
+        </div>
+
+        {/* 支付方式 */}
+        <div className="rounded-lg border bg-card p-4">
+          <Skeleton variant="text" className="h-5 w-24 mb-4" />
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-4 p-3 border rounded-lg">
+                <Skeleton variant="circular" className="w-10 h-10" />
+                <Skeleton variant="text" className="h-4 flex-1" />
+                <Skeleton variant="circular" className="w-5 h-5" />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 底部按钮 */}
+        <Skeleton variant="rounded" className="h-12 w-full" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 分类页面骨架屏
+ */
+export function CategorySkeleton() {
+  return (
+    <div className="min-h-screen bg-muted/20">
+      <div className="flex">
+        {/* 左侧分类 */}
+        <div className="w-24 bg-card border-r min-h-screen">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className="p-3 text-center border-b">
+              <Skeleton variant="text" className="h-4 w-12 mx-auto" />
+            </div>
+          ))}
+        </div>
+
+        {/* 右侧内容 */}
+        <div className="flex-1 p-4">
+          {/* 筛选栏 */}
+          <div className="flex gap-2 mb-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} variant="rounded" className="h-8 w-20" />
+            ))}
+          </div>
+
+          {/* 商品列表 */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="rounded-lg border bg-card overflow-hidden">
+                <Skeleton variant="rectangular" className="aspect-square" />
+                <div className="p-3 space-y-2">
+                  <Skeleton variant="text" className="h-4 w-3/4" />
+                  <Skeleton variant="text" className="h-5 w-20" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 登录页面骨架屏
+ */
+export function LoginSkeleton() {
+  return (
+    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
+      <div className="w-full max-w-md rounded-lg border bg-card p-6 space-y-4">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <Skeleton variant="circular" className="w-16 h-16 mx-auto mb-4" />
+          <Skeleton variant="text" className="h-6 w-24 mx-auto" />
+        </div>
+
+        {/* 表单 */}
+        <Skeleton variant="rounded" className="h-12 w-full" />
+        <Skeleton variant="rounded" className="h-12 w-full" />
+        <Skeleton variant="rounded" className="h-12 w-full" />
+
+        {/* 底部链接 */}
+        <div className="flex justify-center gap-4 pt-4">
+          <Skeleton variant="text" className="h-4 w-20" />
+          <Skeleton variant="text" className="h-4 w-20" />
+        </div>
+      </div>
+    </div>
+  );
+}

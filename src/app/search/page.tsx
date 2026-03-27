@@ -25,10 +25,10 @@ import {
   Eye,
   ThumbsUp,
   Shield,
-  Loader2,
   X,
 } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
+import { SearchSkeleton } from '@/components/common/PageSkeletons';
 
 interface SearchResult {
   goods: Array<{
@@ -208,11 +208,7 @@ function SearchPageContent() {
           </div>
         )}
 
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        )}
+        {loading && <SearchSkeleton />}
 
         {results && !loading && (
           <>
@@ -598,11 +594,7 @@ function SearchPageContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    }>
+    <Suspense fallback={<SearchSkeleton />}>
       <SearchPageContent />
     </Suspense>
   );

@@ -26,11 +26,11 @@ import {
   Clock,
   Eye,
   Heart,
-  Loader2,
   TrendingUp,
   Flame,
 } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
+import { WikiSkeleton } from '@/components/common/PageSkeletons';
 
 interface WikiArticle {
   id: number;
@@ -271,9 +271,7 @@ export default function WikiPage() {
               </div>
 
               {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
+                <WikiSkeleton />
               ) : articles.length === 0 ? (
                 <div className="text-center py-12">
                   <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
