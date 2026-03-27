@@ -31,6 +31,7 @@ import {
   XCircle,
   Truck,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/admin/DashboardCharts';
 
@@ -190,6 +191,7 @@ export default function AdminDashboard() {
   ] : [];
 
   const quickActions = [
+    { title: 'AI內容發佈', href: '/admin/ai-content', icon: Sparkles, color: 'bg-gradient-to-r from-purple-500 to-pink-500', isNew: true },
     { title: '添加商品', href: '/admin/goods/new', icon: Package, color: 'bg-blue-500' },
     { title: '訂單管理', href: '/admin/orders', icon: ShoppingCart, color: 'bg-green-500' },
     { title: '分類管理', href: '/admin/categories', icon: Package, color: 'bg-purple-500' },
@@ -201,7 +203,6 @@ export default function AdminDashboard() {
     { title: '新聞管理', href: '/admin/news', icon: FileText, color: 'bg-lime-500' },
     { title: '商戶管理', href: '/admin/merchants', icon: Store, color: 'bg-rose-500' },
     { title: '財務對賬', href: '/admin/finance', icon: DollarSign, color: 'bg-emerald-500' },
-    { title: '系統設置', href: '/admin/settings', icon: Activity, color: 'bg-gray-500' },
   ];
 
   if (loading) {
@@ -350,7 +351,12 @@ export default function AdminDashboard() {
                 const Icon = action.icon;
                 return (
                   <Link key={action.href} href={action.href}>
-                    <div className="flex flex-col items-center gap-2 p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer">
+                    <div className="relative flex flex-col items-center gap-2 p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer">
+                      {'isNew' in action && action.isNew && (
+                        <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full animate-pulse">
+                          NEW
+                        </span>
+                      )}
                       <div className={`w-10 h-10 rounded-full ${action.color} flex items-center justify-center`}>
                         <Icon className="w-5 h-5 text-white" />
                       </div>
