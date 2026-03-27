@@ -21,8 +21,22 @@ import {
   Flame,
   AlertCircle,
   Loader2,
+  Bell,
+  Heart,
+  BellOff,
+  Share2,
+  ChevronLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShareButton } from '@/components/free-gifts/ShareButton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 /** 秒杀商品类型 */
 interface SeckillGoods {
@@ -55,6 +69,16 @@ interface TimeSlot {
   status: 'upcoming' | 'active' | 'ended';
 }
 
+/** 商品提醒状态 */
+interface ReminderState {
+  [key: number]: { reminded: boolean; type: string };
+}
+
+/** 商品收藏状态 */
+interface FavoriteState {
+  [key: number]: boolean;
+}
+
 /**
  * 秒杀活动页面组件
  */
@@ -63,6 +87,10 @@ export default function SeckillPage() {
   const [loading, setLoading] = useState(true);
   const [activeTimeSlot, setActiveTimeSlot] = useState<string>('now');
   const [countdown, setCountdown] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [reminders, setReminders] = useState<ReminderState>({});
+  const [favorites, setFavorites] = useState<FavoriteState>({});
+  const [reminderLoading, setReminderLoading] = useState<number | null>(null);
+  const [favoriteLoading, setFavoriteLoading] = useState<number | null>(null);
 
   // 时间段列表
   const timeSlots: TimeSlot[] = useMemo(() => {
@@ -191,10 +219,88 @@ export default function SeckillPage() {
     window.location.href = `/shop/${item.goods_id}?seckill=true`;
   };
 
+  // 设置提醒
+  const handleSetReminder = async (item: SeckillGoods, type: string) => {
+    setReminderLoading(item.id);
+    
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    setReminders(prev => ({
+      ...prev,
+      [item.id]: { reminded: true, type }
+    }));
+    setReminderLoading(null);
+    
+    const typeText = {
+      '5min': '5分鐘前',
+      '30min': '30分鐘前',
+      '1hour': '1小時前',
+    }[type] || type;
+    
+    toast.success(`已設置${typeText}提醒`);
+  };
+
+  // 取消提醒
+  const handleCancelReminder = async (item: SeckillGoods) => {
+    setReminderLoading(item.id);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    setReminders(prev => {
+      const newReminders = { ...prev };
+      delete newReminders[item.id];
+      return newReminders;
+    });
+    setReminderLoading(null);
+    
+    toast.success('已取消提醒');
+  };
+
+  // 切换收藏
+  const handleToggleFavorite = async (item: SeckillGoods) => {
+    setFavoriteLoading(item.id);
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const isFavorited = favorites[item.id];
+    setFavorites(prev => ({
+      ...prev,
+      [item.id]: !prev[item.id]
+    }));
+    setFavoriteLoading(null);
+    
+    toast.success(isFavorited ? '已取消收藏' : '已添加收藏');
+  };
+
+  // 获取即将开始的场次
+  const upcomingSlots = useMemo(() => {
+    return timeSlots.filter(slot => slot.status === 'upcoming').slice(0, 3);
+  }, [timeSlots]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-red-50 to-background">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-red-600 to-red-500 text-white py-8">
+      <div className="bg-gradient-to-r from-red-600 to-red-500 text-white py-8 relative">
+        {/* 返回按钮 */}
+        <Link href="/activity" className="absolute left-4 top-4 md:left-8 md:top-6">
+          <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            返回活動中心
+          </Button>
+        </Link>
+        
+        {/* 分享按钮 */}
+        <div className="absolute right-4 top-4 md:right-8 md:top-6">
+          <ShareButton
+            url={typeof window !== 'undefined' ? window.location.href : ''}
+            title="限時秒殺活動"
+            description="精選好貨，限時特價，快來搶購！"
+            variant="ghost"
+            size="sm"
+            showText={false}
+          />
+        </div>
+        
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Zap className="w-10 h-10" />
@@ -236,15 +342,15 @@ export default function SeckillPage() {
           {timeSlots.map((slot) => (
             <button
               key={slot.id}
-              onClick={() => setActiveTimeSlot(slot.time)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg border-2 transition-all ${
+              onClick={() => slot.status !== 'ended' && setActiveTimeSlot(slot.time)}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg border-2 transition-all min-w-[80px] ${
                 activeTimeSlot === slot.time
-                  ? 'border-red-500 bg-red-50 text-red-600'
+                  ? 'border-red-500 bg-red-50 text-red-600 shadow-sm'
                   : slot.status === 'active'
-                  ? 'border-red-200 bg-white text-red-500 hover:border-red-500'
+                  ? 'border-red-200 bg-white text-red-500 hover:border-red-500 hover:bg-red-50'
                   : slot.status === 'ended'
                   ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-red-300'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-red-300 hover:bg-red-50/50'
               }`}
               disabled={slot.status === 'ended'}
             >
@@ -254,6 +360,35 @@ export default function SeckillPage() {
           ))}
         </div>
       </div>
+
+      {/* 即将开始的秒杀预告 */}
+      {upcomingSlots.length > 0 && (
+        <div className="container mx-auto px-4 py-2">
+          <Card className="bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Bell className="w-5 h-5 text-orange-500" />
+                <h3 className="font-semibold text-orange-700">即將開始</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {upcomingSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    className="px-3 py-2 bg-white rounded-lg border border-orange-200 text-sm"
+                  >
+                    <span className="font-medium text-orange-600">{slot.time}</span>
+                    <span className="text-muted-foreground ml-2">場次</span>
+                    <Button variant="ghost" size="sm" className="ml-2 h-6 px-2 text-xs">
+                      <Bell className="w-3 h-3 mr-1" />
+                      提醒我
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* 商品列表 */}
       <div className="container mx-auto px-4 py-6">
@@ -295,6 +430,80 @@ export default function SeckillPage() {
                       <Flame className="w-3 h-3 mr-1" />
                       秒殺
                     </Badge>
+                  </div>
+                  
+                  {/* 收藏和提醒按钮 */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="w-8 h-8 bg-white/90 hover:bg-white"
+                      onClick={() => handleToggleFavorite(item)}
+                      disabled={favoriteLoading === item.id}
+                    >
+                      {favoriteLoading === item.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : favorites[item.id] ? (
+                        <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                      ) : (
+                        <Heart className="w-4 h-4" />
+                      )}
+                    </Button>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className={`w-8 h-8 bg-white/90 hover:bg-white ${
+                            reminders[item.id]?.reminded ? 'text-orange-500' : ''
+                          }`}
+                          disabled={reminderLoading === item.id}
+                        >
+                          {reminderLoading === item.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : reminders[item.id]?.reminded ? (
+                            <BellOff className="w-4 h-4" />
+                          ) : (
+                            <Bell className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {reminders[item.id]?.reminded ? (
+                          <>
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">
+                              已設置提醒
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleCancelReminder(item)}
+                              className="text-destructive"
+                            >
+                              <BellOff className="w-4 h-4 mr-2" />
+                              取消提醒
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenuLabel>設置開搶提醒</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleSetReminder(item, '5min')}>
+                              <Bell className="w-4 h-4 mr-2" />
+                              開始前5分鐘
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSetReminder(item, '30min')}>
+                              <Bell className="w-4 h-4 mr-2" />
+                              開始前30分鐘
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSetReminder(item, '1hour')}>
+                              <Bell className="w-4 h-4 mr-2" />
+                              開始前1小時
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   
                   {/* 售罄标记 */}

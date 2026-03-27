@@ -23,8 +23,13 @@ import {
   Users,
   Clock,
   Ticket,
+  Heart,
+  ChevronLeft,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShareButton } from '@/components/free-gifts/ShareButton';
+import { InviteFriend } from '@/components/free-gifts/InviteFriend';
 
 /** 新人专享优惠券 */
 interface NewUserCoupon {
@@ -69,6 +74,11 @@ interface NewUserTask {
   action_url: string;
 }
 
+/** 收藏状态 */
+interface FavoriteState {
+  [key: number]: boolean;
+}
+
 /**
  * 新人专享活动页面组件
  */
@@ -78,6 +88,9 @@ export default function NewUserPage() {
   const [tasks, setTasks] = useState<NewUserTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [receivingCoupon, setReceivingCoupon] = useState<number | null>(null);
+  const [favorites, setFavorites] = useState<FavoriteState>({});
+  const [favoriteLoading, setFavoriteLoading] = useState<number | null>(null);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -184,6 +197,32 @@ export default function NewUserPage() {
       console.error('加入购物车失败:', error);
       toast.error('操作失敗，請重試');
     }
+  };
+
+  // 切换收藏
+  const handleToggleFavorite = async (item: NewUserGoods) => {
+    setFavoriteLoading(item.id);
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const isFavorited = favorites[item.id];
+    setFavorites(prev => ({
+      ...prev,
+      [item.id]: !prev[item.id]
+    }));
+    setFavoriteLoading(null);
+    
+    toast.success(isFavorited ? '已取消收藏' : '已添加收藏');
+  };
+
+  // 计算任务完成进度
+  const getTaskProgress = () => {
+    const completed = tasks.filter(t => t.status === 'completed').length;
+    return {
+      completed,
+      total: tasks.length,
+      percentage: Math.round((completed / tasks.length) * 100)
+    };
   };
 
   // 模拟数据
@@ -317,7 +356,27 @@ export default function NewUserPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-purple-50 to-background">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-500 text-white py-12">
+      <div className="bg-gradient-to-r from-purple-600 to-purple-500 text-white py-12 relative">
+        {/* 返回按钮 */}
+        <Link href="/activity" className="absolute left-4 top-4 md:left-8 md:top-6">
+          <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            返回活動中心
+          </Button>
+        </Link>
+        
+        {/* 分享按钮 */}
+        <div className="absolute right-4 top-4 md:right-8 md:top-6">
+          <ShareButton
+            url={typeof window !== 'undefined' ? window.location.href : ''}
+            title="新人專享活動"
+            description="新用戶專屬福利，首單立享優惠！"
+            variant="ghost"
+            size="sm"
+            showText={false}
+          />
+        </div>
+        
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Sparkles className="w-10 h-10" />
@@ -409,31 +468,65 @@ export default function NewUserPage() {
 
           {/* 新人任务 */}
           <div className="container mx-auto px-4 py-8">
-            <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-              <CheckCircle2 className="w-6 h-6 text-purple-500" />
-              新人任務
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-6 h-6 text-purple-500" />
+                新人任務
+              </h2>
+              <div className="text-sm text-muted-foreground">
+                已完成 {getTaskProgress().completed}/{getTaskProgress().total}
+              </div>
+            </div>
+            
+            {/* 进度条 */}
+            <div className="mb-6">
+              <Progress value={getTaskProgress().percentage} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1 text-right">
+                {getTaskProgress().percentage}% 完成
+              </p>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {tasks.map((task) => (
-                <Card key={task.id}>
+                <Card 
+                  key={task.id} 
+                  className={`transition-all ${task.status === 'completed' ? 'border-green-200 bg-green-50/50' : ''}`}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-semibold">{task.title}</h3>
+                        <h3 className="font-semibold flex items-center gap-2">
+                          {task.title}
+                          {task.status === 'completed' && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                              已完成
+                            </Badge>
+                          )}
+                        </h3>
                         <p className="text-sm text-muted-foreground">{task.description}</p>
                       </div>
-                      {task.status === 'completed' && (
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
-                      )}
                     </div>
                     <div className="flex items-center justify-between">
                       <Badge variant="outline" className="text-purple-600 border-purple-600">
                         獎勵: {task.reward}
                       </Badge>
                       <Link href={task.action_url}>
-                        <Button size="sm" variant="ghost">
-                          {task.status === 'completed' ? '已完成' : '去完成'}
-                          <ArrowRight className="w-4 h-4 ml-1" />
+                        <Button 
+                          size="sm" 
+                          variant={task.status === 'completed' ? 'outline' : 'default'}
+                          disabled={task.status === 'completed'}
+                        >
+                          {task.status === 'completed' ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 mr-1 text-green-500" />
+                              已完成
+                            </>
+                          ) : (
+                            <>
+                              去完成
+                              <ArrowRight className="w-4 h-4 ml-1" />
+                            </>
+                          )}
                         </Button>
                       </Link>
                     </div>
@@ -459,7 +552,7 @@ export default function NewUserPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {goods.map((item) => (
-                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-all">
+                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-all group">
                   <div className="relative aspect-square bg-muted">
                     {item.goods?.main_image ? (
                       <Image
@@ -481,6 +574,23 @@ export default function NewUserPage() {
                         新人價
                       </Badge>
                     </div>
+                    
+                    {/* 收藏按钮 */}
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute top-2 right-2 w-8 h-8 bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleToggleFavorite(item)}
+                      disabled={favoriteLoading === item.id}
+                    >
+                      {favoriteLoading === item.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : favorites[item.id] ? (
+                        <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                      ) : (
+                        <Heart className="w-4 h-4" />
+                      )}
+                    </Button>
                   </div>
                   
                   <CardContent className="p-4">
@@ -519,6 +629,31 @@ export default function NewUserPage() {
             </div>
           </div>
 
+          {/* 邀请好友 */}
+          <div className="container mx-auto px-4 py-8">
+            <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                      <Users className="w-6 h-6 text-purple-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">邀請好友，雙方得優惠</h3>
+                      <p className="text-sm text-muted-foreground">
+                        邀請好友註冊成功，雙方各得HK$10優惠券
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={() => setShowInviteDialog(true)}>
+                    立即邀請
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* 活动规则 */}
           <div className="container mx-auto px-4 py-8">
             <Card className="bg-muted/50">
@@ -536,6 +671,14 @@ export default function NewUserPage() {
           </div>
         </>
       )}
+      
+      {/* 邀请好友对话框 */}
+      <InviteFriend
+        open={showInviteDialog}
+        onOpenChange={setShowInviteDialog}
+        inviteCode="NEWUSER2024"
+        inviteLink={typeof window !== 'undefined' ? window.location.origin : ''}
+      />
     </div>
   );
 }

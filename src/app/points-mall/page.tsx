@@ -30,8 +30,12 @@ import {
   CheckCircle2,
   ArrowRight,
   AlertCircle,
+  Heart,
+  ChevronLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShareButton } from '@/components/free-gifts/ShareButton';
+import { EmptyState } from '@/components/free-gifts/EmptyState';
 
 /** 积分商品 */
 interface PointsGoods {
@@ -54,6 +58,11 @@ interface UserPoints {
   total_points: number;
 }
 
+/** 收藏状态 */
+interface FavoriteState {
+  [key: number]: boolean;
+}
+
 /**
  * 积分商城页面组件
  */
@@ -65,6 +74,8 @@ export default function PointsMallPage() {
   const [selectedGoods, setSelectedGoods] = useState<PointsGoods | null>(null);
   const [showExchangeDialog, setShowExchangeDialog] = useState(false);
   const [exchanging, setExchanging] = useState(false);
+  const [favorites, setFavorites] = useState<FavoriteState>({});
+  const [favoriteLoading, setFavoriteLoading] = useState<number | null>(null);
 
   useEffect(() => {
     loadData();
@@ -152,6 +163,24 @@ export default function PointsMallPage() {
   };
 
   /**
+   * 切换收藏
+   */
+  const handleToggleFavorite = async (item: PointsGoods) => {
+    setFavoriteLoading(item.id);
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const isFavorited = favorites[item.id];
+    setFavorites(prev => ({
+      ...prev,
+      [item.id]: !prev[item.id]
+    }));
+    setFavoriteLoading(null);
+    
+    toast.success(isFavorited ? '已取消收藏' : '已添加收藏');
+  };
+
+  /**
    * 模拟数据
    */
   function getMockGoods(): PointsGoods[] {
@@ -234,7 +263,27 @@ export default function PointsMallPage() {
   return (
     <div className="min-h-screen bg-muted/20">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-8">
+      <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-8 relative">
+        {/* 返回按钮 */}
+        <Link href="/activity" className="absolute left-4 top-4 md:left-8 md:top-6">
+          <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            返回活動中心
+          </Button>
+        </Link>
+        
+        {/* 分享按钮 */}
+        <div className="absolute right-4 top-4 md:right-8 md:top-6">
+          <ShareButton
+            url={typeof window !== 'undefined' ? window.location.href : ''}
+            title="積分商城"
+            description="使用積分兌換精美禮品！"
+            variant="ghost"
+            size="sm"
+            showText={false}
+          />
+        </div>
+        
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Star className="w-10 h-10" />
@@ -279,6 +328,14 @@ export default function PointsMallPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
           </div>
+        ) : goods.length === 0 ? (
+          <EmptyState
+            type="custom"
+            title="暫無可兌換商品"
+            description="敬請期待更多精彩好禮"
+            icon={<Gift className="w-16 h-16 text-muted-foreground/30" />}
+            action={{ label: '刷新看看', onClick: () => loadData() }}
+          />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {goods.map((item) => (
@@ -308,9 +365,26 @@ export default function PointsMallPage() {
                     </Badge>
                   </div>
                   
+                  {/* 收藏按钮 */}
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute top-2 right-2 w-8 h-8 bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleToggleFavorite(item)}
+                    disabled={favoriteLoading === item.id}
+                  >
+                    {favoriteLoading === item.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : favorites[item.id] ? (
+                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                    ) : (
+                      <Heart className="w-4 h-4" />
+                    )}
+                  </Button>
+                  
                   {/* 库存提示 */}
                   {item.stock <= 10 && item.stock > 0 && (
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute bottom-2 left-2">
                       <Badge variant="destructive" className="text-xs">
                         僅剩{item.stock}件
                       </Badge>
