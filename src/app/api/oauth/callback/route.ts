@@ -227,8 +227,16 @@ export async function GET(request: NextRequest) {
     let userId: string;
 
     if (existingBind) {
-      // 已绑定，直接登录
+      // 已绑定，更新token和最后登录时间
       userId = existingBind.user_id;
+      await client
+        .from('user_oauth_accounts')
+        .update({
+          access_token: accessToken,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('provider', provider)
+        .eq('provider_user_id', userInfo.id);
     } else {
       // 未绑定，检查邮箱是否存在
       let existingUser: { id: string } | null = null;
