@@ -20,8 +20,12 @@ import {
   Loader2,
   Tag,
   CheckCircle2,
+  Heart,
+  ChevronLeft,
+  Calculator,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ShareButton } from '@/components/free-gifts/ShareButton';
 
 /** 满减规则 */
 interface DiscountRule {
@@ -42,6 +46,18 @@ interface DiscountGoods {
   merchants?: { name: string } | null;
 }
 
+/** 收藏状态 */
+interface FavoriteState {
+  [key: number]: boolean;
+}
+
+/** 购物车金额统计 */
+interface CartSummary {
+  total: number;
+  discount: number;
+  finalAmount: number;
+}
+
 /**
  * 满减优惠活动页面组件
  */
@@ -49,6 +65,10 @@ export default function DiscountPage() {
   const [goods, setGoods] = useState<DiscountGoods[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [favorites, setFavorites] = useState<FavoriteState>({});
+  const [favoriteLoading, setFavoriteLoading] = useState<number | null>(null);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calculatorAmount, setCalculatorAmount] = useState<string>('');
 
   // 满减规则
   const discountRules: DiscountRule[] = [
@@ -102,6 +122,44 @@ export default function DiscountPage() {
     }
   };
 
+  // 切换收藏
+  const handleToggleFavorite = async (item: DiscountGoods) => {
+    setFavoriteLoading(item.id);
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const isFavorited = favorites[item.id];
+    setFavorites(prev => ({
+      ...prev,
+      [item.id]: !prev[item.id]
+    }));
+    setFavoriteLoading(null);
+    
+    toast.success(isFavorited ? '已取消收藏' : '已添加收藏');
+  };
+
+  // 计算折扣
+  const calculateDiscount = (amount: number): CartSummary => {
+    let discount = 0;
+    
+    // 找到最大符合条件的满减规则
+    for (let i = discountRules.length - 1; i >= 0; i--) {
+      if (amount >= discountRules[i].min_amount) {
+        discount = discountRules[i].discount_amount;
+        break;
+      }
+    }
+    
+    return {
+      total: amount,
+      discount,
+      finalAmount: Math.max(0, amount - discount)
+    };
+  };
+
+  // 当前计算的优惠
+  const currentCalculation = calculatorAmount ? calculateDiscount(parseFloat(calculatorAmount) || 0) : null;
+
   // 模拟数据
   function getMockGoods(): DiscountGoods[] {
     return [
@@ -147,7 +205,27 @@ export default function DiscountPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-background">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-400 text-white py-12">
+      <div className="bg-gradient-to-r from-orange-500 to-orange-400 text-white py-12 relative">
+        {/* 返回按钮 */}
+        <Link href="/activity" className="absolute left-4 top-4 md:left-8 md:top-6">
+          <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            返回活動中心
+          </Button>
+        </Link>
+        
+        {/* 分享按钮 */}
+        <div className="absolute right-4 top-4 md:right-8 md:top-6">
+          <ShareButton
+            url={typeof window !== 'undefined' ? window.location.href : ''}
+            title="滿減優惠活動"
+            description="滿額立減，多買多減！"
+            variant="ghost"
+            size="sm"
+            showText={false}
+          />
+        </div>
+        
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Tag className="w-10 h-10" />
@@ -177,21 +255,69 @@ export default function DiscountPage() {
 
       {/* 优惠说明 */}
       <div className="container mx-auto px-4 py-6">
-        <Card className="bg-orange-50 border-orange-200">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <Gift className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-orange-800 mb-1">優惠說明</p>
-                <ul className="text-orange-700 space-y-1">
-                  <li>• 活動期間，全場商品參與滿減優惠</li>
-                  <li>• 滿減金額自動抵扣，無需領取優惠券</li>
-                  <li>• 可與店鋪優惠券疊加使用</li>
-                </ul>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="bg-orange-50 border-orange-200">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Gift className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-orange-800 mb-1">優惠說明</p>
+                  <ul className="text-orange-700 space-y-1">
+                    <li>• 活動期間，全場商品參與滿減優惠</li>
+                    <li>• 滿減金額自動抵扣，無需領取優惠券</li>
+                    <li>• 可與店鋪優惠券疊加使用</li>
+                  </ul>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+          
+          {/* 优惠计算器 */}
+          <Card className="bg-gradient-to-r from-orange-100 to-amber-50 border-orange-200">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Calculator className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-orange-800 mb-2">優惠試算</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-orange-700">輸入金額：</span>
+                    <div className="relative flex-1">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-500">HK$</span>
+                      <input
+                        type="number"
+                        value={calculatorAmount}
+                        onChange={(e) => setCalculatorAmount(e.target.value)}
+                        placeholder="0"
+                        className="w-full pl-8 pr-3 py-2 rounded-lg border border-orange-200 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      />
+                    </div>
+                  </div>
+                  {currentCalculation && currentCalculation.total > 0 && (
+                    <div className="bg-white/80 rounded-lg p-3 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">商品金額</span>
+                        <span>HK${currentCalculation.total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">滿減優惠</span>
+                        <span className="text-red-500">-HK${currentCalculation.discount.toFixed(2)}</span>
+                      </div>
+                      <div className="border-t pt-2 flex justify-between font-medium">
+                        <span>實付金額</span>
+                        <span className="text-orange-600">HK${currentCalculation.finalAmount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  )}
+                  {currentCalculation && currentCalculation.discount === 0 && currentCalculation.total > 0 && (
+                    <p className="text-xs text-orange-600 mt-2">
+                      再購買 HK${(200 - currentCalculation.total).toFixed(2)} 即可享受滿減優惠
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* 商品分类 */}
@@ -238,6 +364,23 @@ export default function DiscountPage() {
                       滿減
                     </Badge>
                   </div>
+                  
+                  {/* 收藏按钮 */}
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="absolute top-2 right-2 w-8 h-8 bg-white/90 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleToggleFavorite(item)}
+                    disabled={favoriteLoading === item.id}
+                  >
+                    {favoriteLoading === item.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : favorites[item.id] ? (
+                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                    ) : (
+                      <Heart className="w-4 h-4" />
+                    )}
+                  </Button>
                 </div>
                 
                 <CardContent className="p-4">

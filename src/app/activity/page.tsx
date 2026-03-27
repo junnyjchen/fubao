@@ -24,7 +24,11 @@ import {
   Truck,
   MapPin,
   Users,
+  Share2,
+  Star,
+  Bell,
 } from 'lucide-react';
+import { ShareButton } from '@/components/free-gifts/ShareButton';
 
 /** 活动类型 */
 type ActivityType = 'seckill' | 'discount' | 'new_user' | 'festival';
@@ -67,6 +71,46 @@ export default function ActivityPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<ActivityType | 'all'>('all');
+
+  // 快捷入口配置
+  const quickEntries = [
+    {
+      title: '限時秒殺',
+      description: '定時開搶，手慢無',
+      icon: Zap,
+      href: '/activity/seckill',
+      color: 'from-red-500 to-red-600',
+      iconBg: 'bg-red-100',
+      iconColor: 'text-red-500',
+    },
+    {
+      title: '積分商城',
+      description: '積分兌好禮',
+      icon: Star,
+      href: '/points-mall',
+      color: 'from-amber-500 to-orange-500',
+      iconBg: 'bg-amber-100',
+      iconColor: 'text-amber-500',
+    },
+    {
+      title: '新人專享',
+      description: '新人福利包',
+      icon: Sparkles,
+      href: '/activity/new-user',
+      color: 'from-purple-500 to-violet-500',
+      iconBg: 'bg-purple-100',
+      iconColor: 'text-purple-500',
+    },
+    {
+      title: '滿減優惠',
+      description: '多買多減',
+      icon: Gift,
+      href: '/activity/discount',
+      color: 'from-orange-500 to-amber-500',
+      iconBg: 'bg-orange-100',
+      iconColor: 'text-orange-500',
+    },
+  ];
 
   useEffect(() => {
     loadActivities();
@@ -126,7 +170,19 @@ export default function ActivityPage() {
   return (
     <div className="min-h-screen bg-muted/20">
       {/* 头部 */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-12">
+      <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-12 relative">
+        {/* 分享按钮 */}
+        <div className="absolute right-4 top-4 md:right-8 md:top-6">
+          <ShareButton
+            url={typeof window !== 'undefined' ? window.location.href : ''}
+            title="符寶網活動中心"
+            description="精彩活動不斷，優惠享不停！"
+            variant="ghost"
+            size="sm"
+            showText={false}
+          />
+        </div>
+        
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Gift className="w-10 h-10" />
@@ -149,6 +205,32 @@ export default function ActivityPage() {
             <TabsTrigger value="festival">節日活動</TabsTrigger>
           </TabsList>
         </Tabs>
+      </div>
+
+      {/* 快捷入口 */}
+      <div className="container mx-auto px-4 pb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {quickEntries.map((entry) => {
+            const Icon = entry.icon;
+            return (
+              <Link key={entry.href} href={entry.href}>
+                <Card className={`bg-gradient-to-r ${entry.color} text-white overflow-hidden hover:shadow-lg transition-all cursor-pointer group`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-xl ${entry.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <Icon className={`w-6 h-6 ${entry.iconColor}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{entry.title}</h3>
+                        <p className="text-sm text-white/80">{entry.description}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {/* 免费领专属入口 */}
@@ -202,6 +284,29 @@ export default function ActivityPage() {
             </CardContent>
           </Card>
         </Link>
+      </div>
+
+      {/* 活动订阅提醒 */}
+      <div className="container mx-auto px-4 pb-6">
+        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-blue-800">活動提醒</h3>
+                  <p className="text-sm text-blue-600">訂閱後，新活動開始時會通知您</p>
+                </div>
+              </div>
+              <Button variant="outline" className="border-blue-300 text-blue-600 hover:bg-blue-100">
+                <Bell className="w-4 h-4 mr-2" />
+                訂閱提醒
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 活动列表 */}
