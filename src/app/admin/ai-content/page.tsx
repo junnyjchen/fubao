@@ -54,6 +54,7 @@ import {
   XCircle,
   BarChart3,
   AlertCircle,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -69,6 +70,13 @@ interface GeneratedContent {
   metaDescription: string;
   category?: string;
   tags?: string[];
+  coverImage?: string;
+}
+
+/** 生成的图片 */
+interface GeneratedImage {
+  url: string;
+  prompt: string;
 }
 
 /** 草稿 */
@@ -193,6 +201,10 @@ export default function AIContentPage() {
   const [analyzingSeo, setAnalyzingSeo] = useState(false);
   const [showSeoPanel, setShowSeoPanel] = useState(false);
   
+  // 图片生成状态
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 加载历史记录和草稿
@@ -309,6 +321,52 @@ export default function AIContentPage() {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  // 生成配图
+  const handleGenerateImage = async () => {
+    if (!generatedContent) return;
+    
+    setGeneratingImage(true);
+    setGeneratedImages([]);
+    
+    try {
+      const res = await fetch('/api/admin/ai-content/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: activeTab,
+          title: generatedContent.title,
+          summary: generatedContent.summary,
+          keywords: generatedContent.keywords,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || '圖片生成失敗');
+      }
+      
+      setGeneratedImages(data.imageUrls.map((url: string) => ({
+        url,
+        prompt: data.prompt,
+      })));
+      
+      toast.success('配圖生成成功');
+    } catch (error) {
+      console.error('图片生成失败:', error);
+      toast.error(error instanceof Error ? error.message : '圖片生成失敗');
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
+  // 选择图片作为封面
+  const handleSelectCoverImage = (url: string) => {
+    if (!generatedContent) return;
+    setGeneratedContent({ ...generatedContent, coverImage: url });
+    toast.success('已選擇封面圖片');
   };
 
 // 批量生成相关函数
@@ -514,6 +572,7 @@ export default function AIContentPage() {
             price: activeTab === 'product' ? 288 : undefined,
             original_price: activeTab === 'product' ? 388 : undefined,
             stock: activeTab === 'product' ? 100 : undefined,
+            cover_image: generatedContent.coverImage || undefined,
           },
         }),
       });
@@ -926,6 +985,19 @@ export default function AIContentPage() {
                         )}
                         SEO分析
                       </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleGenerateImage}
+                        disabled={generatingImage}
+                      >
+                        {generatingImage ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <ImageIcon className="w-4 h-4 mr-1" />
+                        )}
+                        生成配圖
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
                         <Eye className="w-4 h-4 mr-1" />
                         預覽
@@ -938,6 +1010,42 @@ export default function AIContentPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4" ref={contentRef}>
+                  {/* 生成的图片 */}
+                  {generatedImages.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>AI生成配圖</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {generatedImages.map((img, i) => (
+                          <div 
+                            key={i} 
+                            className={`relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all ${
+                              generatedContent.coverImage === img.url 
+                                ? 'border-primary' 
+                                : 'border-transparent hover:border-muted-foreground/50'
+                            }`}
+                            onClick={() => handleSelectCoverImage(img.url)}
+                          >
+                            <img 
+                              src={img.url} 
+                              alt={`Generated ${i + 1}`}
+                              className="w-full h-32 object-cover"
+                            />
+                            {generatedContent.coverImage === img.url && (
+                              <div className="absolute top-1 right-1">
+                                <Badge className="bg-primary text-primary-foreground">
+                                  已選擇
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        點擊圖片選擇作為封面
+                      </p>
+                    </div>
+                  )}
+                  
                   {/* 标题 */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
