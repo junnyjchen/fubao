@@ -69,6 +69,16 @@ interface GeneratedContent {
   tags?: string[];
 }
 
+/** 草稿 */
+interface Draft {
+  id: string;
+  type: ContentType;
+  keyword: string;
+  content: GeneratedContent;
+  category?: string;
+  savedAt: string;
+}
+
 /** 生成历史 */
 interface GenerationHistory {
   id: string;
@@ -158,13 +168,22 @@ export default function AIContentPage() {
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchResults, setBatchResults] = useState<BatchItem[]>([]);
   
+  // 草稿状态
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [showDrafts, setShowDrafts] = useState(false);
+  
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // 加载历史记录
+  // 加载历史记录和草稿
   useEffect(() => {
     const savedHistory = localStorage.getItem('ai-content-history');
     if (savedHistory) {
       setHistory(JSON.parse(savedHistory));
+    }
+    
+    const savedDrafts = localStorage.getItem('ai-content-drafts');
+    if (savedDrafts) {
+      setDrafts(JSON.parse(savedDrafts));
     }
   }, []);
 
@@ -181,6 +200,46 @@ export default function AIContentPage() {
     const updatedHistory = [newHistory, ...history].slice(0, 20);
     setHistory(updatedHistory);
     localStorage.setItem('ai-content-history', JSON.stringify(updatedHistory));
+  };
+
+  // 保存草稿
+  const saveDraft = (type: ContentType, keyword: string, content: GeneratedContent, category?: string) => {
+    const newDraft: Draft = {
+      id: Date.now().toString(),
+      type,
+      keyword,
+      content,
+      category,
+      savedAt: new Date().toISOString(),
+    };
+    const updatedDrafts = [newDraft, ...drafts].slice(0, 50);
+    setDrafts(updatedDrafts);
+    localStorage.setItem('ai-content-drafts', JSON.stringify(updatedDrafts));
+    toast.success('草稿已保存');
+  };
+
+  // 加载草稿
+  const loadDraft = (draft: Draft) => {
+    setActiveTab(draft.type);
+    setKeyword(draft.keyword);
+    setCategory(draft.category || '');
+    setGeneratedContent(draft.content);
+    setShowDrafts(false);
+    toast.success('草稿已加載');
+  };
+
+  // 删除草稿
+  const deleteDraft = (id: string) => {
+    const updatedDrafts = drafts.filter(d => d.id !== id);
+    setDrafts(updatedDrafts);
+    localStorage.setItem('ai-content-drafts', JSON.stringify(updatedDrafts));
+    toast.success('草稿已刪除');
+  };
+
+  // 保存当前内容为草稿
+  const handleSaveDraft = () => {
+    if (!generatedContent) return;
+    saveDraft(activeTab, keyword, generatedContent, category);
   };
 
 // 批量生成相关函数
@@ -254,19 +313,19 @@ export default function AIContentPage() {
     if (!item.content) return;
 
     try {
-      const endpoint = item.type === 'product' 
-        ? '/api/goods' 
-        : item.type === 'wiki' 
-          ? '/api/wiki' 
-          : '/api/news';
-
-      const res = await fetch(endpoint, {
+      // 使用统一的发布API
+      const res = await fetch('/api/admin/ai-content/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...item.content,
-          category: item.category || item.content.category,
-          status: true,
+          type: item.type,
+          content: item.content,
+          options: {
+            status: true,
+            price: item.type === 'product' ? 288 : undefined,
+            original_price: item.type === 'product' ? 388 : undefined,
+            stock: item.type === 'product' ? 100 : undefined,
+          },
         }),
       });
 
@@ -290,9 +349,42 @@ export default function AIContentPage() {
 
   const handlePublishAll = async () => {
     const successItems = batchResults.filter(r => r.success && r.content);
-    
-    for (const item of successItems) {
-      await handleBatchPublish(item);
+    if (successItems.length === 0) return;
+
+    try {
+      const res = await fetch('/api/admin/ai-content/publish', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: successItems.map(item => ({
+            type: item.type,
+            content: item.content!,
+            options: {
+              status: true,
+              price: item.type === 'product' ? 288 : undefined,
+              original_price: item.type === 'product' ? 388 : undefined,
+              stock: item.type === 'product' ? 100 : undefined,
+            },
+          })),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '批量發佈失敗');
+      }
+
+      toast.success(`成功發佈 ${data.successCount} 條內容`);
+      
+      if (data.errors && data.errors.length > 0) {
+        data.errors.forEach((e: { title: string; error: string }) => {
+          toast.error(`「${e.title}」發佈失敗: ${e.error}`);
+        });
+      }
+    } catch (error) {
+      console.error('批量发布失败:', error);
+      toast.error(error instanceof Error ? error.message : '批量發佈失敗');
     }
   };
 
@@ -341,22 +433,20 @@ export default function AIContentPage() {
     setPublishing(true);
 
     try {
-      const endpoint = activeTab === 'product' 
-        ? '/api/goods' 
-        : activeTab === 'wiki' 
-          ? '/api/wiki' 
-          : '/api/news';
-
-      const body = {
-        ...generatedContent,
-        category: category || generatedContent.category,
-        status: true,
-      };
-
-      const res = await fetch(endpoint, {
+      // 使用统一的发布API
+      const res = await fetch('/api/admin/ai-content/publish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          type: activeTab,
+          content: generatedContent,
+          options: {
+            status: true,
+            price: activeTab === 'product' ? 288 : undefined,
+            original_price: activeTab === 'product' ? 388 : undefined,
+            stock: activeTab === 'product' ? 100 : undefined,
+          },
+        }),
       });
 
       const data = await res.json();
@@ -365,7 +455,7 @@ export default function AIContentPage() {
         throw new Error(data.error || '發佈失敗');
       }
 
-      toast.success('內容已成功發佈');
+      toast.success(`「${generatedContent.title}」已成功發佈`);
       
       // 更新历史记录状态
       const updatedHistory = history.map(h => 
@@ -856,6 +946,10 @@ export default function AIContentPage() {
                     <Button variant="outline" onClick={() => setGeneratedContent(null)}>
                       取消
                     </Button>
+                    <Button variant="outline" onClick={handleSaveDraft}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      保存草稿
+                    </Button>
                     <Button onClick={handlePublish} disabled={publishing}>
                       {publishing ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -982,6 +1076,66 @@ export default function AIContentPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* 草稿列表 */}
+            {drafts.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-primary" />
+                    草稿箱
+                    <Badge variant="secondary" className="ml-auto">
+                      {drafts.length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {drafts.slice(0, 5).map((draft) => {
+                      const Icon = contentTypeConfig[draft.type].icon;
+                      return (
+                        <div
+                          key={draft.id}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 cursor-pointer group"
+                        >
+                          <Icon className={`w-4 h-4 ${contentTypeConfig[draft.type].color}`} />
+                          <div 
+                            className="flex-1 min-w-0"
+                            onClick={() => loadDraft(draft)}
+                          >
+                            <p className="text-sm font-medium truncate">{draft.content.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(draft.savedAt).toLocaleDateString('zh-TW')}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteDraft(draft.id);
+                            }}
+                          >
+                            <XCircle className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                    {drafts.length > 5 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => setShowDrafts(true)}
+                      >
+                        查看全部 {drafts.length} 個草稿
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* SEO优化提示 */}
             <Card className="bg-gradient-to-br from-primary/5 to-primary/10">
