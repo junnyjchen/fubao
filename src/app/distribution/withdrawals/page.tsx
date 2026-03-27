@@ -13,12 +13,12 @@ import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft,
   Wallet,
-  Loader2,
   Clock,
   CheckCircle,
   XCircle,
   AlertCircle,
 } from 'lucide-react';
+import { DistributionSubSkeleton } from '@/components/common/PageSkeletons';
 
 interface Withdrawal {
   id: number;
@@ -111,11 +111,7 @@ export default function WithdrawalsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DistributionSubSkeleton />;
   }
 
   if (!data) {

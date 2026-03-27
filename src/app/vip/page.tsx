@@ -38,6 +38,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { VIPSkeleton } from '@/components/common/PageSkeletons';
 
 interface VIPInfo {
   level: number;
@@ -271,11 +272,7 @@ export default function VIPPage() {
   const CurrentIcon = currentLevelConfig?.icon || Star;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <VIPSkeleton />;
   }
 
   return (

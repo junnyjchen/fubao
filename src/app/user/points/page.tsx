@@ -20,10 +20,10 @@ import {
   History,
   TrendingUp,
   ChevronRight,
-  Loader2,
   Award,
   Percent,
 } from 'lucide-react';
+import { PointsSkeleton } from '@/components/common/PageSkeletons';
 
 /** 等级信息 */
 interface LevelInfo {
@@ -121,13 +121,7 @@ export default function UserPointsPage() {
   };
 
   if (loading) {
-    return (
-      <UserLayout title="我的積分">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      </UserLayout>
-    );
+    return <PointsSkeleton />;
   }
 
   return (

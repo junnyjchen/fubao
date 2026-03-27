@@ -41,6 +41,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { QuickOrderSkeleton } from '@/components/common/PageSkeletons';
 
 interface GoodsInfo {
   id: number;
@@ -189,11 +190,7 @@ function QuickOrderForm() {
   const payAmount = totalAmount + shippingFee;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <QuickOrderSkeleton />;
   }
 
   if (!goods) {

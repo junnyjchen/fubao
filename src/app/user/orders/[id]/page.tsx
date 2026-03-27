@@ -35,6 +35,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { OrderDetailSkeleton } from '@/components/common/PageSkeletons';
 
 /** 订单项数据类型 */
 interface OrderItem {
@@ -214,13 +215,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   };
 
   if (loading) {
-    return (
-      <UserLayout title="訂單詳情">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      </UserLayout>
-    );
+    return <OrderDetailSkeleton />;
   }
 
   if (!order) {

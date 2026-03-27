@@ -14,13 +14,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
   DollarSign,
-  Loader2,
   TrendingUp,
   Gift,
   Crown,
   Clock,
   CheckCircle,
 } from 'lucide-react';
+import { DistributionSubSkeleton } from '@/components/common/PageSkeletons';
 
 interface Commission {
   id: string;
@@ -135,11 +135,7 @@ export default function CommissionsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DistributionSubSkeleton />;
   }
 
   if (!data) {

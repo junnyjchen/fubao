@@ -30,6 +30,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CheckoutSkeleton } from '@/components/common/PageSkeletons';
 
 /** 地址 */
 interface Address {
@@ -207,11 +208,7 @@ function CheckoutPageContent() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <CheckoutSkeleton />;
   }
 
   if (cartItems.length === 0) {

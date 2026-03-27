@@ -24,7 +24,6 @@ import {
   Gift,
   Truck,
   MapPin,
-  Loader2,
   ChevronRight,
   Clock,
   CheckCircle2,
@@ -231,11 +230,7 @@ export default function MyFreeGiftsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <ClaimRecordSkeleton />;
   }
 
   return (

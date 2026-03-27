@@ -40,6 +40,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { RefundListSkeleton } from '@/components/common/PageSkeletons';
 
 /** 售后数据类型 */
 interface Refund {
@@ -219,9 +220,7 @@ export default function UserRefundsPage() {
 
       {/* 售后列表 */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
+        <RefundListSkeleton />
       ) : refunds.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center">

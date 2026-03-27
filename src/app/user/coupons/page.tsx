@@ -17,7 +17,6 @@ import {
   Percent,
   Truck,
   Gift,
-  Loader2,
   Ticket,
   Clock,
   Check,
@@ -29,6 +28,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth/context';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
+import { CouponListSkeleton } from '@/components/common/PageSkeletons';
 
 interface UserCoupon {
   id: number;
@@ -163,11 +163,7 @@ export default function MyCouponsPage() {
   };
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    return <CouponListSkeleton />;
   }
 
   return (

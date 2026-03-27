@@ -27,12 +27,12 @@ import {
   Eye,
   ThumbsUp,
   Search,
-  Loader2,
   Flame,
   Star,
   BookOpen,
   TrendingUp,
 } from 'lucide-react';
+import { VideosGridSkeleton } from '@/components/home/HomeSkeleton';
 
 interface VideoItem {
   id: number;
@@ -295,9 +295,7 @@ export default function VideosPage() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
+            <VideosGridSkeleton count={8} />
           ) : videos.length === 0 ? (
             <div className="text-center py-12">
               <Video className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
