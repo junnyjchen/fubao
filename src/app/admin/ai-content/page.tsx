@@ -49,6 +49,9 @@ import {
   History,
   TrendingUp,
   Zap,
+  Layers,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -125,6 +128,18 @@ const newsCategories = [
   { value: 'notice', label: '公告通知' },
 ];
 
+/** 批量生成项 */
+interface BatchItem {
+  id: string;
+  type: ContentType;
+  keyword: string;
+  category: string;
+  status: 'pending' | 'generating' | 'success' | 'error';
+  success: boolean;
+  content?: GeneratedContent;
+  error?: string;
+}
+
 export default function AIContentPage() {
   const [activeTab, setActiveTab] = useState<ContentType>('product');
   const [keyword, setKeyword] = useState('');
@@ -135,6 +150,14 @@ export default function AIContentPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [history, setHistory] = useState<GenerationHistory[]>([]);
+  
+  // 批量生成状态
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [batchKeywords, setBatchKeywords] = useState('');
+  const [batchGenerating, setBatchGenerating] = useState(false);
+  const [batchResults, setBatchResults] = useState<BatchItem[]>([]);
+  
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 加载历史记录
@@ -158,6 +181,119 @@ export default function AIContentPage() {
     const updatedHistory = [newHistory, ...history].slice(0, 20);
     setHistory(updatedHistory);
     localStorage.setItem('ai-content-history', JSON.stringify(updatedHistory));
+  };
+
+// 批量生成相关函数
+  const parseBatchKeywords = (text: string): string[] => {
+    return text
+      .split(/[\n,，]/)
+      .map(k => k.trim())
+      .filter(k => k.length > 0)
+      .slice(0, 10);
+  };
+
+  const handleBatchGenerate = async () => {
+    const keywords = parseBatchKeywords(batchKeywords);
+    if (keywords.length === 0) {
+      toast.error('請輸入關鍵詞（每行一個或用逗號分隔）');
+      return;
+    }
+
+    setBatchGenerating(true);
+    setBatchResults([]);
+
+    try {
+      const res = await fetch('/api/admin/ai-content/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: keywords.map(keyword => ({
+            type: activeTab,
+            keyword,
+            category: category || undefined,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '批量生成失敗');
+      }
+
+      // 转换结果
+      const results: BatchItem[] = data.results.map((r: { keyword: string; type: ContentType; success: boolean; content?: GeneratedContent; error?: string }, index: number) => ({
+        id: index.toString(),
+        type: r.type,
+        keyword: r.keyword,
+        category: category,
+        status: r.success ? 'success' : 'error',
+        success: r.success,
+        content: r.content,
+        error: r.error,
+      }));
+
+      setBatchResults(results);
+      toast.success(`成功生成 ${data.successCount} 條內容`);
+      
+      // 保存到历史
+      results.filter(r => r.success && r.content).forEach(r => {
+        if (r.content) {
+          saveToHistory(r.type, r.keyword, r.content.title);
+        }
+      });
+    } catch (error) {
+      console.error('批量生成失败:', error);
+      toast.error(error instanceof Error ? error.message : '批量生成失敗');
+    } finally {
+      setBatchGenerating(false);
+    }
+  };
+
+  const handleBatchPublish = async (item: BatchItem) => {
+    if (!item.content) return;
+
+    try {
+      const endpoint = item.type === 'product' 
+        ? '/api/goods' 
+        : item.type === 'wiki' 
+          ? '/api/wiki' 
+          : '/api/news';
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...item.content,
+          category: item.category || item.content.category,
+          status: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '發佈失敗');
+      }
+
+      toast.success(`「${item.content.title}」已成功發佈`);
+      
+      // 更新状态
+      setBatchResults(prev => 
+        prev.map(r => r.id === item.id ? { ...r, status: 'success' as const } : r)
+      );
+    } catch (error) {
+      console.error('发布失败:', error);
+      toast.error(error instanceof Error ? error.message : '發佈失敗');
+    }
+  };
+
+  const handlePublishAll = async () => {
+    const successItems = batchResults.filter(r => r.success && r.content);
+    
+    for (const item of successItems) {
+      await handleBatchPublish(item);
+    }
   };
 
   // 生成内容
@@ -290,6 +426,14 @@ export default function AIContentPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant={batchMode ? "default" : "outline"}
+                size="sm"
+                onClick={() => setBatchMode(!batchMode)}
+              >
+                <Layers className="w-4 h-4 mr-1" />
+                批量生成
+              </Button>
               <Badge variant="secondary" className="hidden md:flex">
                 <Zap className="w-3 h-3 mr-1" />
                 智能SEO優化
@@ -300,6 +444,202 @@ export default function AIContentPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* 批量生成模式 */}
+        {batchMode && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-primary" />
+                  批量生成內容
+                </CardTitle>
+                <CardDescription>
+                  一次生成多條內容，每行一個關鍵詞或用逗號分隔，最多10條
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 内容类型选择 */}
+                <div className="space-y-2">
+                  <Label>內容類型</Label>
+                  <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ContentType)}>
+                    <TabsList className="grid w-full grid-cols-3 max-w-md">
+                      {Object.entries(contentTypeConfig).map(([key, config]) => {
+                        const Icon = config.icon;
+                        return (
+                          <TabsTrigger key={key} value={key} className="flex items-center gap-2">
+                            <Icon className={`w-4 h-4 ${config.color}`} />
+                            <span>{config.label}</span>
+                          </TabsTrigger>
+                        );
+                      })}
+                    </TabsList>
+                  </Tabs>
+                </div>
+
+                {/* 分类选择 */}
+                <div className="space-y-2">
+                  <Label>分類（可選）</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="max-w-xs">
+                      <SelectValue placeholder="選擇分類" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(activeTab === 'product' ? productCategories : 
+                        activeTab === 'wiki' ? wikiCategories : newsCategories
+                      ).map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 关键词输入 */}
+                <div className="space-y-2">
+                  <Label>關鍵詞列表</Label>
+                  <Textarea
+                    placeholder={`輸入關鍵詞，每行一個或用逗號分隔&#10;例如：&#10;鎮宅符&#10;護身符&#10;桃木劍&#10;或：鎮宅符, 護身符, 桃木劍`}
+                    value={batchKeywords}
+                    onChange={(e) => setBatchKeywords(e.target.value)}
+                    rows={6}
+                    className="font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    已輸入 {parseBatchKeywords(batchKeywords).length} 個關鍵詞（最多10個）
+                  </p>
+                </div>
+
+                {/* 快捷关键词 */}
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">快捷添加</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {quickKeywords[activeTab].map((kw) => (
+                      <Button
+                        key={kw}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const current = parseBatchKeywords(batchKeywords);
+                          if (current.length < 10 && !current.includes(kw)) {
+                            setBatchKeywords(prev => prev + (prev ? '\n' : '') + kw);
+                          }
+                        }}
+                        className="text-xs"
+                      >
+                        + {kw}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleBatchGenerate} 
+                    disabled={batchGenerating || parseBatchKeywords(batchKeywords).length === 0}
+                  >
+                    {batchGenerating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        開始批量生成
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    setBatchKeywords('');
+                    setBatchResults([]);
+                  }}>
+                    清空
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 批量生成结果 */}
+            {batchResults.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>生成結果</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        成功 {batchResults.filter(r => r.success).length} / {batchResults.length}
+                      </Badge>
+                      <Button 
+                        size="sm" 
+                        onClick={handlePublishAll}
+                        disabled={batchResults.filter(r => r.success && r.content).length === 0}
+                      >
+                        <Save className="w-4 h-4 mr-1" />
+                        一鍵發佈全部
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {batchResults.map((item) => (
+                      <div 
+                        key={item.id} 
+                        className={`p-4 border rounded-lg ${item.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              {item.success ? (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-600" />
+                              )}
+                              <span className="font-medium">{item.keyword}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {contentTypeConfig[item.type].label}
+                              </Badge>
+                            </div>
+                            {item.success && item.content && (
+                              <div className="mt-2">
+                                <p className="font-medium text-sm">{item.content.title}</p>
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                  {item.content.summary}
+                                </p>
+                                <div className="flex items-center gap-1 mt-2">
+                                  {item.content.keywords.slice(0, 3).map((kw, i) => (
+                                    <Badge key={i} variant="secondary" className="text-xs">
+                                      {kw}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {!item.success && item.error && (
+                              <p className="text-sm text-red-600 mt-1">{item.error}</p>
+                            )}
+                          </div>
+                          {item.success && item.content && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleBatchPublish(item)}
+                            >
+                              發佈
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* 单个生成模式 */}
+        {!batchMode && (
         <div className="grid lg:grid-cols-3 gap-6">
           {/* 左侧：内容生成 */}
           <div className="lg:col-span-2 space-y-6">
@@ -661,6 +1001,7 @@ export default function AIContentPage() {
             </Card>
           </div>
         </div>
+        )}
       </main>
 
       {/* 预览对话框 */}
