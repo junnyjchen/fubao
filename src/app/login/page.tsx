@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,11 +17,38 @@ import {
   Loader2,
   ChevronLeft,
 } from 'lucide-react';
-import { useI18n } from '@/lib/i18n';
+import { toast } from 'sonner';
 
-export default function LoginPage() {
+/** OAuth提供商 */
+interface OAuthProvider {
+  provider: string;
+  display_name: string;
+  icon_url: string | null;
+}
+
+/** 提供商图标和样式 */
+const PROVIDER_ICONS: Record<string, { icon: React.ReactNode; bgColor: string }> = {
+  google: {
+    icon: <span className="font-bold">G</span>,
+    bgColor: 'bg-red-500 hover:bg-red-600',
+  },
+  facebook: {
+    icon: <span className="font-bold">f</span>,
+    bgColor: 'bg-blue-600 hover:bg-blue-700',
+  },
+  wechat: {
+    icon: <span className="font-bold">微</span>,
+    bgColor: 'bg-green-500 hover:bg-green-600',
+  },
+  x: {
+    icon: <span className="font-bold">𝕏</span>,
+    bgColor: 'bg-black hover:bg-gray-800',
+  },
+};
+
+function LoginPageContent() {
   const router = useRouter();
-  const { t } = useI18n();
+  const searchParams = useSearchParams();
   
   const [loginType, setLoginType] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
@@ -31,6 +58,38 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
+  const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+
+  // 获取URL参数
+  const redirectParam = searchParams.get('redirect') || '/';
+  const errorParam = searchParams.get('error');
+  const successParam = searchParams.get('success');
+
+  useEffect(() => {
+    // 显示URL中的错误或成功消息
+    if (errorParam) {
+      setError(errorParam);
+    }
+    if (successParam) {
+      toast.success(successParam);
+    }
+
+    // 加载OAuth提供商
+    loadOAuthProviders();
+  }, [errorParam, successParam]);
+
+  const loadOAuthProviders = async () => {
+    try {
+      const res = await fetch('/api/oauth/providers');
+      const data = await res.json();
+      if (data.providers) {
+        setOauthProviders(data.providers);
+      }
+    } catch (err) {
+      console.error('加载OAuth提供商失败:', err);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,9 +110,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (data.user) {
-        // 登录成功，跳转到用户中心或之前的页面
-        const redirectTo = new URLSearchParams(window.location.search).get('redirect') || '/user';
-        router.push(redirectTo);
+        router.push(redirectParam);
       } else {
         setError(data.error || '登錄失敗，請重試');
       }
@@ -62,6 +119,25 @@ export default function LoginPage() {
       setError('登錄失敗，請稍後重試');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOAuthLogin = async (provider: string) => {
+    setOauthLoading(provider);
+    try {
+      const res = await fetch(`/api/oauth/authorize?provider=${provider}&redirect=${encodeURIComponent(redirectParam)}`);
+      const data = await res.json();
+
+      if (data.authorizeUrl) {
+        window.location.href = data.authorizeUrl;
+      } else {
+        setError(data.error || '獲取授權鏈接失敗');
+        setOauthLoading(null);
+      }
+    } catch (err) {
+      console.error('OAuth登录失败:', err);
+      setError('登錄失敗，請稍後重試');
+      setOauthLoading(null);
     }
   };
 
@@ -220,6 +296,49 @@ export default function LoginPage() {
               </Button>
             </form>
 
+            {/* OAuth Login */}
+            {oauthProviders.length > 0 && (
+              <>
+                <div className="relative my-6">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-4 text-xs text-muted-foreground">
+                    或使用以下方式登錄
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {oauthProviders.map((provider) => {
+                    const style = PROVIDER_ICONS[provider.provider] || {
+                      icon: <span className="font-bold">{provider.display_name[0]}</span>,
+                      bgColor: 'bg-gray-500 hover:bg-gray-600',
+                    };
+
+                    return (
+                      <Button
+                        key={provider.provider}
+                        type="button"
+                        variant="outline"
+                        className={`${style.bgColor} text-white border-0 h-11`}
+                        onClick={() => handleOAuthLogin(provider.provider)}
+                        disabled={oauthLoading === provider.provider}
+                      >
+                        {oauthLoading === provider.provider ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <span className="w-5 h-5 flex items-center justify-center mr-2">
+                              {style.icon}
+                            </span>
+                            {provider.display_name}
+                          </>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
             <Separator className="my-6" />
 
             {/* Register Link */}
@@ -241,5 +360,17 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <LoginPageContent />
+    </Suspense>
   );
 }

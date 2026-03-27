@@ -1,4 +1,4 @@
-import { pgTable, index, serial, varchar, boolean, timestamp, unique, text, integer, jsonb, numeric } from "drizzle-orm/pg-core"
+import { pgTable, index, serial, varchar, boolean, timestamp, unique, text, integer, jsonb, numeric, uuid } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -364,4 +364,41 @@ export const videos = pgTable("videos", {
 	index("videos_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
 	index("videos_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
 	unique("videos_slug_unique").on(table.slug),
+]);
+
+export const oauthProviders = pgTable("oauth_providers", {
+	id: serial().notNull(),
+	provider: varchar({ length: 20 }).notNull(),
+	displayName: varchar("display_name", { length: 50 }).notNull(),
+	clientId: varchar("client_id", { length: 255 }).notNull(),
+	clientSecret: varchar("client_secret", { length: 500 }).notNull(),
+	redirectUri: varchar("redirect_uri", { length: 500 }),
+	scope: varchar({ length: 500 }),
+	enabled: boolean().default(false).notNull(),
+	iconUrl: varchar("icon_url", { length: 500 }),
+	sortOrder: integer("sort_order").default(0),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("oauth_providers_provider_idx").using("btree", table.provider.asc().nullsLast().op("text_ops")),
+	unique("oauth_providers_provider_unique").on(table.provider),
+]);
+
+export const userOauthAccounts = pgTable("user_oauth_accounts", {
+	id: uuid().default(sql`gen_random_uuid()`).primaryKey().notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	provider: varchar({ length: 20 }).notNull(),
+	providerUserId: varchar("provider_user_id", { length: 255 }).notNull(),
+	providerEmail: varchar("provider_email", { length: 255 }),
+	providerName: varchar("provider_name", { length: 100 }),
+	providerAvatar: varchar("provider_avatar", { length: 500 }),
+	accessToken: text("access_token"),
+	refreshToken: text("refresh_token"),
+	tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("user_oauth_accounts_provider_idx").using("btree", table.provider.asc().nullsLast().op("text_ops")),
+	index("user_oauth_accounts_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	unique("user_oauth_accounts_provider_user_unique").on(table.provider, table.providerUserId),
 ]);

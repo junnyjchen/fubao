@@ -32,6 +32,7 @@ import {
   Truck,
   Loader2,
   Sparkles,
+  Settings,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/admin/DashboardCharts';
 
@@ -203,6 +204,7 @@ export default function AdminDashboard() {
     { title: '新聞管理', href: '/admin/news', icon: FileText, color: 'bg-lime-500' },
     { title: '商戶管理', href: '/admin/merchants', icon: Store, color: 'bg-rose-500' },
     { title: '財務對賬', href: '/admin/finance', icon: DollarSign, color: 'bg-emerald-500' },
+    { title: '第三方登錄', href: '/admin/oauth-config', icon: Settings, color: 'bg-slate-500' },
   ];
 
   if (loading) {
