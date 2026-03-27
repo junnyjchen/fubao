@@ -44,6 +44,6 @@ export function useI18n() {
 
 export const languages: { code: Language; name: string; nativeName: string }[] = [
   { code: 'zh-TW', name: 'Traditional Chinese', nativeName: '繁體中文' },
-  { code: 'zh-CN', name: 'Simplified Chinese', nativeName: '简体中文' },
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
   { code: 'en', name: 'English', nativeName: 'English' },
 ];
