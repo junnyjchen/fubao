@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -22,6 +22,7 @@ import {
   Package,
   Settings,
   HelpCircle,
+  ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -52,12 +53,14 @@ export function MobileNav() {
   const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false); // 默认隐藏
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isAtBottom, setIsAtBottom] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const sheetTriggerRef = useRef<HTMLButtonElement>(null);
+  const tickingRef = useRef(false);
 
-  // 不显示移动端导航的页面
+  // 不显示移动端导航的页面（沉浸式页面）
   const hiddenPaths = [
     '/admin',
     '/merchant',
@@ -66,30 +69,84 @@ export function MobileNav() {
     '/login',
     '/register',
     '/payment',
+    '/shop/',  // 商品详情页
+    '/free-gifts/',  // 免费领详情页
+    '/activity/seckill',  // 秒杀活动
+    '/activity/new-user',  // 新人专享
+    '/activity/discount',  // 满减优惠
+    '/points-mall',  // 积分商城
+    '/distribution',  // 分销中心
+    '/ai-assistant',  // AI助手
   ];
   
-  if (hiddenPaths.some(p => pathname.startsWith(p))) {
+  // 检查是否在隐藏路径中
+  const shouldHide = hiddenPaths.some(p => {
+    if (p.endsWith('/')) {
+      return pathname.startsWith(p) || pathname === p.slice(0, -1);
+    }
+    return pathname === p || pathname.startsWith(p + '/');
+  });
+  
+  if (shouldHide) {
     return null;
   }
 
-  // 滚动时隐藏/显示导航
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      // 向下滚动超过100px时隐藏，向上滚动时显示
-      if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsVisible(false);
-      } else {
-        setIsVisible(true);
-      }
-      
-      setLastScrollY(currentScrollY);
-    };
+  // 滚动处理函数
+  const handleScroll = useCallback(() => {
+    if (!tickingRef.current) {
+      window.requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        
+        // 计算距离底部的距离
+        const distanceToBottom = documentHeight - currentScrollY - windowHeight;
+        
+        // 判断是否接近底部（200px以内）
+        const nearBottom = distanceToBottom < 200;
+        setIsAtBottom(nearBottom);
+        
+        // 向上滚动时显示
+        const scrollingUp = currentScrollY < lastScrollY;
+        
+        // 在顶部时隐藏
+        const atTop = currentScrollY < 50;
+        
+        if (atTop) {
+          // 在顶部时隐藏，让用户看到更多内容
+          setIsVisible(false);
+        } else if (nearBottom || scrollingUp) {
+          // 接近底部或向上滚动时显示
+          setIsVisible(true);
+        } else if (currentScrollY > lastScrollY) {
+          // 向下滚动时隐藏
+          setIsVisible(false);
+        }
+        
+        setLastScrollY(currentScrollY);
+        tickingRef.current = false;
+      });
+      tickingRef.current = true;
+    }
+  }, [lastScrollY]);
 
+  // 滚动监听
+  useEffect(() => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+  }, [handleScroll]);
+
+  // 页面加载时检查是否需要显示
+  useEffect(() => {
+    // 初始状态：检查页面高度，如果页面很短则显示导航
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    
+    if (documentHeight <= windowHeight + 100) {
+      // 页面很短，直接显示导航
+      setIsVisible(true);
+    }
+  }, [pathname]);
 
   // 获取购物车数量和通知数量
   useEffect(() => {
@@ -139,11 +196,36 @@ export function MobileNav() {
     { href: '/user/settings', icon: Settings, label: '設置' },
   ];
 
+  // 回到顶部
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <>
+      {/* 回到顶部按钮 */}
+      <button
+        onClick={scrollToTop}
+        className={cn(
+          'fixed right-4 z-40 md:hidden',
+          'w-10 h-10 rounded-full bg-background/95 border shadow-lg',
+          'flex items-center justify-center',
+          'transition-all duration-300 ease-out',
+          'hover:bg-muted active:scale-95',
+          isAtBottom && isVisible 
+            ? 'bottom-20 opacity-100 pointer-events-auto' 
+            : 'bottom-4 opacity-0 pointer-events-none'
+        )}
+        aria-label="回到頂部"
+      >
+        <ArrowUp className="w-5 h-5 text-muted-foreground" />
+      </button>
+
       <nav 
         className={cn(
-          'mobile-bottom-bar md:hidden mobile-nav safe-area-bottom transition-transform duration-300',
+          'mobile-bottom-bar md:hidden mobile-nav safe-area-bottom',
+          'transition-transform duration-300 ease-out',
+          'backdrop-blur-lg bg-background/95 border-t border-border/50',
           !isVisible && 'translate-y-full'
         )}
       >
@@ -158,26 +240,35 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'mobile-nav-item',
-                isActive && 'active'
+                'mobile-nav-item flex-1 flex flex-col items-center justify-center py-2 gap-1',
+                'transition-colors duration-200',
+                isActive 
+                  ? 'text-primary' 
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <div className="relative">
-                <Icon className="w-6 h-6" />
+                <Icon className={cn(
+                  'w-5 h-5 transition-transform duration-200',
+                  isActive && 'scale-110'
+                )} />
                 {badge > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-medium">
                     {badge > 99 ? '99+' : badge}
                   </span>
                 )}
               </div>
-              <span>{item.label}</span>
+              <span className="text-xs font-medium">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* 安全区域底部占位 */}
-      <div className="h-16 md:hidden" />
+      {/* 安全区域底部占位 - 仅在导航可见时占据空间 */}
+      <div className={cn(
+        'h-16 md:hidden transition-opacity duration-300',
+        isVisible ? 'opacity-100' : 'opacity-0'
+      )} />
     </>
   );
 }
