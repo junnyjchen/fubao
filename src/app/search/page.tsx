@@ -28,6 +28,7 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface SearchResult {
   goods: Array<{
@@ -77,21 +78,28 @@ function SearchPageContent() {
   const [results, setResults] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, total_pages: 0 });
+  const [counts, setCounts] = useState({ goods: 0, wiki: 0, videos: 0, merchants: 0 });
+  const pageSize = 20;
 
   useEffect(() => {
     if (keywordParam) {
       search();
     }
-  }, [keywordParam]);
+  }, [keywordParam, currentPage, activeTab]);
 
   const search = async () => {
     if (!keyword.trim()) return;
     
     setLoading(true);
     try {
-      const res = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+      const type = activeTab === 'all' ? 'all' : activeTab;
+      const res = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}&type=${type}&page=${currentPage}&limit=${pageSize}`);
       const data = await res.json();
       setResults(data.data || { goods: [], wiki: [], videos: [], merchants: [] });
+      setPagination(data.pagination || { page: 1, limit: 20, total: 0, total_pages: 0 });
+      setCounts(data.counts || { goods: 0, wiki: 0, videos: 0, merchants: 0 });
     } catch (error) {
       console.error('搜索失败:', error);
     } finally {
@@ -101,6 +109,7 @@ function SearchPageContent() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setCurrentPage(1);
     // 更新URL
     const url = new URL(window.location.href);
     url.searchParams.set('q', keyword);
@@ -113,9 +122,16 @@ function SearchPageContent() {
     setResults(null);
   };
 
-  const totalCount = results 
-    ? results.goods.length + results.wiki.length + results.videos.length + results.merchants.length 
-    : 0;
+  // Tab切换时重置页码
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
+
+  // 根据当前Tab计算总数
+  const totalCount = activeTab === 'all' 
+    ? (results ? results.goods.length + results.wiki.length + results.videos.length + results.merchants.length : 0)
+    : counts[activeTab as keyof typeof counts] || 0;
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -207,7 +223,7 @@ function SearchPageContent() {
               </p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList className="mb-6">
                 <TabsTrigger value="all">
                   全部 ({totalCount})
@@ -239,7 +255,7 @@ function SearchPageContent() {
                         <Package className="w-4 h-4" />
                         商品
                       </h2>
-                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('goods')}>
+                      <Button variant="ghost" size="sm" onClick={() => handleTabChange('goods')}>
                         查看全部
                         <ChevronRight className="w-4 h-4" />
                       </Button>
@@ -277,7 +293,7 @@ function SearchPageContent() {
                         <BookOpen className="w-4 h-4" />
                         百科文章
                       </h2>
-                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('wiki')}>
+                      <Button variant="ghost" size="sm" onClick={() => handleTabChange('wiki')}>
                         查看全部
                         <ChevronRight className="w-4 h-4" />
                       </Button>
@@ -320,7 +336,7 @@ function SearchPageContent() {
                         <Video className="w-4 h-4" />
                         視頻課程
                       </h2>
-                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('videos')}>
+                      <Button variant="ghost" size="sm" onClick={() => handleTabChange('videos')}>
                         查看全部
                         <ChevronRight className="w-4 h-4" />
                       </Button>
@@ -358,7 +374,7 @@ function SearchPageContent() {
                         <Store className="w-4 h-4" />
                         商戶
                       </h2>
-                      <Button variant="ghost" size="sm" onClick={() => setActiveTab('merchants')}>
+                      <Button variant="ghost" size="sm" onClick={() => handleTabChange('merchants')}>
                         查看全部
                         <ChevronRight className="w-4 h-4" />
                       </Button>
@@ -403,32 +419,39 @@ function SearchPageContent() {
                     暫無相關商品
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {results.goods.map((item) => (
-                      <Link key={item.id} href={`/shop/${item.id}`}>
-                        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                          <div className="aspect-square bg-muted relative">
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                            {item.has_cert && (
-                              <Badge className="absolute top-2 left-2 bg-green-600">
-                                <Shield className="w-3 h-3 mr-1" />認證
-                              </Badge>
-                            )}
-                          </div>
-                          <CardContent className="p-3">
-                            <h3 className="text-sm font-medium line-clamp-2">
-                              <HighlightText text={item.name} keyword={keyword} />
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-1">{item.merchant_name}</p>
-                            <div className="flex items-end justify-between mt-2">
-                              <p className="text-primary font-bold">HK${item.price}</p>
-                              <p className="text-xs text-muted-foreground">已售 {item.sales}</p>
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {results.goods.map((item) => (
+                        <Link key={item.id} href={`/shop/${item.id}`}>
+                          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                            <div className="aspect-square bg-muted relative">
+                              <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                              {item.has_cert && (
+                                <Badge className="absolute top-2 left-2 bg-green-600">
+                                  <Shield className="w-3 h-3 mr-1" />認證
+                                </Badge>
+                              )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+                            <CardContent className="p-3">
+                              <h3 className="text-sm font-medium line-clamp-2">
+                                <HighlightText text={item.name} keyword={keyword} />
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-1">{item.merchant_name}</p>
+                              <div className="flex items-end justify-between mt-2">
+                                <p className="text-primary font-bold">HK${item.price}</p>
+                                <p className="text-xs text-muted-foreground">已售 {item.sales}</p>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.total_pages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </>
                 )}
               </TabsContent>
 
@@ -439,32 +462,39 @@ function SearchPageContent() {
                     暫無相關百科文章
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {results.wiki.map((item) => (
-                      <Link key={item.id} href={`/wiki/${item.slug}`}>
-                        <Card className="hover:shadow-lg transition-shadow">
-                          <CardContent className="p-4 flex gap-4">
-                            {item.cover_image && (
-                              <div className="w-24 h-24 bg-muted rounded overflow-hidden flex-shrink-0">
-                                <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
+                  <>
+                    <div className="space-y-4">
+                      {results.wiki.map((item) => (
+                        <Link key={item.id} href={`/wiki/${item.slug}`}>
+                          <Card className="hover:shadow-lg transition-shadow">
+                            <CardContent className="p-4 flex gap-4">
+                              {item.cover_image && (
+                                <div className="w-24 h-24 bg-muted rounded overflow-hidden flex-shrink-0">
+                                  <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <Badge variant="outline" className="mb-2">{item.category_name}</Badge>
+                                <h3 className="font-medium">{item.title}</h3>
+                                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.summary}</p>
+                                <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Eye className="w-3 h-3" />
+                                    {item.views}
+                                  </span>
+                                </div>
                               </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <Badge variant="outline" className="mb-2">{item.category_name}</Badge>
-                              <h3 className="font-medium">{item.title}</h3>
-                              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.summary}</p>
-                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Eye className="w-3 h-3" />
-                                  {item.views}
-                                </span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.total_pages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </>
                 )}
               </TabsContent>
 
@@ -475,33 +505,40 @@ function SearchPageContent() {
                     暫無相關視頻
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-3 gap-4">
-                    {results.videos.map((item) => (
-                      <Link key={item.id} href={`/videos/${item.id}`}>
-                        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                          <div className="aspect-video bg-muted relative">
-                            <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
-                            <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
-                              {formatDuration(item.duration)}
+                  <>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {results.videos.map((item) => (
+                        <Link key={item.id} href={`/videos/${item.id}`}>
+                          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                            <div className="aspect-video bg-muted relative">
+                              <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
+                              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
+                                {formatDuration(item.duration)}
+                              </div>
+                              {item.is_free && (
+                                <Badge className="absolute top-2 left-2 bg-green-500">免費</Badge>
+                              )}
                             </div>
-                            {item.is_free && (
-                              <Badge className="absolute top-2 left-2 bg-green-500">免費</Badge>
-                            )}
-                          </div>
-                          <CardContent className="p-3">
-                            <h3 className="font-medium line-clamp-2">{item.title}</h3>
-                            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                              <span>講師：{item.author}</span>
-                              <span className="flex items-center gap-1">
-                                <Eye className="w-3 h-3" />
-                                {item.views}
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+                            <CardContent className="p-3">
+                              <h3 className="font-medium line-clamp-2">{item.title}</h3>
+                              <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                                <span>講師：{item.author}</span>
+                                <span className="flex items-center gap-1">
+                                  <Eye className="w-3 h-3" />
+                                  {item.views}
+                                </span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.total_pages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </>
                 )}
               </TabsContent>
 
@@ -512,36 +549,43 @@ function SearchPageContent() {
                     暫無相關商戶
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {results.merchants.map((item) => (
-                      <Link key={item.id} href={`/merchant/${item.id}`}>
-                        <Card className="hover:shadow-lg transition-shadow">
-                          <CardContent className="p-4 flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-2xl">
-                              {item.logo ? (
-                                <img src={item.logo} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                              ) : (
-                                '符'
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">{item.name}</h3>
-                                {item.verified && (
-                                  <Badge className="bg-green-600">認證</Badge>
+                  <>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {results.merchants.map((item) => (
+                        <Link key={item.id} href={`/merchant/${item.id}`}>
+                          <Card className="hover:shadow-lg transition-shadow">
+                            <CardContent className="p-4 flex items-center gap-4">
+                              <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center text-2xl">
+                                {item.logo ? (
+                                  <img src={item.logo} alt={item.name} className="w-full h-full object-cover rounded-lg" />
+                                ) : (
+                                  '符'
                                 )}
                               </div>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                                <span className="text-yellow-600">⭐ {item.rating}</span>
-                                <span>銷量 {item.total_sales}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-medium">{item.name}</h3>
+                                  {item.verified && (
+                                    <Badge className="bg-green-600">認證</Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                                  <span className="text-yellow-600">⭐ {item.rating}</span>
+                                  <span>銷量 {item.total_sales}</span>
+                                </div>
                               </div>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
+                              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      ))}
+                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={pagination.total_pages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </>
                 )}
               </TabsContent>
             </Tabs>

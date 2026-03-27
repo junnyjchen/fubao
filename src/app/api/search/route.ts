@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
     const keyword = searchParams.get('keyword') || '';
     const type = searchParams.get('type') || 'all'; // all, goods, wiki, videos, merchants
     const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1');
+    const offset = (page - 1) * limit;
 
     if (!keyword.trim()) {
       return NextResponse.json({
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
           videos: [],
           merchants: [],
         },
+        pagination: { page, limit, total: 0, total_pages: 0 },
       });
     }
 
@@ -47,12 +50,12 @@ export async function GET(request: NextRequest) {
               has_cert,
               merchant_id,
               merchants!inner(name, id)
-            `)
+            `, { count: 'exact' })
             .eq('status', 'active')
             .or(`name.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
             .order('sales', { ascending: false })
-            .limit(limit)
-        : Promise.resolve({ data: [], error: null }),
+            .range(offset, offset + limit - 1)
+        : Promise.resolve({ data: [], error: null, count: 0 }),
 
       // 搜索百科
       (type === 'all' || type === 'wiki')
@@ -66,12 +69,12 @@ export async function GET(request: NextRequest) {
               cover_image,
               views,
               wiki_categories(name)
-            `)
+            `, { count: 'exact' })
             .eq('status', 'published')
             .or(`title.ilike.${keywordPattern},content.ilike.${keywordPattern}`)
             .order('views', { ascending: false })
-            .limit(limit)
-        : Promise.resolve({ data: [], error: null }),
+            .range(offset, offset + limit - 1)
+        : Promise.resolve({ data: [], error: null, count: 0 }),
 
       // 搜索视频
       (type === 'all' || type === 'videos')
@@ -85,12 +88,12 @@ export async function GET(request: NextRequest) {
               author,
               views,
               is_free
-            `)
+            `, { count: 'exact' })
             .eq('status', 'published')
             .or(`title.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
             .order('views', { ascending: false })
-            .limit(limit)
-        : Promise.resolve({ data: [], error: null }),
+            .range(offset, offset + limit - 1)
+        : Promise.resolve({ data: [], error: null, count: 0 }),
 
       // 搜索商户
       (type === 'all' || type === 'merchants')
@@ -104,12 +107,12 @@ export async function GET(request: NextRequest) {
               rating,
               total_sales,
               verified
-            `)
+            `, { count: 'exact' })
             .eq('status', 'active')
             .or(`name.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
             .order('rating', { ascending: false })
-            .limit(limit)
-        : Promise.resolve({ data: [], error: null }),
+            .range(offset, offset + limit - 1)
+        : Promise.resolve({ data: [], error: null, count: 0 }),
     ]);
 
     // 记录搜索关键词
@@ -160,9 +163,42 @@ export async function GET(request: NextRequest) {
       verified: item.verified || false,
     }));
 
+    // 计算分页信息
+    const goodsTotal = goodsResult.count || 0;
+    const wikiTotal = wikiResult.count || 0;
+    const videosTotal = videosResult.count || 0;
+    const merchantsTotal = merchantsResult.count || 0;
+
+    // 根据当前类型计算分页信息
+    let paginationTotal = 0;
+    if (type === 'all') {
+      // 全部模式下，使用商品总数作为分页参考（或可以根据当前展示的主要内容）
+      paginationTotal = goodsTotal + wikiTotal + videosTotal + merchantsTotal;
+    } else if (type === 'goods') {
+      paginationTotal = goodsTotal;
+    } else if (type === 'wiki') {
+      paginationTotal = wikiTotal;
+    } else if (type === 'videos') {
+      paginationTotal = videosTotal;
+    } else if (type === 'merchants') {
+      paginationTotal = merchantsTotal;
+    }
+
     return NextResponse.json({
       data: { goods, wiki, videos, merchants },
       keyword,
+      pagination: {
+        page,
+        limit,
+        total: paginationTotal,
+        total_pages: Math.ceil(paginationTotal / limit),
+      },
+      counts: {
+        goods: goodsTotal,
+        wiki: wikiTotal,
+        videos: videosTotal,
+        merchants: merchantsTotal,
+      },
     });
   } catch (error) {
     console.error('搜索失败:', error);
