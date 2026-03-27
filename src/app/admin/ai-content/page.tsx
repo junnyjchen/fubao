@@ -52,6 +52,8 @@ import {
   Layers,
   CheckCircle,
   XCircle,
+  BarChart3,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -87,6 +89,20 @@ interface GenerationHistory {
   title: string;
   createdAt: string;
   status: 'draft' | 'published';
+}
+
+/** SEO分析结果 */
+interface SEOAnalysis {
+  score: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
+  analysis: {
+    title: { score: number; length: number; hasKeyword: boolean; suggestions: string[] };
+    summary: { score: number; length: number; hasKeyword: boolean; suggestions: string[] };
+    content: { score: number; length: number; keywordDensity: Record<string, number>; readability: number; suggestions: string[] };
+    keywords: { score: number; count: number; relevance: number; suggestions: string[] };
+    metaDescription: { score: number; length: number; hasKeyword: boolean; suggestions: string[] };
+  };
+  overallSuggestions: string[];
 }
 
 /** 内容类型配置 */
@@ -172,6 +188,11 @@ export default function AIContentPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [showDrafts, setShowDrafts] = useState(false);
   
+  // SEO分析状态
+  const [seoAnalysis, setSeoAnalysis] = useState<SEOAnalysis | null>(null);
+  const [analyzingSeo, setAnalyzingSeo] = useState(false);
+  const [showSeoPanel, setShowSeoPanel] = useState(false);
+  
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 加载历史记录和草稿
@@ -240,6 +261,54 @@ export default function AIContentPage() {
   const handleSaveDraft = () => {
     if (!generatedContent) return;
     saveDraft(activeTab, keyword, generatedContent, category);
+  };
+
+  // SEO分析
+  const handleSEOAnalysis = async () => {
+    if (!generatedContent) return;
+    
+    setAnalyzingSeo(true);
+    setSeoAnalysis(null);
+    
+    try {
+      const res = await fetch('/api/admin/ai-content/seo-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(generatedContent),
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'SEO分析失敗');
+      }
+      
+      setSeoAnalysis(data.data);
+      setShowSeoPanel(true);
+    } catch (error) {
+      console.error('SEO分析失败:', error);
+      toast.error(error instanceof Error ? error.message : 'SEO分析失敗');
+    } finally {
+      setAnalyzingSeo(false);
+    }
+  };
+
+  // 获取SEO等级颜色
+  const getGradeColor = (grade: 'A' | 'B' | 'C' | 'D' | 'F') => {
+    switch (grade) {
+      case 'A': return 'text-green-600 bg-green-100';
+      case 'B': return 'text-blue-600 bg-blue-100';
+      case 'C': return 'text-yellow-600 bg-yellow-100';
+      case 'D': return 'text-orange-600 bg-orange-100';
+      case 'F': return 'text-red-600 bg-red-100';
+    }
+  };
+
+  // 获取分数颜色
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-yellow-600';
+    return 'text-red-600';
   };
 
 // 批量生成相关函数
@@ -837,8 +906,26 @@ export default function AIContentPage() {
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Check className="w-5 h-5 text-green-500" />
                       生成結果
+                      {seoAnalysis && (
+                        <Badge className={getGradeColor(seoAnalysis.grade)}>
+                          SEO {seoAnalysis.grade}
+                        </Badge>
+                      )}
                     </CardTitle>
                     <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleSEOAnalysis}
+                        disabled={analyzingSeo}
+                      >
+                        {analyzingSeo ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <BarChart3 className="w-4 h-4 mr-1" />
+                        )}
+                        SEO分析
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => setShowPreview(true)}>
                         <Eye className="w-4 h-4 mr-1" />
                         預覽
@@ -1157,6 +1244,176 @@ export default function AIContentPage() {
         </div>
         )}
       </main>
+
+      {/* SEO分析对话框 */}
+      <Dialog open={showSeoPanel} onOpenChange={setShowSeoPanel}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              SEO分析報告
+            </DialogTitle>
+            <DialogDescription>
+              檢測內容的SEO質量並獲取優化建議
+            </DialogDescription>
+          </DialogHeader>
+          
+          {seoAnalysis && (
+            <div className="space-y-6">
+              {/* 总体评分 */}
+              <div className="flex items-center justify-center p-6 bg-muted/50 rounded-lg">
+                <div className="text-center">
+                  <div className={`text-6xl font-bold ${getScoreColor(seoAnalysis.score)}`}>
+                    {seoAnalysis.score}
+                  </div>
+                  <Badge className={`mt-2 text-lg px-4 py-1 ${getGradeColor(seoAnalysis.grade)}`}>
+                    等級 {seoAnalysis.grade}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* 各项分析 */}
+              <div className="space-y-4">
+                {/* 标题分析 */}
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">標題</span>
+                    <span className={getScoreColor(seoAnalysis.analysis.title.score)}>
+                      {seoAnalysis.analysis.title.score}分
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>長度: {seoAnalysis.analysis.title.length}字</span>
+                    <span>包含關鍵詞: {seoAnalysis.analysis.title.hasKeyword ? '✓' : '✗'}</span>
+                  </div>
+                  {seoAnalysis.analysis.title.suggestions.length > 0 && (
+                    <div className="mt-2 text-sm text-orange-600">
+                      {seoAnalysis.analysis.title.suggestions.map((s, i) => (
+                        <p key={i}>• {s}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 摘要分析 */}
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">摘要</span>
+                    <span className={getScoreColor(seoAnalysis.analysis.summary.score)}>
+                      {seoAnalysis.analysis.summary.score}分
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>長度: {seoAnalysis.analysis.summary.length}字</span>
+                    <span>包含關鍵詞: {seoAnalysis.analysis.summary.hasKeyword ? '✓' : '✗'}</span>
+                  </div>
+                  {seoAnalysis.analysis.summary.suggestions.length > 0 && (
+                    <div className="mt-2 text-sm text-orange-600">
+                      {seoAnalysis.analysis.summary.suggestions.map((s, i) => (
+                        <p key={i}>• {s}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 内容分析 */}
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">正文內容</span>
+                    <span className={getScoreColor(seoAnalysis.analysis.content.score)}>
+                      {seoAnalysis.analysis.content.score}分
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-sm text-muted-foreground mb-2">
+                    <span>字數: {seoAnalysis.analysis.content.length}字</span>
+                    <span>可讀性: {seoAnalysis.analysis.content.readability}分</span>
+                  </div>
+                  {Object.keys(seoAnalysis.analysis.content.keywordDensity).length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      <span>關鍵詞密度: </span>
+                      {Object.entries(seoAnalysis.analysis.content.keywordDensity).map(([kw, density]) => (
+                        <Badge key={kw} variant="outline" className="mr-1">
+                          {kw}: {density}%
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  {seoAnalysis.analysis.content.suggestions.length > 0 && (
+                    <div className="mt-2 text-sm text-orange-600">
+                      {seoAnalysis.analysis.content.suggestions.map((s, i) => (
+                        <p key={i}>• {s}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 关键词分析 */}
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">關鍵詞</span>
+                    <span className={getScoreColor(seoAnalysis.analysis.keywords.score)}>
+                      {seoAnalysis.analysis.keywords.score}分
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>數量: {seoAnalysis.analysis.keywords.count}個</span>
+                    <span>相關度: {seoAnalysis.analysis.keywords.relevance}%</span>
+                  </div>
+                  {seoAnalysis.analysis.keywords.suggestions.length > 0 && (
+                    <div className="mt-2 text-sm text-orange-600">
+                      {seoAnalysis.analysis.keywords.suggestions.map((s, i) => (
+                        <p key={i}>• {s}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Meta描述分析 */}
+                <div className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">Meta描述</span>
+                    <span className={getScoreColor(seoAnalysis.analysis.metaDescription.score)}>
+                      {seoAnalysis.analysis.metaDescription.score}分
+                    </span>
+                  </div>
+                  <div className="flex gap-4 text-sm text-muted-foreground">
+                    <span>長度: {seoAnalysis.analysis.metaDescription.length}字</span>
+                    <span>包含關鍵詞: {seoAnalysis.analysis.metaDescription.hasKeyword ? '✓' : '✗'}</span>
+                  </div>
+                  {seoAnalysis.analysis.metaDescription.suggestions.length > 0 && (
+                    <div className="mt-2 text-sm text-orange-600">
+                      {seoAnalysis.analysis.metaDescription.suggestions.map((s, i) => (
+                        <p key={i}>• {s}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 总体建议 */}
+              {seoAnalysis.overallSuggestions.length > 0 && (
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="w-4 h-4 text-orange-600" />
+                    <span className="font-medium text-orange-600">優化建議</span>
+                  </div>
+                  <div className="text-sm text-orange-700 space-y-1">
+                    {seoAnalysis.overallSuggestions.map((s, i) => (
+                      <p key={i}>• {s}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSeoPanel(false)}>
+              關閉
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 预览对话框 */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
