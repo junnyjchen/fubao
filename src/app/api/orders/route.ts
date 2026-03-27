@@ -110,6 +110,7 @@ export async function GET(request: Request) {
         page,
         limit,
         total: count || 0,
+        total_pages: count ? Math.ceil(count / limit) : 0,
       });
     }
 

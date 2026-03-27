@@ -28,6 +28,7 @@ import {
   ChevronRight,
   AlertCircle,
 } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 
 /** 订单数据类型 */
 interface OrderItem {
@@ -86,6 +87,10 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 10;
 
   /**
    * 加载订单列表
@@ -93,7 +98,10 @@ export default function OrdersPage() {
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '20' });
+      const params = new URLSearchParams({ 
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
+      });
       if (activeTab !== 'all') {
         params.set('status', activeTab);
       }
@@ -102,16 +110,24 @@ export default function OrdersPage() {
       const data = await res.json();
 
       setOrders(data.data || []);
+      setTotalItems(data.total || 0);
+      setTotalPages(data.total_pages || 0);
     } catch (error) {
       console.error('加載訂單失敗:', error);
     } finally {
       setLoading(false);
     }
-  }, [activeTab]);
+  }, [activeTab, currentPage]);
 
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  // Tab切换时重置页码
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
 
   /**
    * 查看订单详情
@@ -180,7 +196,7 @@ export default function OrdersPage() {
 
   return (
     <UserLayout title="我的訂單" description="查看和管理您的訂單">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-4">
           <TabsTrigger value="all">全部訂單</TabsTrigger>
           <TabsTrigger value="unpaid">待付款</TabsTrigger>
@@ -299,6 +315,19 @@ export default function OrdersPage() {
                   </Card>
                 );
               })}
+            </div>
+          )}
+          {/* 分页 */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-8">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                showTotal
+                total={totalItems}
+                pageSize={pageSize}
+              />
             </div>
           )}
         </TabsContent>

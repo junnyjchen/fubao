@@ -41,6 +41,8 @@ import {
   CheckCircle,
   Loader2,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -111,14 +113,18 @@ export default function AdminTicketsPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [selectedTicket, setSelectedTicket] = useState<TicketDetail | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [replying, setReplying] = useState(false);
   const [resolveOnReply, setResolveOnReply] = useState(false);
+  const pageSize = 15;
 
   useEffect(() => {
     loadTickets();
-  }, [statusFilter, typeFilter]);
+  }, [statusFilter, typeFilter, currentPage]);
 
   /**
    * 加载工单列表
@@ -127,18 +133,33 @@ export default function AdminTicketsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('limit', pageSize.toString());
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (typeFilter !== 'all') params.append('type', typeFilter);
 
       const res = await fetch(`/api/admin/tickets?${params}`);
       const data = await res.json();
       setTickets(data.data || []);
+      setTotalItems(data.total || 0);
+      setTotalPages(data.total_pages || 0);
     } catch (error) {
       console.error('加载工单失败:', error);
       toast.error('加載失敗');
     } finally {
       setLoading(false);
     }
+  };
+
+  // 筛选变化时重置页码
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+    setCurrentPage(1);
   };
 
   /**
@@ -197,7 +218,7 @@ export default function AdminTicketsPage() {
           <div className="flex gap-4">
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">狀態:</span>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -211,7 +232,7 @@ export default function AdminTicketsPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">類型:</span>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -337,6 +358,32 @@ export default function AdminTicketsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {/* 分页 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                第 {currentPage} / {totalPages} 頁，共 {totalItems} 條
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

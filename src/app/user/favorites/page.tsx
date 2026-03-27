@@ -12,6 +12,7 @@ import { UserLayout } from '@/components/user/UserLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Heart, Trash2, ShoppingCart } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 
 /** 收藏数据类型 */
 interface Favorite {
@@ -35,10 +36,14 @@ interface Favorite {
 export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 12;
 
   useEffect(() => {
     loadFavorites();
-  }, []);
+  }, [currentPage]);
 
   /**
    * 加载收藏列表
@@ -46,10 +51,12 @@ export default function FavoritesPage() {
   const loadFavorites = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/favorites?targetType=goods');
+      const response = await fetch(`/api/favorites?targetType=goods&page=${currentPage}&limit=${pageSize}`);
       const result = await response.json();
       if (result.data) {
         setFavorites(result.data);
+        setTotalItems(result.total || 0);
+        setTotalPages(result.total_pages || 0);
       }
     } catch (error) {
       console.error('加載收藏失敗:', error);
@@ -162,6 +169,19 @@ export default function FavoritesPage() {
               </Card>
             );
           })}
+        </div>
+      )}
+      {/* 分页 */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            showTotal
+            total={totalItems}
+            pageSize={pageSize}
+          />
         </div>
       )}
     </UserLayout>

@@ -30,7 +30,10 @@ import {
   Send,
   User,
   Mail,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 import { toast } from 'sonner';
 
 /** 反馈数据类型 */
@@ -71,6 +74,10 @@ export default function AdminFeedbackPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 15;
 
   // 弹窗状态
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
@@ -80,7 +87,7 @@ export default function AdminFeedbackPage() {
 
   useEffect(() => {
     loadFeedbacks();
-  }, [activeTab]);
+  }, [activeTab, currentPage]);
 
   /**
    * 加载反馈列表
@@ -89,15 +96,23 @@ export default function AdminFeedbackPage() {
     setLoading(true);
     try {
       const status = activeTab === 'all' ? '' : `&status=${activeTab}`;
-      const res = await fetch(`/api/feedback?limit=100${status}`);
+      const res = await fetch(`/api/feedback?page=${currentPage}&limit=${pageSize}${status}`);
       const data = await res.json();
       setFeedbacks(data.data || []);
+      setTotalItems(data.total || 0);
+      setTotalPages(data.total_pages || 0);
     } catch (error) {
       console.error('加载反馈失败:', error);
       toast.error('加載失敗');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Tab切换时重置页码
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
   };
 
   /**
@@ -266,7 +281,7 @@ export default function AdminFeedbackPage() {
       {/* 反馈列表 */}
       <Card>
         <CardHeader>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList>
               <TabsTrigger value="pending">待處理</TabsTrigger>
               <TabsTrigger value="processing">處理中</TabsTrigger>
@@ -365,6 +380,32 @@ export default function AdminFeedbackPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {/* 分页 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                第 {currentPage} / {totalPages} 頁，共 {totalItems} 條
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

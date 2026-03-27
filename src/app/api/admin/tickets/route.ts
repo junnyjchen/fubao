@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
       total: count || 0,
       page,
       limit,
+      total_pages: count ? Math.ceil(count / limit) : 0,
     });
   } catch (error) {
     console.error('获取工单列表失败:', error);

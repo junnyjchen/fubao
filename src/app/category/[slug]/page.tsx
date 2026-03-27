@@ -30,6 +30,7 @@ import {
   Filter,
   SlidersHorizontal,
 } from 'lucide-react';
+import { Pagination } from '@/components/ui/Pagination';
 
 /** 分类信息 */
 interface Category {
@@ -77,7 +78,7 @@ function CategoryPageContent({ slug }: { slug: string }) {
   const [goods, setGoods] = useState<Goods[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('default');
   const [selectedSubId, setSelectedSubId] = useState<number | null>(null);
@@ -132,13 +133,9 @@ function CategoryPageContent({ slug }: { slug: string }) {
       const data = await res.json();
       
       if (data.data) {
-        if (page === 1) {
-          setGoods(data.data);
-        } else {
-          setGoods(prev => [...prev, ...data.data]);
-        }
-        setTotal(data.total || data.data.length);
-        setHasMore(data.data.length >= pageSize);
+        setGoods(data.data);
+        setTotal(data.pagination?.total || data.total || 0);
+        setTotalPages(data.pagination?.total_pages || 0);
       }
     } catch (error) {
       console.error('加载商品失败:', error);
@@ -148,17 +145,11 @@ function CategoryPageContent({ slug }: { slug: string }) {
   const handleSortChange = (value: string) => {
     setSortBy(value);
     setPage(1);
-    setGoods([]);
   };
 
   const handleSubCategoryClick = (subId: number | null) => {
     setSelectedSubId(subId);
     setPage(1);
-    setGoods([]);
-  };
-
-  const loadMore = () => {
-    setPage(prev => prev + 1);
   };
 
   if (loading) {
@@ -408,19 +399,17 @@ function CategoryPageContent({ slug }: { slug: string }) {
           </div>
         )}
 
-        {/* 加载更多 */}
-        {hasMore && goods.length > 0 && (
-          <div className="text-center mt-8">
-            <Button variant="outline" onClick={loadMore} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  加載中...
-                </>
-              ) : (
-                '加載更多'
-              )}
-            </Button>
+        {/* 分页 */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-8">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              showTotal
+              total={total}
+              pageSize={pageSize}
+            />
           </div>
         )}
       </main>

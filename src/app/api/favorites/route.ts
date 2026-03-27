@@ -14,9 +14,19 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('userId') || 'guest-user-001';
   const targetType = searchParams.get('targetType') || 'goods';
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '20');
+  const offset = (page - 1) * limit;
 
   try {
     const client = getSupabaseClient();
+
+    // 查询收藏总数
+    const { count } = await client
+      .from('favorites')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('target_type', targetType);
 
     // 查询收藏
     const { data: favorites, error } = await client
@@ -24,7 +34,8 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('user_id', userId)
       .eq('target_type', targetType)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -35,7 +46,7 @@ export async function GET(request: NextRequest) {
       const goodsIds = favorites.map((f: { target_id: number }) => f.target_id);
       const { data: goods } = await client
         .from('goods')
-        .select('id, name, price, main_image, sales')
+        .select('id, name, price, main_image, sales, status')
         .in('id', goodsIds);
 
       // 组合数据
@@ -48,10 +59,22 @@ export async function GET(request: NextRequest) {
         goods: goodsMap.get(f.target_id) || null,
       }));
 
-      return NextResponse.json({ data: result });
+      return NextResponse.json({ 
+        data: result, 
+        page,
+        limit,
+        total: count || 0,
+        total_pages: count ? Math.ceil(count / limit) : 0,
+      });
     }
 
-    return NextResponse.json({ data: favorites || [] });
+    return NextResponse.json({ 
+      data: favorites || [],
+      page,
+      limit,
+      total: count || 0,
+      total_pages: count ? Math.ceil(count / limit) : 0,
+    });
   } catch (error) {
     console.error('获取收藏列表失败:', error);
     return NextResponse.json({ error: '獲取收藏列表失敗' }, { status: 500 });

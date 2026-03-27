@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/ui/Pagination';
 import {
   Plus,
   Search,
@@ -59,6 +60,8 @@ import {
   Calendar,
   Users,
   Ticket,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -91,6 +94,10 @@ export default function AdminCouponsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [saving, setSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 15;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -110,22 +117,28 @@ export default function AdminCouponsPage() {
 
   useEffect(() => {
     loadCoupons();
-  }, []);
+  }, [currentPage]);
 
   const loadCoupons = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/coupons');
+      const res = await fetch(`/api/admin/coupons?page=${currentPage}&pageSize=${pageSize}`);
       const result = await res.json();
       if (result.success) {
         setCoupons(result.data);
+        setTotalItems(result.total);
+        setTotalPages(result.total_pages);
       } else {
         // 使用模拟数据
         setCoupons(getMockCoupons());
+        setTotalItems(4);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error('加载优惠券失败:', error);
       setCoupons(getMockCoupons());
+      setTotalItems(4);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
@@ -506,6 +519,32 @@ export default function AdminCouponsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {/* 分页 */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                第 {currentPage} / {totalPages} 頁，共 {totalItems} 條
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
         total: 4,
         page,
         pageSize,
+        total_pages: 1,
       });
     }
 
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
       total: count || 0,
       page,
       pageSize,
+      total_pages: count ? Math.ceil(count / pageSize) : 0,
     });
   } catch (error) {
     console.error('优惠券列表API错误:', error);
