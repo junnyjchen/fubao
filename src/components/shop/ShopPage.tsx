@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/Pagination';
+import { GoodsCardSkeleton } from '@/components/ui/Skeleton';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Search, SlidersHorizontal, Grid, List, ShoppingCart } from 'lucide-react';
 
 interface Merchant {
@@ -190,8 +192,10 @@ export function ShopPage() {
       {/* Products Grid */}
       <section className="container mx-auto px-4 pb-12">
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {t.common.loading}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <GoodsCardSkeleton key={i} />
+            ))}
           </div>
         ) : goods.length > 0 ? (
           <>
@@ -215,9 +219,7 @@ export function ShopPage() {
             )}
           </>
         ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            {t.common.noData}
-          </div>
+          <EmptyState type="goods" />
         )}
       </section>
     </div>
