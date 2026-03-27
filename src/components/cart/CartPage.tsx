@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   ShoppingCart,
   Trash2,
@@ -363,16 +364,7 @@ export function CartPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {merchantGroups.length === 0 ? (
-          <Card>
-            <CardContent className="py-16 text-center">
-              <Package className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <h2 className="text-xl font-semibold mb-2">購物車是空的</h2>
-              <p className="text-muted-foreground mb-6">快去挑選心儀的商品吧</p>
-              <Button asChild>
-                <Link href="/shop">去購物</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <EmptyState type="cart" />
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">
             {/* 商品列表 */}

@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/EmptyState';
 import {
   Package,
   Eye,
@@ -211,16 +212,7 @@ export default function OrdersPage() {
               載入中...
             </div>
           ) : filteredOrders.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <Package className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                <h3 className="text-xl font-semibold mb-2">暫無訂單</h3>
-                <p className="text-muted-foreground mb-6">去發現更多心儀的商品吧</p>
-                <Button asChild>
-                  <Link href="/shop">去購物</Link>
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyState type="orders" />
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => {

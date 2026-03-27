@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { UserLayout } from '@/components/user/UserLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Heart, Trash2, ShoppingCart } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 
@@ -111,16 +112,7 @@ export default function FavoritesPage() {
       {loading ? (
         <div className="text-center py-12 text-muted-foreground">載入中...</div>
       ) : favorites.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <Heart className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">暫無收藏</h2>
-            <p className="text-muted-foreground mb-6">去發現更多心儀的商品吧</p>
-            <Button asChild>
-              <Link href="/shop">去購物</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState type="favorites" />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {favorites.map((favorite) => {
