@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('provider', provider)
       .eq('enabled', true)
-      .single();
+      .maybeSingle();
 
     if (error || !providerConfig) {
       return NextResponse.json({ error: '該登錄方式未啟用' }, { status: 400 });

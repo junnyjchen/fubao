@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('provider', provider)
       .eq('enabled', true)
-      .single();
+      .maybeSingle();
 
     if (configError || !providerConfig) {
       return NextResponse.redirect(new URL('/login?error=該登錄方式未啟用', request.url));
@@ -203,23 +203,23 @@ export async function GET(request: NextRequest) {
       .select('user_id')
       .eq('provider', provider)
       .eq('provider_user_id', userInfo.id)
-      .single();
+      .maybeSingle();
 
-    let userId: number;
+    let userId: string;
 
     if (existingBind) {
       // 已绑定，直接登录
       userId = existingBind.user_id;
     } else {
       // 未绑定，检查邮箱是否存在
-      let existingUser: { id: number } | null = null;
+      let existingUser: { id: string } | null = null;
       
       if (userInfo.email) {
         const { data } = await client
           .from('users')
           .select('id')
           .eq('email', userInfo.email)
-          .single();
+          .maybeSingle();
         existingUser = data;
       }
 
@@ -230,7 +230,10 @@ export async function GET(request: NextRequest) {
           user_id: userId,
           provider,
           provider_user_id: userInfo.id,
-          provider_data: { ...userInfo, accessToken },
+          provider_email: userInfo.email,
+          provider_name: userInfo.name,
+          provider_avatar: userInfo.avatar,
+          access_token: accessToken,
         });
       } else {
         // 创建新用户
@@ -244,9 +247,10 @@ export async function GET(request: NextRequest) {
             language: 'zh-TW',
           })
           .select('id')
-          .single();
+          .maybeSingle();
 
         if (createError || !newUser) {
+          console.error('创建用户失败:', createError);
           return NextResponse.redirect(new URL('/login?error=創建賬號失敗', request.url));
         }
 
@@ -257,7 +261,10 @@ export async function GET(request: NextRequest) {
           user_id: userId,
           provider,
           provider_user_id: userInfo.id,
-          provider_data: { ...userInfo, accessToken },
+          provider_email: userInfo.email,
+          provider_name: userInfo.name,
+          provider_avatar: userInfo.avatar,
+          access_token: accessToken,
         });
       }
     }
@@ -267,7 +274,7 @@ export async function GET(request: NextRequest) {
       .from('users')
       .select('id, name, email, phone, avatar, language')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (!user) {
       return NextResponse.redirect(new URL('/login?error=用戶不存在', request.url));
