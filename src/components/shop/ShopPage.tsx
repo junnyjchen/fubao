@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Pagination } from '@/components/ui/Pagination';
 import { Search, SlidersHorizontal, Grid, List, ShoppingCart } from 'lucide-react';
 
 interface Merchant {
@@ -45,6 +46,10 @@ export function ShopPage() {
   const [purposeFilter, setPurposeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('default');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 20;
 
   const typeOptions = [
     { value: 'all', label: t.shop.filter.all },
@@ -70,7 +75,8 @@ export function ShopPage() {
         const params = new URLSearchParams();
         if (typeFilter !== 'all') params.append('type', typeFilter);
         if (purposeFilter !== 'all') params.append('purpose', purposeFilter);
-        params.append('limit', '20');
+        params.append('page', currentPage.toString());
+        params.append('limit', pageSize.toString());
 
         const res = await fetch(`/api/goods?${params.toString()}`);
         const data = await res.json();
@@ -84,6 +90,11 @@ export function ShopPage() {
             sortedGoods.sort((a: Goods, b: Goods) => b.sales - a.sales);
           }
           setGoods(sortedGoods);
+          // 设置分页信息
+          if (data.pagination) {
+            setTotalItems(data.pagination.total);
+            setTotalPages(data.pagination.total_pages);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch goods:', error);
@@ -93,7 +104,7 @@ export function ShopPage() {
     }
 
     fetchGoods();
-  }, [typeFilter, purposeFilter, sortBy]);
+  }, [typeFilter, purposeFilter, sortBy, currentPage]);
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -133,7 +144,7 @@ export function ShopPage() {
             </div>
 
             {/* Type Filter */}
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter} onValueChange={(value) => { setTypeFilter(value); setCurrentPage(1); }}>
               <SelectTrigger className="w-full md:w-[140px]">
                 <SelectValue placeholder={t.shop.filter.all} />
               </SelectTrigger>
@@ -147,7 +158,7 @@ export function ShopPage() {
             </Select>
 
             {/* Purpose Filter */}
-            <Select value={purposeFilter} onValueChange={setPurposeFilter}>
+            <Select value={purposeFilter} onValueChange={(value) => { setPurposeFilter(value); setCurrentPage(1); }}>
               <SelectTrigger className="w-full md:w-[160px]">
                 <SelectValue placeholder={t.shop.purpose.all} />
               </SelectTrigger>
@@ -161,7 +172,7 @@ export function ShopPage() {
             </Select>
 
             {/* Sort */}
-            <Select value={sortBy} onValueChange={setSortBy}>
+            <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setCurrentPage(1); }}>
               <SelectTrigger className="w-full md:w-[140px]">
                 <SelectValue placeholder="排序" />
               </SelectTrigger>
@@ -183,11 +194,26 @@ export function ShopPage() {
             {t.common.loading}
           </div>
         ) : goods.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {goods.map((item) => (
-              <ProductCard key={item.id} item={item} t={t} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {goods.map((item) => (
+                <ProductCard key={item.id} item={item} t={t} />
+              ))}
+            </div>
+            {/* 分页 */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  showTotal
+                  total={totalItems}
+                  pageSize={pageSize}
+                />
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             {t.common.noData}

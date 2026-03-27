@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Pagination } from '@/components/ui/Pagination';
 import { Eye, Calendar, ArrowRight } from 'lucide-react';
 
 interface News {
@@ -25,6 +26,10 @@ export function NewsPage() {
   const [news, setNews] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const pageSize = 20;
 
   const typeOptions = [
     { id: 'all', label: '全部' },
@@ -40,12 +45,21 @@ export function NewsPage() {
     async function fetchNews() {
       setLoading(true);
       try {
-        const url = activeType === 'all' 
-          ? '/api/news?limit=20' 
-          : `/api/news?type=${activeType}&limit=20`;
-        const res = await fetch(url);
+        const params = new URLSearchParams();
+        params.append('page', currentPage.toString());
+        params.append('limit', pageSize.toString());
+        
+        if (activeType !== 'all') {
+          params.append('type', activeType);
+        }
+        
+        const res = await fetch(`/api/news?${params.toString()}`);
         const data = await res.json();
-        if (data.data) setNews(data.data);
+        if (data.data) {
+          setNews(data.data);
+          setTotalItems(data.total || 0);
+          setTotalPages(data.total_pages || Math.ceil((data.total || 0) / pageSize));
+        }
       } catch (error) {
         console.error('Failed to fetch news:', error);
       } finally {
@@ -54,7 +68,7 @@ export function NewsPage() {
     }
 
     fetchNews();
-  }, [activeType]);
+  }, [activeType, currentPage]);
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -68,7 +82,7 @@ export function NewsPage() {
 
       {/* News List */}
       <section className="container mx-auto px-4 py-8">
-        <Tabs value={activeType} onValueChange={setActiveType}>
+        <Tabs value={activeType} onValueChange={(value) => { setActiveType(value); setCurrentPage(1); }}>
           <TabsList className="mb-6">
             {typeOptions.map((opt) => (
               <TabsTrigger key={opt.id} value={opt.id}>
@@ -133,6 +147,19 @@ export function NewsPage() {
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 {t.common.noData}
+              </div>
+            )}
+            {/* 分页 */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-8">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  showTotal
+                  total={totalItems}
+                  pageSize={pageSize}
+                />
               </div>
             )}
           </TabsContent>
