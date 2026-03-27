@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseClient } from '@/storage/database/supabase-client';
 
 /**
  * GET /api/goods/recommended
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '8', 10);
     
-    const supabase = await createClient();
+    const supabase = getSupabaseClient();
     
     // 获取推荐商品（优先展示已认证的、销量高的商品）
     const { data: goods, error } = await supabase
@@ -30,13 +30,9 @@ export async function GET(request: NextRequest) {
         original_price,
         is_certified,
         sales,
-        merchants (
-          id,
-          name,
-          logo
-        )
+        merchant_id
       `)
-      .eq('status', 1)
+      .eq('status', true)
       .order('is_certified', { ascending: false })
       .order('sales', { ascending: false })
       .order('created_at', { ascending: false })
@@ -50,34 +46,33 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // 如果商品数量不足，补充一些数据
-    if (goods && goods.length < limit) {
-      const { data: moreGoods } = await supabase
-        .from('goods')
-        .select(`
-          id,
-          name,
-          main_image,
-          price,
-          original_price,
-          is_certified,
-          sales,
-          merchants (
-            id,
-            name,
-            logo
-          )
-        `)
-        .eq('status', 1)
-        .limit(limit - goods.length);
-      
-      if (moreGoods) {
-        goods.push(...moreGoods);
+    // 获取商家信息
+    let merchantMap: Record<number, { id: number; name: string; logo: string | null }> = {};
+    if (goods && goods.length > 0) {
+      const merchantIds = [...new Set(goods.map(g => g.merchant_id).filter(Boolean))];
+      if (merchantIds.length > 0) {
+        const { data: merchants } = await supabase
+          .from('merchants')
+          .select('id, name, logo')
+          .in('id', merchantIds);
+        
+        if (merchants) {
+          merchantMap = merchants.reduce((acc, m) => {
+            acc[m.id] = m;
+            return acc;
+          }, {} as Record<number, { id: number; name: string; logo: string | null }>);
+        }
       }
     }
     
+    // 合并商品和商家信息
+    const goodsWithMerchant = goods?.map(g => ({
+      ...g,
+      merchant: merchantMap[g.merchant_id] || null
+    })) || [];
+    
     return NextResponse.json({
-      data: goods || [],
+      data: goodsWithMerchant,
     });
   } catch (error) {
     console.error('推荐商品API错误:', error);
