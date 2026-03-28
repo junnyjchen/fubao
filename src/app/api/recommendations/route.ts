@@ -115,7 +115,7 @@ function getMockRecommendations(type: string, limit: number) {
   ];
 
   // 根据类型排序
-  let sorted = [...allProducts];
+  const sorted = [...allProducts];
   switch (type) {
     case 'hot':
       sorted.sort((a, b) => b.sales - a.sales);
@@ -223,7 +223,16 @@ export async function GET(request: NextRequest) {
     }
 
     // 分开查询商户信息
-    let enrichedGoods: any[] = [];
+    let enrichedGoods: Array<{
+      id: number;
+      name: string;
+      main_image: string | null;
+      price: string;
+      original_price: string | null;
+      is_certified: boolean;
+      sales: number;
+      merchant: { id: number; name: string } | null;
+    }> = [];
     if (goods && goods.length > 0) {
       const merchantIds = [...new Set(goods.map(g => g.merchant_id).filter(Boolean))];
       

@@ -7,6 +7,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface SigninRecord {
+  sign_date: string;
+}
+
 /**
  * GET - 获取签到信息
  */
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       hasSignedToday: !!todaySignin,
       continuousDays,
-      monthSignins: monthSignins?.map((s: any) => s.sign_date) || [],
+      monthSignins: monthSignins?.map((s: SigninRecord) => s.sign_date) || [],
       config: config || [
         { day: 1, points: 5, bonus_points: 0 },
         { day: 2, points: 5, bonus_points: 0 },

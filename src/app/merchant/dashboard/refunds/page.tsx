@@ -131,7 +131,12 @@ export default function MerchantRefundsPage() {
 
     setSubmitting(true);
     try {
-      const updateData: any = {
+      const updateData: {
+        status: string;
+        merchant_reply: string;
+        tracking_number?: string;
+        tracking_company?: string;
+      } = {
         status: processAction === 'approve' ? 'approved' : 'rejected',
         merchant_reply: replyContent.trim(),
       };

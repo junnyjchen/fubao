@@ -482,7 +482,7 @@ export default function AdminAnnouncementsPage() {
                 </label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value: any) =>
+                  onValueChange={(value: 'notice' | 'activity' | 'update' | 'warning') =>
                     setFormData({ ...formData, type: value })
                   }
                 >

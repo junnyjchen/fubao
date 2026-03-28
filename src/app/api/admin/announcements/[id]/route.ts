@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -22,7 +23,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const client = getSupabaseClient();
 
     // 构建更新数据
-    const updateData: Record<string, any> = {};
+    const updateData: DbRecord = {};
     
     if (body.title !== undefined) updateData.title = body.title.trim();
     if (body.content !== undefined) updateData.content = body.content.trim();

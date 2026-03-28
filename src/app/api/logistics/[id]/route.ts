@@ -11,6 +11,20 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+interface OrderRecord {
+  id: number;
+  order_no: string;
+  order_status: number;
+  shipping_name: string | null;
+  shipping_phone: string | null;
+  shipping_address: string | null;
+  shipping_time: string | null;
+  receive_time: string | null;
+  tracking_number: string | null;
+  tracking_company: string | null;
+  created_at: string;
+}
+
 /**
  * GET - 获取订单物流信息
  */
@@ -68,7 +82,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 /**
  * 生成模拟物流轨迹
  */
-function generateMockLogistics(order: any) {
+function generateMockLogistics(order: OrderRecord) {
   const tracks = [];
   const now = new Date();
 

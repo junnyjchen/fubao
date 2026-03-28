@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 查询订单项（通过商品ID关联）- 不使用嵌入查询
-    let orderItemsQuery = supabase
+    const orderItemsQuery = supabase
       .from('order_items')
       .select(`
         id,
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 分开查询用户信息
-    const userIds = [...new Set((orders || []).map((o: any) => o.user_id).filter(Boolean))];
+    const userIds = [...new Set((orders || []).map((o: { user_id: number }) => o.user_id).filter(Boolean))];
     let usersMap = new Map();
     if (userIds.length > 0) {
       const { data: usersData } = await supabase
@@ -166,14 +166,14 @@ export async function GET(request: NextRequest) {
 
     // 组装数据：为每个订单添加商品项
     const orderItemsMap: Record<number, typeof orderItems> = {};
-    orderItems?.forEach((item: any) => {
+    orderItems?.forEach((item) => {
       if (!orderItemsMap[item.order_id]) {
         orderItemsMap[item.order_id] = [];
       }
       orderItemsMap[item.order_id].push(item);
     });
 
-    const list = (orders || []).map((order: any) => ({
+    const list = (orders || []).map((order: { id: number; user_id: number }) => ({
       ...order,
       items: orderItemsMap[order.id] || [],
       users: order.user_id ? usersMap.get(order.user_id) || null : null,

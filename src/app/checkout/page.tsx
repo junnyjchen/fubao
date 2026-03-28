@@ -115,8 +115,8 @@ function CheckoutPageContent() {
         const cartData = await cartRes.json();
         if (cartData.data) {
           // 过滤选中的商品
-          const allItems = cartData.data.flatMap((g: any) =>
-            g.items.map((item: any) => ({
+          const allItems = cartData.data.flatMap((g: { merchant: { id: number; name: string }; items: CartItem[] }) =>
+            g.items.map((item: CartItem) => ({
               ...item,
               merchant_id: g.merchant.id,
               merchant_name: g.merchant.name,

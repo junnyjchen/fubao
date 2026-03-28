@@ -126,8 +126,17 @@ export async function GET(request: NextRequest) {
       .in('order_id', orderIds);
 
     // 创建订单项映射
-    const orderItemsMap = new Map<number, any[]>();
-    (orderItems || []).forEach((item: any) => {
+    const orderItemsMap = new Map<number, Array<{
+      id: number;
+      order_id: number;
+      goods_id: number;
+      goods_name: string;
+      goods_image: string | null;
+      price: number;
+      quantity: number;
+      total_price: number;
+    }>>();
+    (orderItems || []).forEach((item) => {
       if (!orderItemsMap.has(item.order_id)) {
         orderItemsMap.set(item.order_id, []);
       }

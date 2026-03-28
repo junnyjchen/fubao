@@ -7,6 +7,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface ReviewRecord {
+  id: number;
+  order_id: number;
+  goods_id: number;
+  rating: number;
+  content: string | null;
+  images: string[] | null;
+  reply: string | null;
+  reply_time: string | null;
+  created_at: string;
+  goods?: { name: string; images: string[] | null } | { name: string; images: string[] | null }[] | null;
+}
+
 /**
  * GET - 获取用户已发表的评价
  */
@@ -45,19 +58,22 @@ export async function GET(request: NextRequest) {
     }
 
     // 格式化数据
-    const formattedReviews = reviews?.map((r: any) => ({
-      id: r.id,
-      order_id: r.order_id,
-      goods_id: r.goods_id,
-      goods_name: r.goods?.name || '未知商品',
-      goods_image: r.goods?.images?.[0] || null,
-      rating: r.rating,
-      content: r.content,
-      images: r.images,
-      reply: r.reply,
-      reply_time: r.reply_time,
-      created_at: r.created_at,
-    })) || [];
+    const formattedReviews = reviews?.map((r: ReviewRecord) => {
+      const goodsData = Array.isArray(r.goods) ? r.goods[0] : r.goods;
+      return {
+        id: r.id,
+        order_id: r.order_id,
+        goods_id: r.goods_id,
+        goods_name: goodsData?.name || '未知商品',
+        goods_image: goodsData?.images?.[0] || null,
+        rating: r.rating,
+        content: r.content,
+        images: r.images,
+        reply: r.reply,
+        reply_time: r.reply_time,
+        created_at: r.created_at,
+      };
+    }) || [];
 
     return NextResponse.json({
       data: formattedReviews,

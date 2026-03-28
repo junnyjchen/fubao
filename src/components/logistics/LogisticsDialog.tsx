@@ -43,7 +43,16 @@ interface Track {
  */
 export function LogisticsDialog({ open, onOpenChange, orderId }: LogisticsDialogProps) {
   const [loading, setLoading] = useState(true);
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<{
+    id: number;
+    order_no: string;
+    status: number;
+    tracking_number: string | null;
+    tracking_company: string | null;
+    shipping_name: string | null;
+    shipping_phone: string | null;
+    shipping_address: string | null;
+  } | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
 
   useEffect(() => {

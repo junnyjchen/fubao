@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -58,11 +59,11 @@ export async function GET(
     }
 
     // 处理关联数据
-    const goodsData = Array.isArray(data.goods) ? data.goods[0] : data.goods as any;
-    const merchantData = Array.isArray(data.merchant) ? data.merchant[0] : data.merchant as any;
+    const goodsData = Array.isArray(data.goods) ? data.goods[0] : data.goods;
+    const merchantData = Array.isArray(data.merchant) ? data.merchant[0] : data.merchant;
     const categoryData = goodsData?.category && Array.isArray(goodsData.category)
       ? goodsData.category[0]
-      : goodsData?.category as any;
+      : goodsData?.category;
 
     return NextResponse.json({
       data: {
@@ -90,7 +91,7 @@ export async function PUT(
     const body = await request.json();
     const client = getSupabaseClient();
 
-    const updateData: Record<string, any> = {};
+    const updateData: DbRecord = {};
 
     // 可更新字段
     if (body.issue_date) updateData.issue_date = body.issue_date;

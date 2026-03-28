@@ -7,6 +7,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface GoodsIdRecord {
+  id: number;
+}
+
+interface ReviewRecord {
+  id: number;
+  order_id: number;
+  goods_id: number;
+  rating: number;
+  content: string | null;
+  images: string[] | null;
+  reply: string | null;
+  reply_time: string | null;
+  created_at: string;
+  goods?: { name: string; images: string[] | null } | { name: string; images: string[] | null }[] | null;
+  user?: { nickname: string | null; avatar: string | null } | { nickname: string | null; avatar: string | null }[] | null;
+}
+
 /**
  * GET - 获取商户商品的评价列表
  */
@@ -35,7 +53,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ data: [], total: 0 });
     }
 
-    const ids = goodsIds.map((g: any) => g.id);
+    const ids = goodsIds.map((g: GoodsIdRecord) => g.id);
 
     // 获取这些商品的评价
     const { data: reviews, error, count } = await client
@@ -63,21 +81,25 @@ export async function GET(request: NextRequest) {
     }
 
     // 格式化数据
-    const formattedReviews = reviews?.map((r: any) => ({
-      id: r.id,
-      order_id: r.order_id,
-      goods_id: r.goods_id,
-      goods_name: r.goods?.name || '未知商品',
-      goods_image: r.goods?.images?.[0] || null,
-      user_name: r.user?.nickname || '匿名用戶',
-      user_avatar: r.user?.avatar || null,
-      rating: r.rating,
-      content: r.content,
-      images: r.images,
-      reply: r.reply,
-      reply_time: r.reply_time,
-      created_at: r.created_at,
-    })) || [];
+    const formattedReviews = reviews?.map((r: ReviewRecord) => {
+      const goodsData = Array.isArray(r.goods) ? r.goods[0] : r.goods;
+      const userData = Array.isArray(r.user) ? r.user[0] : r.user;
+      return {
+        id: r.id,
+        order_id: r.order_id,
+        goods_id: r.goods_id,
+        goods_name: goodsData?.name || '未知商品',
+        goods_image: goodsData?.images?.[0] || null,
+        user_name: userData?.nickname || '匿名用戶',
+        user_avatar: userData?.avatar || null,
+        rating: r.rating,
+        content: r.content,
+        images: r.images,
+        reply: r.reply,
+        reply_time: r.reply_time,
+        created_at: r.created_at,
+      };
+    }) || [];
 
     return NextResponse.json({
       data: formattedReviews,

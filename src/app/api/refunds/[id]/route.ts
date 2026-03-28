@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -55,7 +56,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     ]);
 
     // 查询订单项
-    let orderItems: any[] = [];
+    let orderItems: Array<{
+      goods_id: number;
+      goods_name: string;
+      goods_image: string | null;
+      price: number;
+      quantity: number;
+    }> = [];
     if (orderResult.data) {
       const { data: items } = await client
         .from('order_items')
@@ -93,7 +100,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const client = getSupabaseClient();
 
-    const updateData: Record<string, any> = {};
+    const updateData: DbRecord = {};
     if (status) updateData.status = status;
     if (merchant_reply) updateData.merchant_reply = merchant_reply;
     if (admin_reply) updateData.admin_reply = admin_reply;

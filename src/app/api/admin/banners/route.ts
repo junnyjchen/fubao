@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
 
 // GET - 获取轮播图列表
 export async function GET(request: NextRequest) {
@@ -100,7 +101,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: '缺少ID' }, { status: 400 });
     }
 
-    const updateData: Record<string, any> = {};
+    const updateData: DbRecord = {};
 
     if (body.title !== undefined) updateData.title = body.title;
     if (body.subtitle !== undefined) updateData.subtitle = body.subtitle;

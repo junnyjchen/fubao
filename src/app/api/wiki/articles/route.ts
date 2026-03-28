@@ -7,6 +7,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface ArticleRecord {
+  id: number;
+  title: string;
+  slug: string;
+  category_id: number | null;
+  summary: string | null;
+  content: string | null;
+  cover_image: string | null;
+  author: string;
+  views: number;
+  is_featured: boolean;
+  status: boolean;
+  created_at: string;
+  updated_at: string;
+  category?: { id: number; name: string; slug: string } | null;
+}
+
 /**
  * 获取文章列表
  * GET /api/wiki/articles
@@ -71,8 +88,8 @@ export async function GET(request: NextRequest) {
           .select('id, name, slug');
         
         const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
-        data.forEach(article => {
-          (article as any).category = categoryMap.get(article.category_id) || null;
+        data.forEach((article: ArticleRecord) => {
+          article.category = categoryMap.get(article.category_id) || null;
         });
       }
     }

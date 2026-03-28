@@ -7,6 +7,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface GoodsSearchResult {
+  id: number;
+  name: string;
+  price: string;
+  original_price: string | null;
+  images: string[] | null;
+  sales: number;
+  has_cert: boolean;
+  merchant_id: number | null;
+}
+
+interface WikiSearchResult {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string | null;
+  cover_image: string | null;
+  views: number;
+  category_id: number | null;
+}
+
+interface VideoSearchResult {
+  id: number;
+  title: string;
+  cover_image: string | null;
+  duration: number;
+  author: string;
+  views: number;
+  is_free: boolean;
+}
+
+interface MerchantSearchResult {
+  id: number;
+  name: string;
+  logo: string | null;
+  type: string;
+  rating: number;
+  total_sales: number;
+  verified: boolean;
+}
+
 /**
  * GET - 综合搜索
  */
@@ -118,8 +159,8 @@ export async function GET(request: NextRequest) {
     await recordSearchKeyword(client, keyword);
 
     // 分开查询商户和分类信息
-    const merchantIds = [...new Set((goodsResult.data || []).map((g: any) => g.merchant_id).filter(Boolean))];
-    const categoryIds = [...new Set((wikiResult.data || []).map((w: any) => w.category_id).filter(Boolean))];
+    const merchantIds = [...new Set((goodsResult.data || []).map((g: GoodsSearchResult) => g.merchant_id).filter(Boolean))];
+    const categoryIds = [...new Set((wikiResult.data || []).map((w: WikiSearchResult) => w.category_id).filter(Boolean))];
     
     const [merchantsData, categoriesData] = await Promise.all([
       merchantIds.length > 0
@@ -134,7 +175,7 @@ export async function GET(request: NextRequest) {
     const categoriesMap = new Map((categoriesData.data || []).map(c => [c.id, c]));
 
     // 格式化商品数据
-    const goods = (goodsResult.data || []).map((item: any) => ({
+    const goods = (goodsResult.data || []).map((item: GoodsSearchResult) => ({
       id: item.id,
       name: item.name,
       price: item.price,
@@ -146,7 +187,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // 格式化百科数据
-    const wiki = (wikiResult.data || []).map((item: any) => ({
+    const wiki = (wikiResult.data || []).map((item: WikiSearchResult) => ({
       id: item.id,
       title: item.title,
       slug: item.slug,
@@ -157,7 +198,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // 格式化视频数据
-    const videos = (videosResult.data || []).map((item: any) => ({
+    const videos = (videosResult.data || []).map((item: VideoSearchResult) => ({
       id: item.id,
       title: item.title,
       cover_image: item.cover_image || '/images/placeholder.png',
@@ -168,7 +209,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // 格式化商户数据
-    const merchants = (merchantsResult.data || []).map((item: any) => ({
+    const merchants = (merchantsResult.data || []).map((item: MerchantSearchResult) => ({
       id: item.id,
       name: item.name,
       logo: item.logo,
@@ -224,7 +265,7 @@ export async function GET(request: NextRequest) {
 /**
  * 记录搜索关键词
  */
-async function recordSearchKeyword(client: any, keyword: string) {
+async function recordSearchKeyword(client: ReturnType<typeof getSupabaseClient>, keyword: string) {
   try {
     // 尝试更新已有记录
     const { data: existing } = await client

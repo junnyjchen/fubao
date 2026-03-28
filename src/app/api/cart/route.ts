@@ -6,6 +6,50 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
+
+interface CartItem {
+  id: number;
+  quantity: number;
+  selected: boolean;
+  created_at: string;
+  goods_id: number;
+  goods?: {
+    id: number;
+    name: string;
+    price: string;
+    original_price: string | null;
+    images: string[] | null;
+    stock: number;
+    status: boolean;
+    merchant_id: number | null;
+    merchants?: { id: number; name: string; logo: string | null; verified: boolean } | null;
+  };
+}
+
+interface MerchantGroup {
+  merchant: {
+    id: number;
+    name: string;
+    logo: string | null;
+    verified: boolean;
+  };
+  items: Array<{
+    id: number;
+    quantity: number;
+    selected: boolean;
+    goods: {
+      id: number;
+      name: string;
+      price: number;
+      original_price: number | null;
+      image: string | null;
+      stock: number;
+      status: boolean;
+    };
+  }>;
+  selectedAll: boolean;
+}
 
 /**
  * GET - 获取购物车列表
@@ -35,7 +79,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 分开查询商品和商户信息
-    let enrichedCartItems: any[] = [];
+    let enrichedCartItems: CartItem[] = [];
     if (cartItems && cartItems.length > 0) {
       const goodsIds = [...new Set(cartItems.map(item => item.goods_id).filter(Boolean))];
       
@@ -76,9 +120,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 按商户分组
-    const groupedByMerchant = enrichedCartItems.reduce((acc: any, item: any) => {
+    const groupedByMerchant = enrichedCartItems.reduce((acc: Record<number, MerchantGroup>, item: CartItem) => {
       const merchant = item.goods?.merchants;
-      if (!merchant) return acc;
+      if (!merchant || !item.goods) return acc;
 
       const merchantId = merchant.id;
       if (!acc[merchantId]) {
@@ -123,8 +167,8 @@ export async function GET(request: NextRequest) {
     let totalPrice = 0;
     let selectedPrice = 0;
 
-    Object.values(groupedByMerchant).forEach((group: any) => {
-      group.items.forEach((item: any) => {
+    Object.values(groupedByMerchant).forEach((group: MerchantGroup) => {
+      group.items.forEach((item) => {
         totalItems++;
         if (item.selected) {
           selectedItems++;
@@ -263,9 +307,11 @@ export async function PUT(request: NextRequest) {
     }
 
     // 更新
-    const updateData: any = { updated_at: new Date().toISOString() };
+    const updateData: DbRecord = { updated_at: new Date().toISOString() };
     if (quantity !== undefined) {
-      if (quantity > (cartItem.goods as any).stock) {
+      const goodsData = cartItem.goods as { stock: number } | { stock: number }[] | null;
+      const goodsStock = Array.isArray(goodsData) ? goodsData[0]?.stock ?? 0 : goodsData?.stock ?? 0;
+      if (quantity > goodsStock) {
         return NextResponse.json({ error: '庫存不足' }, { status: 400 });
       }
       updateData.quantity = quantity;

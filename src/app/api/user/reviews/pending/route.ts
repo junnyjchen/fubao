@@ -7,6 +7,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface OrderItem {
+  goods_id: number;
+  goods_name: string;
+  goods_image: string | null;
+  price: number;
+  quantity: number;
+}
+
+interface OrderRecord {
+  id: number;
+  order_no: string;
+  created_at: string;
+  items?: OrderItem[];
+}
+
+interface ReviewRecord {
+  order_id: number;
+  goods_id: number;
+}
+
 /**
  * GET - 获取待评价的订单商品
  */
@@ -46,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取已评价的订单商品
-    const orderIds = orders.map((o: any) => o.id);
+    const orderIds = orders.map((o: OrderRecord) => o.id);
     const { data: reviewedItems } = await client
       .from('reviews')
       .select('order_id, goods_id')
@@ -55,13 +75,22 @@ export async function GET(request: NextRequest) {
 
     // 创建已评价集合
     const reviewedSet = new Set(
-      reviewedItems?.map((r: any) => `${r.order_id}-${r.goods_id}`) || []
+      reviewedItems?.map((r: ReviewRecord) => `${r.order_id}-${r.goods_id}`) || []
     );
 
     // 筛选未评价的商品
-    const pendingItems: any[] = [];
-    orders.forEach((order: any) => {
-      order.items?.forEach((item: any) => {
+    const pendingItems: Array<{
+      order_id: number;
+      order_no: string;
+      goods_id: number;
+      goods_name: string;
+      goods_image: string | null;
+      price: number;
+      quantity: number;
+      order_time: string;
+    }> = [];
+    orders.forEach((order: OrderRecord) => {
+      order.items?.forEach((item: OrderItem) => {
         const key = `${order.id}-${item.goods_id}`;
         if (!reviewedSet.has(key)) {
           pendingItems.push({

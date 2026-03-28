@@ -6,6 +6,23 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { JsonValue } from '@/types/common';
+
+interface CertificateRecord {
+  id: number;
+  certificate_no: string;
+  goods_id: number;
+  merchant_id: number | null;
+  issue_date: string;
+  issued_by: string;
+  valid_until: string | null;
+  verification_count: number;
+  last_verification: string | null;
+  details: JsonValue | null;
+  created_at: string;
+  goods: { id: number; name: string; main_image: string | null } | { id: number; name: string; main_image: string | null }[] | null;
+  merchant: { id: number; name: string } | { id: number; name: string }[] | null;
+}
 
 /**
  * 获取证书列表
@@ -60,7 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 计算状态
-    const certificatesWithStatus = (data || []).map((cert: any) => {
+    const certificatesWithStatus = (data || []).map((cert: CertificateRecord) => {
       let status: 'valid' | 'expired' | 'revoked' = 'valid';
       if (cert.valid_until && new Date(cert.valid_until) < new Date()) {
         status = 'expired';

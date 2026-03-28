@@ -10,6 +10,25 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
+interface CommissionRecord {
+  commission_amount: number;
+}
+
+interface DistributionData {
+  invite_code: string;
+  is_team_leader: boolean;
+  team_leader_id: string | null;
+  total_commission: number;
+  available_commission: number;
+  frozen_commission: number;
+  withdrawn_commission: number;
+  team_count: number;
+  direct_count: number;
+  level_2_count: number;
+  level_3_count: number;
+  total_team_sales: number;
+}
+
 // 验证用户登录
 async function verifyUser(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get('auth_token')?.value;
@@ -75,7 +94,7 @@ export async function GET(request: NextRequest) {
       .gte('created_at', today);
 
     const todayCommission = todayCommissions?.reduce(
-      (sum: number, c: any) => sum + c.commission_amount, 0
+      (sum: number, c: CommissionRecord) => sum + c.commission_amount, 0
     ) || 0;
 
     // 获取本月佣金
@@ -91,7 +110,7 @@ export async function GET(request: NextRequest) {
       .gte('created_at', monthStart.toISOString());
 
     const monthCommission = monthCommissions?.reduce(
-      (sum: number, c: any) => sum + c.commission_amount, 0
+      (sum: number, c: CommissionRecord) => sum + c.commission_amount, 0
     ) || 0;
 
     // 获取待结算佣金
@@ -102,7 +121,7 @@ export async function GET(request: NextRequest) {
       .eq('status', 0);
 
     const pendingCommission = pendingCommissions?.reduce(
-      (sum: number, c: any) => sum + c.commission_amount, 0
+      (sum: number, c: CommissionRecord) => sum + c.commission_amount, 0
     ) || 0;
 
     return NextResponse.json({
@@ -186,7 +205,7 @@ function generateInviteCode(): string {
   return code;
 }
 
-function formatDistributionData(data: any) {
+function formatDistributionData(data: DistributionData) {
   return {
     invite_code: data.invite_code,
     invite_link: `${process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'https://fubao.ltd'}/register?ref=${data.invite_code}`,

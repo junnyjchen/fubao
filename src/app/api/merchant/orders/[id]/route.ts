@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
+import type { DbRecord } from '@/types/common';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 验证订单中是否有该商户的商品
     const merchantItems = (orderItems || []).filter(
-      (item: any) => item.goods?.merchant_id === merchant.merchantId
+      (item: { goods?: { merchant_id?: string } }) => item.goods?.merchant_id === merchant.merchantId
     );
 
     if (merchantItems.length === 0) {
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         ...order,
         items: merchantItems,
         // 商户只能看到自己商品的部分金额
-        merchant_amount: merchantItems.reduce((sum: number, item: any) => sum + item.total_price, 0),
+        merchant_amount: merchantItems.reduce((sum: number, item: { total_price: number }) => sum + item.total_price, 0),
       },
     });
   } catch (error) {
@@ -143,15 +144,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // 验证权限
-    const hasPermission = (order.order_items as any[])?.some(
-      item => (item.goods as any)?.merchant_id === merchant.merchantId
+    const hasPermission = (order.order_items as Array<{ goods?: { merchant_id?: string } }>)?.some(
+      item => item.goods?.merchant_id === merchant.merchantId
     );
 
     if (!hasPermission) {
       return NextResponse.json({ error: '無權操作該訂單' }, { status: 403 });
     }
 
-    const updateData: Record<string, any> = {
+    const updateData: DbRecord = {
       updated_at: new Date().toISOString(),
     };
 

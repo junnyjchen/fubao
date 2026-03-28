@@ -7,6 +7,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 
+interface VideoRecord {
+  id: number;
+  title: string;
+  slug: string;
+  cover: string | null;
+  url: string;
+  duration: number;
+  category_id: number | null;
+  author: string;
+  views: number;
+  likes: number;
+  is_featured: boolean;
+  status: boolean;
+  sort: number;
+  published_at: string | null;
+  created_at: string;
+  category?: { id: number; name: string; slug: string } | null;
+}
+
 /**
  * 获取视频列表
  * GET /api/videos
@@ -88,8 +107,8 @@ export async function GET(request: NextRequest) {
           .in('id', categoryIds);
         
         const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
-        data.forEach(video => {
-          (video as any).category = categoryMap.get(video.category_id) || null;
+        data.forEach((video: VideoRecord) => {
+          video.category = categoryMap.get(video.category_id) || null;
         });
       }
     }

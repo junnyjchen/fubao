@@ -134,7 +134,16 @@ export default function NewUserPage() {
   };
 
   // 格式化新人商品数据
-  const formatNewUserGoods = (data: any[]): NewUserGoods[] => {
+  const formatNewUserGoods = (data: Array<{
+    id: number;
+    name: string;
+    main_image: string | null;
+    price: string;
+    original_price: string | null;
+    stock: number;
+    sales: number;
+    merchants?: { name: string } | null;
+  }>): NewUserGoods[] => {
     return data.map((item, index) => ({
       id: index + 1,
       goods_id: item.id,

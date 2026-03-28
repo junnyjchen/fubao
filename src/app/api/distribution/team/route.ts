@@ -10,6 +10,27 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
+interface TeamMember {
+  user_id: string;
+  created_at: string;
+  direct_count: number;
+  team_count: number;
+  total_commission: number;
+  parent_level_2_id?: string | null;
+  parent_level_3_id?: string | null;
+  users?: {
+    id: string;
+    nickname: string | null;
+    avatar: string | null;
+    created_at: string;
+  } | {
+    id: string;
+    nickname: string | null;
+    avatar: string | null;
+    created_at: string;
+  }[] | null;
+}
+
 async function verifyUser(request: NextRequest): Promise<string | null> {
   const token = request.cookies.get('auth_token')?.value;
   if (!token) return null;
@@ -80,15 +101,16 @@ export async function GET(request: NextRequest) {
     }
 
     // 格式化数据并添加层级信息
-    const formattedMembers = (members || []).map((m: any) => {
+    const formattedMembers = (members || []).map((m: TeamMember) => {
       let memberLevel = 1;
       if (m.parent_level_2_id === userId) memberLevel = 2;
       if (m.parent_level_3_id === userId) memberLevel = 3;
 
+      const userData = Array.isArray(m.users) ? m.users[0] : m.users;
       return {
         user_id: m.user_id,
-        nickname: m.users?.nickname || '用戶',
-        avatar: m.users?.avatar,
+        nickname: userData?.nickname || '用戶',
+        avatar: userData?.avatar,
         level: memberLevel,
         direct_count: m.direct_count || 0,
         team_count: m.team_count || 0,

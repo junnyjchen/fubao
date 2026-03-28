@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -64,7 +65,7 @@ export async function PUT(
     const body = await request.json();
     const client = getSupabaseClient();
 
-    const updateData: Record<string, any> = {};
+    const updateData: DbRecord = {};
 
     // 可更新字段
     if (body.name) updateData.name = body.name;

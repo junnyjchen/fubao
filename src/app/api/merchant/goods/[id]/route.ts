@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
+import type { DbRecord } from '@/types/common';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
@@ -105,7 +106,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const body = await request.json();
-    const updateData: Record<string, any> = {
+    const updateData: DbRecord = {
       updated_at: new Date().toISOString(),
     };
 
@@ -123,13 +124,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     // 字段处理
-    if (updateData.name) {
+    if (typeof updateData.name === 'string') {
       updateData.name = updateData.name.trim();
     }
-    if (updateData.description) {
+    if (typeof updateData.description === 'string') {
       updateData.description = updateData.description.trim();
     }
-    if (updateData.content) {
+    if (typeof updateData.content === 'string') {
       updateData.content = updateData.content.trim();
     }
 

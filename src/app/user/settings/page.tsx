@@ -310,7 +310,7 @@ export default function UserSettingsPage() {
   };
 
   const handleSaveLanguage = async (language: string) => {
-    setLang(language as any);
+    setLang(language as 'zh-TW' | 'en' | 'ar');
     setSettings(prev => ({ ...prev, language }));
     toast.success('語言設置已更新');
   };

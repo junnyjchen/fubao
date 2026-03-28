@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DbRecord } from '@/types/common';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -80,7 +81,7 @@ export async function PUT(
     const body = await request.json();
     const client = getSupabaseClient();
 
-    const updateData: Record<string, any> = {
+    const updateData: DbRecord = {
       updated_at: new Date().toISOString(),
     };
 
