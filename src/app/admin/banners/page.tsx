@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -18,10 +18,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -36,28 +34,24 @@ import {
   Plus,
   Edit,
   Trash2,
-  GripVertical,
   ArrowUp,
   ArrowDown,
-  Eye,
-  EyeOff,
   RefreshCw,
   ExternalLink,
 } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 
+// 与数据库字段一致的 Banner 类型
 interface Banner {
   id: number;
-  title: string;
-  subtitle: string;
-  image_url: string;
-  link_url: string | null;
-  link_type: 'internal' | 'external' | 'none';
+  title: string | null;
+  image: string;
+  link: string | null;
   position: string;
   sort: number;
   status: boolean;
-  start_time: string | null;
-  end_time: string | null;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
 }
 
@@ -70,15 +64,13 @@ export default function AdminBannersPage() {
 
   const [formData, setFormData] = useState({
     title: '',
-    subtitle: '',
-    image_url: '',
-    link_url: '',
-    link_type: 'none' as 'internal' | 'external' | 'none',
+    image: '',
+    link: '',
     position: 'home',
     sort: 0,
     status: true,
-    start_time: '',
-    end_time: '',
+    start_date: '',
+    end_date: '',
   });
 
   useEffect(() => {
@@ -94,7 +86,7 @@ export default function AdminBannersPage() {
         setBanners(data.banners);
       }
     } catch (error) {
-      console.error('加载轮播图失败:', error);
+      console.error('加載輪播圖失敗:', error);
     } finally {
       setLoading(false);
     }
@@ -104,15 +96,13 @@ export default function AdminBannersPage() {
     setEditingBanner(null);
     setFormData({
       title: '',
-      subtitle: '',
-      image_url: '',
-      link_url: '',
-      link_type: 'none',
+      image: '',
+      link: '',
       position: 'home',
       sort: 0,
       status: true,
-      start_time: '',
-      end_time: '',
+      start_date: '',
+      end_date: '',
     });
     setDialogOpen(true);
   };
@@ -120,16 +110,14 @@ export default function AdminBannersPage() {
   const handleEdit = (banner: Banner) => {
     setEditingBanner(banner);
     setFormData({
-      title: banner.title,
-      subtitle: banner.subtitle || '',
-      image_url: banner.image_url,
-      link_url: banner.link_url || '',
-      link_type: banner.link_type,
+      title: banner.title || '',
+      image: banner.image,
+      link: banner.link || '',
       position: banner.position,
       sort: banner.sort,
       status: banner.status,
-      start_time: banner.start_time?.split('T')[0] || '',
-      end_time: banner.end_time?.split('T')[0] || '',
+      start_date: banner.start_date?.split('T')[0] || '',
+      end_date: banner.end_date?.split('T')[0] || '',
     });
     setDialogOpen(true);
   };
@@ -146,7 +134,7 @@ export default function AdminBannersPage() {
         loadBanners();
       }
     } catch (error) {
-      console.error('删除失败:', error);
+      console.error('刪除失敗:', error);
     }
   };
 
@@ -165,7 +153,7 @@ export default function AdminBannersPage() {
         loadBanners();
       }
     } catch (error) {
-      console.error('更新状态失败:', error);
+      console.error('更新狀態失敗:', error);
     }
   };
 
@@ -187,7 +175,7 @@ export default function AdminBannersPage() {
         loadBanners();
       }
     } catch (error) {
-      console.error('排序失败:', error);
+      console.error('排序失敗:', error);
     }
   };
 
@@ -209,15 +197,15 @@ export default function AdminBannersPage() {
         loadBanners();
       }
     } catch (error) {
-      console.error('排序失败:', error);
+      console.error('排序失敗:', error);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.image_url) {
-      alert('請填寫標題和圖片');
+    if (!formData.image) {
+      alert('請上傳輪播圖片');
       return;
     }
 
@@ -243,7 +231,7 @@ export default function AdminBannersPage() {
         alert(data.error || '操作失敗');
       }
     } catch (error) {
-      console.error('提交失败:', error);
+      console.error('提交失敗:', error);
       alert('操作失敗');
     } finally {
       setSubmitting(false);
@@ -252,6 +240,12 @@ export default function AdminBannersPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('zh-TW');
+  };
+
+  // 判断是否为外部链接
+  const isExternalLink = (link: string | null) => {
+    if (!link) return false;
+    return link.startsWith('http://') || link.startsWith('https://');
   };
 
   return (
@@ -279,7 +273,7 @@ export default function AdminBannersPage() {
         <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
           <CardContent className="p-4">
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              💡 建議輪播圖尺寸：1920 x 500 像素，支持 JPG、PNG 格式，文件大小不超過 2MB
+              💡 建議輪播圖尺寸：1920 x 500 像素，支持 JPG、PNG 格式，文件大小不超過 5MB
             </p>
           </CardContent>
         </Card>
@@ -339,10 +333,10 @@ export default function AdminBannersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="w-20 h-12 rounded overflow-hidden bg-muted">
-                        {banner.image_url ? (
+                        {banner.image ? (
                           <img
-                            src={banner.image_url}
-                            alt={banner.title}
+                            src={banner.image}
+                            alt={banner.title || 'Banner'}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -353,14 +347,7 @@ export default function AdminBannersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{banner.title}</p>
-                        {banner.subtitle && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {banner.subtitle}
-                          </p>
-                        )}
-                      </div>
+                      <p className="font-medium">{banner.title || '(無標題)'}</p>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
@@ -368,15 +355,15 @@ export default function AdminBannersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {banner.link_url ? (
+                      {banner.link ? (
                         <a
-                          href={banner.link_url}
+                          href={banner.link}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-primary hover:underline flex items-center gap-1 text-sm"
                         >
-                          {banner.link_type === 'external' && <ExternalLink className="w-3 h-3" />}
-                          {banner.link_url.length > 20 ? banner.link_url.slice(0, 20) + '...' : banner.link_url}
+                          {isExternalLink(banner.link) && <ExternalLink className="w-3 h-3" />}
+                          {banner.link.length > 20 ? banner.link.slice(0, 20) + '...' : banner.link}
                         </a>
                       ) : (
                         <span className="text-muted-foreground text-sm">無鏈接</span>
@@ -389,9 +376,9 @@ export default function AdminBannersPage() {
                       />
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {banner.start_time && banner.end_time ? (
+                      {banner.start_date && banner.end_date ? (
                         <span>
-                          {formatDate(banner.start_time)} ~ {formatDate(banner.end_time)}
+                          {formatDate(banner.start_date)} ~ {formatDate(banner.end_date)}
                         </span>
                       ) : (
                         '長期有效'
@@ -429,31 +416,21 @@ export default function AdminBannersPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="title">標題 *</Label>
+              <Label htmlFor="title">標題</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="請輸入標題"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="subtitle">副標題</Label>
-              <Input
-                id="subtitle"
-                value={formData.subtitle}
-                onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                placeholder="請輸入副標題（選填）"
+                placeholder="請輸入標題（選填）"
               />
             </div>
 
             <div className="space-y-2">
               <Label>輪播圖片 *</Label>
               <SingleImageUpload
-                value={formData.image_url}
-                onChange={(url) => setFormData({ ...formData, image_url: url })}
-                maxSize={2}
+                value={formData.image}
+                onChange={(url) => setFormData({ ...formData, image: url })}
+                maxSize={5}
                 folder="banners"
                 placeholder="點擊上傳輪播圖片"
               />
@@ -463,35 +440,17 @@ export default function AdminBannersPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="link_type">鏈接類型</Label>
-              <Select
-                value={formData.link_type}
-                onValueChange={(v: 'internal' | 'external' | 'none') =>
-                  setFormData({ ...formData, link_type: v, link_url: v === 'none' ? '' : formData.link_url })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">無鏈接</SelectItem>
-                  <SelectItem value="internal">站內鏈接</SelectItem>
-                  <SelectItem value="external">站外鏈接</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="link">鏈接地址</Label>
+              <Input
+                id="link"
+                value={formData.link}
+                onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                placeholder="/shop 或 https://example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                站內鏈接請輸入路徑（如 /shop），站外鏈接請輸入完整 URL
+              </p>
             </div>
-
-            {formData.link_type !== 'none' && (
-              <div className="space-y-2">
-                <Label htmlFor="link_url">鏈接地址</Label>
-                <Input
-                  id="link_url"
-                  value={formData.link_url}
-                  onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                  placeholder={formData.link_type === 'internal' ? '/shop/123' : 'https://...'}
-                />
-              </div>
-            )}
 
             <div className="space-y-2">
               <Label htmlFor="position">顯示位置</Label>
@@ -512,21 +471,21 @@ export default function AdminBannersPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="start_time">開始時間</Label>
+                <Label htmlFor="start_date">開始時間</Label>
                 <Input
-                  id="start_time"
+                  id="start_date"
                   type="date"
-                  value={formData.start_time}
-                  onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="end_time">結束時間</Label>
+                <Label htmlFor="end_date">結束時間</Label>
                 <Input
-                  id="end_time"
+                  id="end_date"
                   type="date"
-                  value={formData.end_time}
-                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 />
               </div>
             </div>
