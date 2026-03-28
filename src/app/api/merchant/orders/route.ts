@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 查询订单项（通过商品ID关联）
+    // 查询订单项（通过商品ID关联）- 不使用嵌入查询
     let orderItemsQuery = supabase
       .from('order_items')
       .select(`
@@ -86,8 +86,7 @@ export async function GET(request: NextRequest) {
         goods_image,
         price,
         quantity,
-        total_price,
-        goods (id, merchant_id)
+        total_price
       `)
       .in('goods_id', goodsIdList);
 
@@ -108,7 +107,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 构建订单查询
+    // 构建订单查询 - 不使用嵌入查询
     let ordersQuery = supabase
       .from('orders')
       .select(`
@@ -122,8 +121,7 @@ export async function GET(request: NextRequest) {
         pay_time,
         ship_time,
         receive_time,
-        created_at,
-        users (id, nickname, phone, email)
+        created_at
       `, { count: 'exact' })
       .in('id', orderIds);
 
@@ -155,6 +153,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '獲取訂單失敗' }, { status: 500 });
     }
 
+    // 分开查询用户信息
+    const userIds = [...new Set((orders || []).map((o: any) => o.user_id).filter(Boolean))];
+    let usersMap = new Map();
+    if (userIds.length > 0) {
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, nickname, phone, email')
+        .in('id', userIds);
+      usersMap = new Map((usersData || []).map(u => [u.id, u]));
+    }
+
     // 组装数据：为每个订单添加商品项
     const orderItemsMap: Record<number, typeof orderItems> = {};
     orderItems?.forEach((item: any) => {
@@ -167,6 +176,7 @@ export async function GET(request: NextRequest) {
     const list = (orders || []).map((order: any) => ({
       ...order,
       items: orderItemsMap[order.id] || [],
+      users: order.user_id ? usersMap.get(order.user_id) || null : null,
     }));
 
     return NextResponse.json({

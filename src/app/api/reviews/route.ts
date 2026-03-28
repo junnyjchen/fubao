@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 获取评价列表
+    // 获取评价列表 - 不使用嵌入查询
     const { data: reviews, error, count } = await supabase
       .from('reviews')
       .select(`
@@ -41,8 +41,7 @@ export async function GET(request: NextRequest) {
         rating,
         content,
         images,
-        created_at,
-        user:users(name, avatar)
+        created_at
       `, { count: 'exact' })
       .eq('goods_id', goodsId)
       .order('created_at', { ascending: false })
@@ -60,6 +59,24 @@ export async function GET(request: NextRequest) {
           distribution: { 5: 2, 4: 1, 3: 0, 2: 0, 1: 0 },
         },
       });
+    }
+
+    // 分开查询用户信息
+    let enrichedReviews = reviews || [];
+    if (reviews && reviews.length > 0) {
+      const userIds = [...new Set(reviews.map(r => r.user_id).filter(Boolean))];
+      if (userIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, name, avatar')
+          .in('id', userIds);
+        
+        const usersMap = new Map((usersData || []).map(u => [u.id, u]));
+        enrichedReviews = reviews.map(r => ({
+          ...r,
+          user: r.user_id ? usersMap.get(r.user_id) || null : null,
+        }));
+      }
     }
 
     // 获取评分统计
@@ -98,7 +115,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data: reviews || [],
+      data: enrichedReviews || [],
       total: count || 0,
       ratingStats,
     });

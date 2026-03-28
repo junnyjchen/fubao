@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // 并行搜索各类型数据
     const [goodsResult, wikiResult, videosResult, merchantsResult] = await Promise.all([
-      // 搜索商品
+      // 搜索商品 - 不使用嵌入查询
       (type === 'all' || type === 'goods')
         ? client
             .from('goods')
@@ -48,8 +48,7 @@ export async function GET(request: NextRequest) {
               images,
               sales,
               has_cert,
-              merchant_id,
-              merchants!inner(name, id)
+              merchant_id
             `, { count: 'exact' })
             .eq('status', 'active')
             .or(`name.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
@@ -57,7 +56,7 @@ export async function GET(request: NextRequest) {
             .range(offset, offset + limit - 1)
         : Promise.resolve({ data: [], error: null, count: 0 }),
 
-      // 搜索百科
+      // 搜索百科 - 不使用嵌入查询
       (type === 'all' || type === 'wiki')
         ? client
             .from('wiki_articles')
@@ -68,7 +67,7 @@ export async function GET(request: NextRequest) {
               summary,
               cover_image,
               views,
-              wiki_categories(name)
+              category_id
             `, { count: 'exact' })
             .eq('status', 'published')
             .or(`title.ilike.${keywordPattern},content.ilike.${keywordPattern}`)
@@ -118,6 +117,22 @@ export async function GET(request: NextRequest) {
     // 记录搜索关键词
     await recordSearchKeyword(client, keyword);
 
+    // 分开查询商户和分类信息
+    const merchantIds = [...new Set((goodsResult.data || []).map((g: any) => g.merchant_id).filter(Boolean))];
+    const categoryIds = [...new Set((wikiResult.data || []).map((w: any) => w.category_id).filter(Boolean))];
+    
+    const [merchantsData, categoriesData] = await Promise.all([
+      merchantIds.length > 0
+        ? client.from('merchants').select('id, name').in('id', merchantIds)
+        : { data: [] },
+      categoryIds.length > 0
+        ? client.from('wiki_categories').select('id, name').in('id', categoryIds)
+        : { data: [] }
+    ]);
+
+    const merchantsMap = new Map((merchantsData.data || []).map(m => [m.id, m]));
+    const categoriesMap = new Map((categoriesData.data || []).map(c => [c.id, c]));
+
     // 格式化商品数据
     const goods = (goodsResult.data || []).map((item: any) => ({
       id: item.id,
@@ -125,7 +140,7 @@ export async function GET(request: NextRequest) {
       price: item.price,
       original_price: item.original_price,
       image: item.images?.[0] || '/images/placeholder.png',
-      merchant_name: item.merchants?.name || '未知商户',
+      merchant_name: item.merchant_id ? (merchantsMap.get(item.merchant_id)?.name || '未知商戶') : '未知商戶',
       sales: item.sales || 0,
       has_cert: item.has_cert || false,
     }));
@@ -137,7 +152,7 @@ export async function GET(request: NextRequest) {
       slug: item.slug,
       summary: item.summary,
       cover_image: item.cover_image,
-      category_name: item.wiki_categories?.name || '未分类',
+      category_name: item.category_id ? (categoriesMap.get(item.category_id)?.name || '未分類') : '未分類',
       views: item.views || 0,
     }));
 

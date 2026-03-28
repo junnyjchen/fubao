@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     const client = getSupabaseClient();
     const normalizedPhone = phone.replace(/\s/g, '');
 
-    // 构建查询
+    // 构建查询 - 不使用嵌入查询
     let query = client
       .from('orders')
       .select(`
@@ -87,16 +87,7 @@ export async function GET(request: NextRequest) {
         created_at,
         paid_at,
         shipped_at,
-        completed_at,
-        order_items (
-          id,
-          goods_id,
-          goods_name,
-          goods_image,
-          price,
-          quantity,
-          total_price
-        )
+        completed_at
       `)
       .ilike('shipping_phone', `%${normalizedPhone}%`)
       .like('user_id', 'guest_%')
@@ -127,9 +118,31 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 分开查询订单项
+    const orderIds = orders.map(o => o.id);
+    const { data: orderItems } = await client
+      .from('order_items')
+      .select('id, order_id, goods_id, goods_name, goods_image, price, quantity, total_price')
+      .in('order_id', orderIds);
+
+    // 创建订单项映射
+    const orderItemsMap = new Map<number, any[]>();
+    (orderItems || []).forEach((item: any) => {
+      if (!orderItemsMap.has(item.order_id)) {
+        orderItemsMap.set(item.order_id, []);
+      }
+      orderItemsMap.get(item.order_id)!.push(item);
+    });
+
+    // 合并数据
+    const enrichedOrders = orders.map(order => ({
+      ...order,
+      order_items: orderItemsMap.get(order.id) || [],
+    }));
+
     return NextResponse.json({
       success: true,
-      data: orders || [],
+      data: enrichedOrders || [],
     });
   } catch (error) {
     console.error('查询订单失败:', error);
