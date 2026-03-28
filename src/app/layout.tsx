@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Inspector } from 'react-dev-inspector';
 import './globals.css';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
@@ -131,8 +130,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isDev = process.env.COZE_PROJECT_ENV === 'DEV';
-
   return (
     <html lang="zh-TW" suppressHydrationWarning>
       <head>
@@ -178,7 +175,6 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased min-h-screen flex flex-col">
-        {isDev && <Inspector />}
         <Providers>
           <Header />
           <main className="flex-1 pb-16 md:pb-0">{children}</main>
