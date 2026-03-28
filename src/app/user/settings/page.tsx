@@ -48,6 +48,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n, languages } from '@/lib/i18n';
 
 interface UserSettings {
   nickname: string;
@@ -116,6 +117,7 @@ const PROVIDER_STYLES: Record<string, { icon: React.ReactNode; bgColor: string }
 };
 
 export default function UserSettingsPage() {
+  const { lang, setLang } = useI18n();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [oauthProviders, setOauthProviders] = useState<OAuthProviderStatus[]>([]);
@@ -129,7 +131,7 @@ export default function UserSettingsPage() {
     nickname: '',
     email: '',
     phone: '',
-    language: 'zh-Hant',
+    language: lang,
     emailNotification: true,
     smsNotification: false,
     orderNotification: true,
@@ -308,14 +310,9 @@ export default function UserSettingsPage() {
   };
 
   const handleSaveLanguage = async (language: string) => {
+    setLang(language as any);
     setSettings(prev => ({ ...prev, language }));
-    try {
-      // 模拟保存语言设置
-      await new Promise(resolve => setTimeout(resolve, 300));
-      toast.success('語言設置已更新');
-    } catch (error) {
-      console.error('保存设置失败:', error);
-    }
+    toast.success('語言設置已更新');
   };
 
   return (
@@ -685,16 +682,18 @@ export default function UserSettingsPage() {
                 <div className="space-y-4">
                   <Label>選擇語言</Label>
                   <Select
-                    value={settings.language}
+                    value={lang}
                     onValueChange={handleSaveLanguage}
                   >
                     <SelectTrigger className="w-full max-w-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="zh-Hant">繁體中文</SelectItem>
-                      <SelectItem value="zh-Hans">简体中文</SelectItem>
-                      <SelectItem value="en">English</SelectItem>
+                      {languages.map((language) => (
+                        <SelectItem key={language.code} value={language.code}>
+                          {language.nativeName}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
