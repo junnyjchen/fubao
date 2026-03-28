@@ -7,6 +7,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
@@ -48,10 +49,10 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 刷新頁面
               </Button>
               <Button variant="outline" asChild className="gap-2">
-                <a href="/">
+                <Link href="/">
                   <Home className="w-4 h-4" />
                   返回首頁
-                </a>
+                </Link>
               </Button>
             </div>
           </div>

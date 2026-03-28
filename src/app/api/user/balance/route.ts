@@ -49,11 +49,14 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20');
 
     // 获取用户余额
-    let { data: balance, error } = await client
+    const balanceResult = await client
       .from('user_balances')
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    let balance = balanceResult.data;
+    const error = balanceResult.error;
 
     // 如果余额记录不存在，创建一个
     if (error && error.code === 'PGRST116') {

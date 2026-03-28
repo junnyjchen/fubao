@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -33,7 +33,6 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 interface NavItem {
   href: string;
@@ -49,6 +48,25 @@ interface QuickLink {
   badge?: number;
 }
 
+// 不显示移动端导航的页面（沉浸式页面）
+const HIDDEN_PATHS = [
+  '/admin',
+  '/merchant',
+  '/checkout',
+  '/auth',
+  '/login',
+  '/register',
+  '/payment',
+  '/shop/',  // 商品详情页
+  '/free-gifts/',  // 免费领详情页
+  '/activity/seckill',  // 秒杀活动
+  '/activity/new-user',  // 新人专享
+  '/activity/discount',  // 满减优惠
+  '/points-mall',  // 积分商城
+  '/distribution',  // 分销中心
+  '/ai-assistant',  // AI助手
+];
+
 export function MobileNav() {
   const pathname = usePathname();
   const [cartCount, setCartCount] = useState(0);
@@ -56,43 +74,22 @@ export function MobileNav() {
   const [isVisible, setIsVisible] = useState(false); // 默认隐藏
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isAtBottom, setIsAtBottom] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const sheetTriggerRef = useRef<HTMLButtonElement>(null);
   const tickingRef = useRef(false);
 
-  // 不显示移动端导航的页面（沉浸式页面）
-  const hiddenPaths = [
-    '/admin',
-    '/merchant',
-    '/checkout',
-    '/auth',
-    '/login',
-    '/register',
-    '/payment',
-    '/shop/',  // 商品详情页
-    '/free-gifts/',  // 免费领详情页
-    '/activity/seckill',  // 秒杀活动
-    '/activity/new-user',  // 新人专享
-    '/activity/discount',  // 满减优惠
-    '/points-mall',  // 积分商城
-    '/distribution',  // 分销中心
-    '/ai-assistant',  // AI助手
-  ];
-  
-  // 检查是否在隐藏路径中
-  const shouldHide = hiddenPaths.some(p => {
-    if (p.endsWith('/')) {
-      return pathname.startsWith(p) || pathname === p.slice(0, -1);
-    }
-    return pathname === p || pathname.startsWith(p + '/');
-  });
-  
-  if (shouldHide) {
-    return null;
-  }
+  // 检查是否在隐藏路径中 - 使用 useMemo 避免重复计算
+  const shouldHide = useMemo(() => {
+    return HIDDEN_PATHS.some(p => {
+      if (p.endsWith('/')) {
+        return pathname.startsWith(p) || pathname === p.slice(0, -1);
+      }
+      return pathname === p || pathname.startsWith(p + '/');
+    });
+  }, [pathname]);
 
   // 滚动处理函数
   const handleScroll = useCallback(() => {
+    if (shouldHide) return; // 如果隐藏则不处理
+    
     if (!tickingRef.current) {
       window.requestAnimationFrame(() => {
         const currentScrollY = window.scrollY;
@@ -128,16 +125,20 @@ export function MobileNav() {
       });
       tickingRef.current = true;
     }
-  }, [lastScrollY]);
+  }, [lastScrollY, shouldHide]);
 
   // 滚动监听
   useEffect(() => {
+    if (shouldHide) return; // 如果隐藏则不添加监听
+    
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [handleScroll]);
+  }, [handleScroll, shouldHide]);
 
   // 页面加载时检查是否需要显示
   useEffect(() => {
+    if (shouldHide) return; // 如果隐藏则跳过
+    
     // 初始状态：检查页面高度，如果页面很短则显示导航
     const windowHeight = window.innerHeight;
     const documentHeight = document.documentElement.scrollHeight;
@@ -146,10 +147,12 @@ export function MobileNav() {
       // 页面很短，直接显示导航
       setIsVisible(true);
     }
-  }, [pathname]);
+  }, [pathname, shouldHide]);
 
   // 获取购物车数量和通知数量
   useEffect(() => {
+    if (shouldHide) return; // 如果隐藏则跳过
+    
     const fetchCounts = async () => {
       try {
         // 获取购物车数量
@@ -171,7 +174,12 @@ export function MobileNav() {
     };
 
     fetchCounts();
-  }, [pathname]);
+  }, [pathname, shouldHide]);
+
+  // 如果在隐藏路径中，返回 null
+  if (shouldHide) {
+    return null;
+  }
 
   const badges = {
     cart: cartCount,

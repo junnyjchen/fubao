@@ -83,7 +83,7 @@ export function ShopPage() {
         const res = await fetch(`/api/goods?${params.toString()}`);
         const data = await res.json();
         if (data.data) {
-          let sortedGoods = data.data;
+          const sortedGoods = [...data.data];
           if (sortBy === 'price-asc') {
             sortedGoods.sort((a: Goods, b: Goods) => parseFloat(a.price) - parseFloat(b.price));
           } else if (sortBy === 'price-desc') {

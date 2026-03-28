@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取用户信息
-    let userMap = new Map();
+    const userMap = new Map();
     if (shares && shares.length > 0) {
       const userIds = [...new Set(shares.map(s => s.user_id))];
       const { data: users } = await client
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取商品信息
-    let goodsMap = new Map();
+    const goodsMap = new Map();
     if (shares && shares.length > 0) {
       const goodsIds = [...new Set(shares.map(s => s.goods_id).filter(Boolean))];
       if (goodsIds.length > 0) {
