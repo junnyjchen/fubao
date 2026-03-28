@@ -44,7 +44,6 @@ import {
   RefreshCw,
   ExternalLink,
 } from 'lucide-react';
-import { AdminLayout } from '@/components/admin/AdminLayout';
 
 interface Banner {
   id: number;
@@ -255,25 +254,24 @@ export default function AdminBannersPage() {
   };
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">輪播圖管理</h1>
-            <p className="text-muted-foreground">管理首頁及其他頁面的輪播圖</p>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={loadBanners} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              刷新
-            </Button>
-            <Button onClick={handleAdd}>
-              <Plus className="w-4 h-4 mr-2" />
-              新增輪播圖
-            </Button>
-          </div>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">輪播圖管理</h1>
+          <p className="text-muted-foreground">管理首頁及其他頁面的輪播圖</p>
         </div>
+        <div className="flex gap-2">
+          <Button onClick={loadBanners} variant="outline">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            刷新
+          </Button>
+          <Button onClick={handleAdd}>
+            <Plus className="w-4 h-4 mr-2" />
+            新增輪播圖
+          </Button>
+        </div>
+      </div>
 
         {/* Tips */}
         <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900">
@@ -551,6 +549,6 @@ export default function AdminBannersPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </AdminLayout>
+    </div>
   );
 }

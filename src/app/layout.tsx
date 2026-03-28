@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
@@ -125,11 +126,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 检测是否是管理后台路径
+  const headersList = await headers();
+  const pathname = headersList.get('x-pathname') || '';
+  const isAdmin = pathname.startsWith('/admin') || pathname.startsWith('/merchant') || pathname.startsWith('/user');
+
   return (
     <html lang="zh-TW" suppressHydrationWarning>
       <head>
@@ -176,11 +182,11 @@ export default function RootLayout({
       </head>
       <body className="antialiased min-h-screen flex flex-col">
         <Providers>
-          <Header />
+          {!isAdmin && <Header />}
           <main className="flex-1 pb-16 md:pb-0">{children}</main>
-          <Footer />
-          <FloatingAIButton />
-          <MobileNav />
+          {!isAdmin && <Footer />}
+          {!isAdmin && <FloatingAIButton />}
+          {!isAdmin && <MobileNav />}
         </Providers>
       </body>
     </html>
