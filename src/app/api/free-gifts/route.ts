@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 尝试从数据库获取
+    // 尝试从数据库获取 - 不使用嵌入查询
     const { data: gifts, error } = await client
       .from('free_gifts')
       .select(`
@@ -149,12 +149,7 @@ export async function GET(request: NextRequest) {
         is_active,
         start_time,
         end_time,
-        merchant_id,
-        merchants (
-          id,
-          name,
-          address
-        )
+        merchant_id
       `)
       .eq('is_active', true)
       .gt('stock', 0)
@@ -175,13 +170,33 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 分开查询商户信息
+    let enrichedGifts = gifts || [];
+    if (gifts && gifts.length > 0) {
+      const merchantIds = [...new Set(gifts.map(g => g.merchant_id).filter(Boolean))];
+      
+      if (merchantIds.length > 0) {
+        const { data: merchantsData } = await client
+          .from('merchants')
+          .select('id, name, address')
+          .in('id', merchantIds);
+
+        const merchantsMap = new Map((merchantsData || []).map(m => [m.id, m]));
+
+        enrichedGifts = gifts.map(g => ({
+          ...g,
+          merchants: g.merchant_id ? merchantsMap.get(g.merchant_id) || null : null,
+        }));
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      data: gifts || [],
+      data: enrichedGifts,
       pagination: {
         page,
         limit,
-        total: gifts?.length || 0,
+        total: enrichedGifts.length,
       },
     });
   } catch (error) {

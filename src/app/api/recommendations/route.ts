@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // 尝试从数据库获取商品
+    // 尝试从数据库获取商品 - 不使用嵌入查询
     let query = supabase
       .from('goods')
       .select(`
@@ -169,10 +169,7 @@ export async function GET(request: NextRequest) {
         is_certified,
         sales,
         created_at,
-        merchants (
-          id,
-          name
-        )
+        merchant_id
       `)
       .eq('status', 1);
 
@@ -225,37 +222,61 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 分开查询商户信息
+    let enrichedGoods: any[] = [];
+    if (goods && goods.length > 0) {
+      const merchantIds = [...new Set(goods.map(g => g.merchant_id).filter(Boolean))];
+      
+      if (merchantIds.length > 0) {
+        const { data: merchantsData } = await supabase
+          .from('merchants')
+          .select('id, name')
+          .in('id', merchantIds);
+
+        const merchantsMap = new Map((merchantsData || []).map(m => [m.id, m]));
+
+        // 格式化数据并合并商户信息
+        enrichedGoods = goods.map(g => ({
+          id: g.id,
+          name: g.name,
+          main_image: g.main_image,
+          price: g.price,
+          original_price: g.original_price,
+          is_certified: g.is_certified,
+          sales: g.sales,
+          merchant: g.merchant_id ? {
+            id: merchantsMap.get(g.merchant_id)?.id,
+            name: merchantsMap.get(g.merchant_id)?.name,
+          } : null,
+        }));
+      } else {
+        // 没有商户ID的情况
+        enrichedGoods = goods.map(g => ({
+          id: g.id,
+          name: g.name,
+          main_image: g.main_image,
+          price: g.price,
+          original_price: g.original_price,
+          is_certified: g.is_certified,
+          sales: g.sales,
+          merchant: null,
+        }));
+      }
+    }
+
     // 如果数据库返回数据不足，补充模拟数据
-    if (!goods || goods.length < limit) {
-      const mockData = getMockRecommendations(type, limit - (goods?.length || 0));
-      const combined = [...(goods || []), ...mockData];
+    if (enrichedGoods.length < limit) {
+      const mockData = getMockRecommendations(type, limit - enrichedGoods.length);
+      const combined = [...enrichedGoods, ...mockData];
       return NextResponse.json({
         success: true,
         data: combined,
       });
     }
 
-    // 格式化数据
-    const formattedGoods = goods.map(g => {
-      const merchant = Array.isArray(g.merchants) ? g.merchants[0] : g.merchants;
-      return {
-        id: g.id,
-        name: g.name,
-        main_image: g.main_image,
-        price: g.price,
-        original_price: g.original_price,
-        is_certified: g.is_certified,
-        sales: g.sales,
-        merchant: merchant ? {
-          id: merchant.id,
-          name: merchant.name,
-        } : null,
-      };
-    });
-
     return NextResponse.json({
       success: true,
-      data: formattedGoods,
+      data: enrichedGoods,
     });
   } catch (error) {
     console.error('推荐商品API错误:', error);

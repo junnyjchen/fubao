@@ -20,33 +20,60 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const client = getSupabaseClient();
 
-    const { data, error } = await client
+    // 先查询售后基本信息
+    const { data: refund, error: refundError } = await client
       .from('refunds')
-      .select(`
-        *,
-        order:orders (
-          id,
-          order_no,
-          total_amount,
-          pay_amount,
-          items:order_items (
-            goods_id,
-            goods_name,
-            goods_image,
-            price,
-            quantity
-          )
-        ),
-        user:users (nickname, phone, email),
-        merchant:merchants (name, logo)
-      `)
+      .select('*')
       .eq('id', parseInt(id))
       .single();
 
-    if (error) {
-      console.error('查询售后详情失败:', error);
+    if (refundError || !refund) {
+      console.error('查询售后详情失败:', refundError);
       return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
     }
+
+    // 分开查询关联数据
+    const [orderResult, userResult, merchantResult] = await Promise.all([
+      // 查询订单信息
+      client
+        .from('orders')
+        .select('id, order_no, total_amount, pay_amount')
+        .eq('id', refund.order_id)
+        .single(),
+      // 查询用户信息
+      client
+        .from('users')
+        .select('nickname, phone, email')
+        .eq('id', refund.user_id)
+        .single(),
+      // 查询商户信息
+      client
+        .from('merchants')
+        .select('name, logo')
+        .eq('id', refund.merchant_id)
+        .single(),
+    ]);
+
+    // 查询订单项
+    let orderItems: any[] = [];
+    if (orderResult.data) {
+      const { data: items } = await client
+        .from('order_items')
+        .select('goods_id, goods_name, goods_image, price, quantity')
+        .eq('order_id', refund.order_id);
+      orderItems = items || [];
+    }
+
+    // 合并数据
+    const data = {
+      ...refund,
+      order: orderResult.data ? {
+        ...orderResult.data,
+        items: orderItems,
+      } : null,
+      user: userResult.data || null,
+      merchant: merchantResult.data || null,
+    };
 
     return NextResponse.json({ data });
   } catch (error) {

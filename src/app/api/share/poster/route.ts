@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 获取商品信息
+    // 先获取商品基本信息（不使用嵌入查询）
     const { data: goods, error } = await client
       .from('goods')
       .select(`
@@ -34,17 +34,24 @@ export async function GET(request: NextRequest) {
         images,
         description,
         sales,
-        merchant:merchants (
-          id,
-          name,
-          logo
-        )
+        merchant_id
       `)
       .eq('id', parseInt(goodsId))
       .single();
 
     if (error || !goods) {
       return NextResponse.json({ error: '商品不存在' }, { status: 404 });
+    }
+
+    // 分开查询商户信息
+    let merchant = null;
+    if (goods.merchant_id) {
+      const { data: merchantData } = await client
+        .from('merchants')
+        .select('id, name, logo')
+        .eq('id', goods.merchant_id)
+        .single();
+      merchant = merchantData;
     }
 
     // 获取分销信息（如果有推荐人）
@@ -59,7 +66,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      goods,
+      goods: {
+        ...goods,
+        merchant,
+      },
       distributor,
       share_url: `/shop/${goodsId}${userId ? `?ref=${userId}` : ''}`,
     });

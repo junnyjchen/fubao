@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 获取购物车商品，包含商品详情和商户信息
+    // 获取购物车商品 - 不使用嵌入查询
     const { data: cartItems, error } = await client
       .from('cart_items')
       .select(`
@@ -25,22 +25,7 @@ export async function GET(request: NextRequest) {
         quantity,
         selected,
         created_at,
-        goods (
-          id,
-          name,
-          price,
-          original_price,
-          images,
-          stock,
-          status,
-          merchant_id,
-          merchants (
-            id,
-            name,
-            logo,
-            verified
-          )
-        )
+        goods_id
       `)
       .eq('user_id', parseInt(userId))
       .order('created_at', { ascending: false });
@@ -49,8 +34,49 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
     }
 
+    // 分开查询商品和商户信息
+    let enrichedCartItems: any[] = [];
+    if (cartItems && cartItems.length > 0) {
+      const goodsIds = [...new Set(cartItems.map(item => item.goods_id).filter(Boolean))];
+      
+      if (goodsIds.length > 0) {
+        // 查询商品信息
+        const { data: goodsData } = await client
+          .from('goods')
+          .select('id, name, price, original_price, images, stock, status, merchant_id')
+          .in('id', goodsIds);
+
+        if (goodsData && goodsData.length > 0) {
+          // 获取商户ID
+          const merchantIds = [...new Set(goodsData.map(g => g.merchant_id).filter(Boolean))];
+          
+          // 查询商户信息
+          const { data: merchantsData } = merchantIds.length > 0
+            ? await client.from('merchants').select('id, name, logo, verified').in('id', merchantIds)
+            : { data: [] };
+
+          // 创建映射表
+          const goodsMap = new Map(goodsData.map(g => [g.id, g]));
+          const merchantsMap = new Map((merchantsData || []).map(m => [m.id, m]));
+
+          // 合并数据
+          enrichedCartItems = cartItems.map(item => {
+            const goods = goodsMap.get(item.goods_id);
+            if (!goods) return null;
+            return {
+              ...item,
+              goods: {
+                ...goods,
+                merchants: goods.merchant_id ? (merchantsMap.get(goods.merchant_id) || null) : null
+              }
+            };
+          }).filter((item): item is NonNullable<typeof item> => item !== null);
+        }
+      }
+    }
+
     // 按商户分组
-    const groupedByMerchant = (cartItems || []).reduce((acc: any, item: any) => {
+    const groupedByMerchant = enrichedCartItems.reduce((acc: any, item: any) => {
       const merchant = item.goods?.merchants;
       if (!merchant) return acc;
 

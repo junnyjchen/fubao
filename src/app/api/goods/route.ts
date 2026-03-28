@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     
-    // 构建查询
+    // 构建查询 - 不使用嵌入查询，改为分开查询后合并
     let query = supabase
       .from('goods')
       .select(`
@@ -59,17 +59,8 @@ export async function GET(request: NextRequest) {
         stock,
         type,
         purpose,
-        merchants (
-          id,
-          name,
-          logo,
-          certification_level
-        ),
-        categories (
-          id,
-          name,
-          slug
-        )
+        merchant_id,
+        category_id
       `, { count: 'exact' })
       .eq('status', 1);
 
@@ -135,8 +126,37 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 分开查询商户和分类信息
+    let enrichedGoods = goods || [];
+    if (goods && goods.length > 0) {
+      // 获取所有商户ID和分类ID
+      const merchantIds = [...new Set(goods.map(g => g.merchant_id).filter(Boolean))];
+      const categoryIds = [...new Set(goods.map(g => g.category_id).filter(Boolean))];
+
+      // 并行查询商户和分类
+      const [merchantsResult, categoriesResult] = await Promise.all([
+        merchantIds.length > 0 
+          ? supabase.from('merchants').select('id, name, logo, certification_level').in('id', merchantIds)
+          : { data: [] },
+        categoryIds.length > 0
+          ? supabase.from('categories').select('id, name, slug').in('id', categoryIds)
+          : { data: [] }
+      ]);
+
+      // 创建映射表
+      const merchantsMap = new Map((merchantsResult.data || []).map(m => [m.id, m]));
+      const categoriesMap = new Map((categoriesResult.data || []).map(c => [c.id, c]));
+
+      // 合并数据
+      enrichedGoods = goods.map(g => ({
+        ...g,
+        merchants: g.merchant_id ? merchantsMap.get(g.merchant_id) || null : null,
+        categories: g.category_id ? categoriesMap.get(g.category_id) || null : null,
+      }));
+    }
+
     return NextResponse.json({
-      data: goods || [],
+      data: enrichedGoods,
       pagination: {
         page,
         limit,
