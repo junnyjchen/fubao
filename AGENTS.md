@@ -178,3 +178,7 @@ pnpm start
 2. **RLS策略**：新建表必须配置 RLS 策略
 3. **文件存储**：生成的文件优先存储到对象存储，本地存储仅在开发环境使用 `/workspace/projects/public`，生产环境使用 `/tmp`
 4. **禁止Mock**：集成服务调用必须使用真实API，禁止返回假数据
+
+## 部署文档
+
+- [宝塔面板部署指南](./docs/baota-deployment.md) - 详细的服务器部署、环境配置、Nginx反向代理、SSL证书配置说明
