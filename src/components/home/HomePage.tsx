@@ -325,8 +325,6 @@ export function HomePage() {
     { icon: ShieldCheck, title: '證書驗證', href: '/verify' },
     { icon: BookOpen, title: '玄門百科', href: '/wiki' },
     { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
-    { icon: TrendingUp, title: '分銷中心', href: '/distribution' },
-    { icon: Award, title: 'VIP會員', href: '/vip' },
   ];
 
   if (loading) {

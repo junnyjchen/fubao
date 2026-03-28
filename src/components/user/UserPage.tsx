@@ -28,6 +28,8 @@ import {
   Loader2,
   Wallet,
   CreditCard,
+  Crown,
+  Users,
 } from 'lucide-react';
 
 interface OrderItem {
@@ -300,26 +302,49 @@ export function UserPage() {
             { label: '待發貨', count: orders.filter(o => o.orderStatus === 1).length, icon: Package, href: '/user/orders?status=unshipped' },
             { label: '已發貨', count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, href: '/user/orders?status=shipped' },
             { label: '待評價', count: orders.filter(o => o.orderStatus === 3).length, icon: Star, href: '/user/reviews/pending' },
-            { label: '免費領', icon: Gift, href: '/free-gifts', highlight: true },
+            { label: 'VIP會員', icon: Crown, href: '/vip', highlight: true, highlightColor: 'gold' },
+            { label: '分銷中心', icon: TrendingUp, href: '/distribution', highlight: true, highlightColor: 'purple' },
             { label: '優惠券', icon: Ticket, href: '/user/coupons' },
             { label: '我的積分', icon: Coins, href: '/user/points' },
-            { label: '我的錢包', icon: Wallet, href: '/user/wallet' },
           ].map((item) => {
             const Icon = item.icon;
             return (
               <Link key={item.label} href={item.href}>
-                <Card className={`hover:shadow-md transition-shadow cursor-pointer ${item.highlight ? 'bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 border-red-200/50' : ''}`}>
+                <Card className={`hover:shadow-md transition-shadow cursor-pointer ${
+                  item.highlightColor === 'gold' 
+                    ? 'bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 border-amber-300/50' 
+                    : item.highlightColor === 'purple'
+                    ? 'bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border-purple-300/50'
+                    : ''
+                }`}>
                   <CardContent className="p-3 text-center">
-                    <Icon className={`w-6 h-6 mx-auto mb-1 ${item.highlight ? 'text-red-500' : 'text-primary'}`} />
-                    <p className="text-xs font-medium">{item.label}</p>
+                    <Icon className={`w-6 h-6 mx-auto mb-1 ${
+                      item.highlightColor === 'gold' 
+                        ? 'text-amber-500' 
+                        : item.highlightColor === 'purple'
+                        ? 'text-purple-500'
+                        : 'text-primary'
+                    }`} />
+                    <p className={`text-xs font-medium ${
+                      item.highlightColor === 'gold' 
+                        ? 'text-amber-700' 
+                        : item.highlightColor === 'purple'
+                        ? 'text-purple-700'
+                        : ''
+                    }`}>{item.label}</p>
                     {item.count !== undefined && item.count > 0 && (
                       <Badge variant="destructive" className="mt-1 h-5 px-1.5 text-xs">
                         {item.count}
                       </Badge>
                     )}
-                    {item.highlight && (
-                      <Badge className="mt-1 h-5 px-1.5 text-xs bg-gradient-to-r from-red-500 to-orange-500">
-                        HOT
+                    {item.highlightColor === 'gold' && (
+                      <Badge className="mt-1 h-5 px-1.5 text-xs bg-gradient-to-r from-amber-500 to-yellow-500">
+                        特權
+                      </Badge>
+                    )}
+                    {item.highlightColor === 'purple' && (
+                      <Badge className="mt-1 h-5 px-1.5 text-xs bg-gradient-to-r from-purple-500 to-indigo-500">
+                        賺錢
                       </Badge>
                     )}
                   </CardContent>
@@ -332,6 +357,28 @@ export function UserPage() {
         <div className="grid lg:grid-cols-4 gap-6">
           {/* 左侧菜单 */}
           <div className="lg:col-span-1">
+            {/* VIP和分销突出卡片 */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <Link href="/vip">
+                <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 border-amber-300/50 hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-3 text-center">
+                    <Crown className="w-6 h-6 mx-auto mb-1 text-amber-500" />
+                    <p className="text-xs font-medium text-amber-700">VIP會員</p>
+                    <p className="text-[10px] text-amber-600/70 mt-0.5">專享特權</p>
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/distribution">
+                <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border-purple-300/50 hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-3 text-center">
+                    <TrendingUp className="w-6 h-6 mx-auto mb-1 text-purple-500" />
+                    <p className="text-xs font-medium text-purple-700">分銷中心</p>
+                    <p className="text-[10px] text-purple-600/70 mt-0.5">賺取佣金</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+
             <Card>
               <CardContent className="p-4">
                 <nav className="space-y-1">
@@ -404,14 +451,6 @@ export function UserPage() {
                     <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
                       <Gift className="w-5 h-5" />
                       <span>領取記錄</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Separator className="my-2" />
-                  <Link href="/distribution">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <TrendingUp className="w-5 h-5" />
-                      <span>分銷中心</span>
                       <ChevronRight className="w-4 h-4 ml-auto" />
                     </div>
                   </Link>
