@@ -114,6 +114,7 @@ function GoodsCard({ item }: { item: Goods }) {
               src={item.main_image}
               alt={item.name}
               fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -175,6 +176,7 @@ function NewsCard({ item }: { item: News }) {
               src={item.cover}
               alt={item.title}
               fill
+              sizes="96px"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -230,6 +232,7 @@ function VideoCard({ item }: { item: Video }) {
               src={item.cover}
               alt={item.title}
               fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -350,6 +353,7 @@ export function HomePage() {
                   src={banner.image}
                   alt={banner.title || 'Banner'}
                   fill
+                  sizes="100vw"
                   className="object-cover"
                   priority={index === 0}
                 />
