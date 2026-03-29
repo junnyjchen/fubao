@@ -1,9 +1,3 @@
-/**
- * @fileoverview 联系我们页面
- * @description 提供多种联系方式
- * @module app/contact/page
- */
-
 'use client';
 
 import { useState } from 'react';
@@ -20,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useI18n } from '@/lib/i18n';
 import {
   ArrowLeft,
   Mail,
@@ -32,44 +27,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const contactMethods = [
-  {
-    icon: Mail,
-    title: '電子郵箱',
-    content: 'support@fubao.ltd',
-    description: '工作日24小時內回覆',
-    action: '發送郵件',
-    href: 'mailto:support@fubao.ltd',
-  },
-  {
-    icon: Phone,
-    title: '客服熱線',
-    content: '+852 XXXX XXXX',
-    description: '週一至週五 9:00-18:00',
-    action: '撥打電話',
-    href: 'tel:+852XXXXXXXX',
-  },
-  {
-    icon: MessageCircle,
-    title: '在線客服',
-    content: '即時通訊',
-    description: '即時解答您的問題',
-    action: '開始對話',
-    href: '#chat',
-  },
-];
-
-const inquiryTypes = [
-  { value: 'general', label: '一般諮詢' },
-  { value: 'order', label: '訂單問題' },
-  { value: 'payment', label: '支付問題' },
-  { value: 'shipping', label: '配送問題' },
-  { value: 'refund', label: '退款售後' },
-  { value: 'merchant', label: '商戶合作' },
-  { value: 'other', label: '其他問題' },
-];
-
 export default function ContactPage() {
+  const { t } = useI18n();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
@@ -81,17 +40,54 @@ export default function ContactPage() {
     message: '',
   });
 
+  const contactMethods = [
+    {
+      icon: Mail,
+      title: t.contact.methods.email.title,
+      content: t.contact.methods.email.value,
+      description: t.contact.methods.email.desc,
+      action: t.contact.methods.email.action,
+      href: 'mailto:support@fubao.ltd',
+    },
+    {
+      icon: Phone,
+      title: t.contact.methods.phone.title,
+      content: t.contact.methods.phone.value,
+      description: t.contact.methods.phone.desc,
+      action: t.contact.methods.phone.action,
+      href: 'tel:+852XXXXXXXX',
+    },
+    {
+      icon: MessageCircle,
+      title: t.contact.methods.chat.title,
+      content: t.contact.methods.chat.value,
+      description: t.contact.methods.chat.desc,
+      action: t.contact.methods.chat.action,
+      href: '#chat',
+    },
+  ];
+
+  const inquiryTypes = [
+    { value: 'general', label: t.contact.inquiryTypes.general },
+    { value: 'order', label: t.contact.inquiryTypes.order },
+    { value: 'payment', label: t.contact.inquiryTypes.payment },
+    { value: 'shipping', label: t.contact.inquiryTypes.shipping },
+    { value: 'refund', label: t.contact.inquiryTypes.refund },
+    { value: 'merchant', label: t.contact.inquiryTypes.merchant },
+    { value: 'other', label: t.contact.inquiryTypes.other },
+  ];
+
   const handleSubmit = async () => {
     if (!form.name.trim()) {
-      toast.error('請輸入您的姓名');
+      toast.error(t.contact.validation.nameRequired);
       return;
     }
     if (!form.email.trim()) {
-      toast.error('請輸入電子郵箱');
+      toast.error(t.contact.validation.emailRequired);
       return;
     }
     if (!form.message.trim()) {
-      toast.error('請輸入留言內容');
+      toast.error(t.contact.validation.messageRequired);
       return;
     }
 
@@ -100,7 +96,7 @@ export default function ContactPage() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     setSubmitting(false);
     setSubmitted(true);
-    toast.success('提交成功，我們會盡快回覆您');
+    toast.success(t.contact.success.message);
   };
 
   if (submitted) {
@@ -111,12 +107,12 @@ export default function ContactPage() {
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold mb-2">提交成功</h2>
+            <h2 className="text-2xl font-bold mb-2">{t.contact.success.title}</h2>
             <p className="text-muted-foreground mb-6">
-              感謝您的留言，我們會在工作日24小時內回覆您。
+              {t.contact.success.message}
             </p>
             <Button onClick={() => setSubmitted(false)}>
-              繼續留言
+              {t.contact.success.continue}
             </Button>
           </CardContent>
         </Card>
@@ -135,8 +131,8 @@ export default function ContactPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-xl font-bold">聯繫我們</h1>
-            <p className="text-sm text-muted-foreground">我們隨時為您服務</p>
+            <h1 className="text-xl font-bold">{t.contact.title}</h1>
+            <p className="text-sm text-muted-foreground">{t.contact.subtitle}</p>
           </div>
         </div>
       </header>
@@ -174,19 +170,19 @@ export default function ContactPage() {
                 <div className="flex items-start gap-4">
                   <MapPin className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-medium mb-1">公司地址</h3>
+                    <h3 className="font-medium mb-1">{t.contact.address.title}</h3>
                     <p className="text-sm text-muted-foreground">
-                      香港九龍XXX大廈XX樓
+                      {t.contact.address.value}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
                   <Clock className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="font-medium mb-1">工作時間</h3>
+                    <h3 className="font-medium mb-1">{t.contact.workingHours.title}</h3>
                     <p className="text-sm text-muted-foreground">
-                      週一至週五 9:00-18:00<br />
-                      週六日及公眾假期休息
+                      {t.contact.workingHours.value}<br />
+                      {t.contact.workingHours.value2}
                     </p>
                   </div>
                 </div>
@@ -198,52 +194,52 @@ export default function ContactPage() {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>在線留言</CardTitle>
+                <CardTitle>{t.contact.header}</CardTitle>
                 <CardDescription>
-                  填寫以下表單，我們會盡快回覆您
+                  {t.contact.headerDesc}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">姓名 *</Label>
+                    <Label htmlFor="name">{t.contact.form.name} {t.contact.form.required}</Label>
                     <Input
                       id="name"
                       value={form.name}
                       onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="請輸入您的姓名"
+                      placeholder={t.contact.form.namePlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">電子郵箱 *</Label>
+                    <Label htmlFor="email">{t.contact.form.email} {t.contact.form.required}</Label>
                     <Input
                       id="email"
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="請輸入電子郵箱"
+                      placeholder={t.contact.form.emailPlaceholder}
                     />
                   </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">聯繫電話</Label>
+                    <Label htmlFor="phone">{t.contact.form.phone}</Label>
                     <Input
                       id="phone"
                       value={form.phone}
                       onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="請輸入聯繫電話"
+                      placeholder={t.contact.form.phonePlaceholder}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="type">諮詢類型</Label>
+                    <Label htmlFor="type">{t.contact.form.type}</Label>
                     <Select
                       value={form.type}
                       onValueChange={(v) => setForm(prev => ({ ...prev, type: v }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="請選擇諮詢類型" />
+                        <SelectValue placeholder={t.contact.form.typePlaceholder} />
                       </SelectTrigger>
                       <SelectContent>
                         {inquiryTypes.map((type) => (
@@ -257,22 +253,22 @@ export default function ContactPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="subject">主題</Label>
+                  <Label htmlFor="subject">{t.contact.form.subject}</Label>
                   <Input
                     id="subject"
                     value={form.subject}
                     onChange={(e) => setForm(prev => ({ ...prev, subject: e.target.value }))}
-                    placeholder="請輸入留言主題"
+                    placeholder={t.contact.form.subjectPlaceholder}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="message">留言內容 *</Label>
+                  <Label htmlFor="message">{t.contact.form.message} {t.contact.form.required}</Label>
                   <Textarea
                     id="message"
                     value={form.message}
                     onChange={(e) => setForm(prev => ({ ...prev, message: e.target.value }))}
-                    placeholder="請輸入您的留言內容..."
+                    placeholder={t.contact.form.messagePlaceholder}
                     rows={6}
                   />
                 </div>
@@ -280,7 +276,7 @@ export default function ContactPage() {
                 <div className="flex justify-end">
                   <Button onClick={handleSubmit} disabled={submitting}>
                     <Send className="w-4 h-4 mr-2" />
-                    {submitting ? '提交中...' : '提交留言'}
+                    {submitting ? t.contact.form.submitting : t.contact.form.submit}
                   </Button>
                 </div>
               </CardContent>

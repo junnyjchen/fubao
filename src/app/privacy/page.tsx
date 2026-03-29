@@ -1,17 +1,14 @@
-/**
- * @fileoverview 隐私政策页面
- * @description 网站隐私保护政策
- * @module app/privacy/page
- */
-
 'use client';
 
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n';
 import { ArrowLeft } from 'lucide-react';
 
 export default function PrivacyPage() {
+  const { t } = useI18n();
+
   return (
     <div className="min-h-screen bg-muted/20">
       {/* Header */}
@@ -23,8 +20,8 @@ export default function PrivacyPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-xl font-bold">隱私政策</h1>
-            <p className="text-sm text-muted-foreground">更新日期：2024年1月1日</p>
+            <h1 className="text-xl font-bold">{t.legal.privacy}</h1>
+            <p className="text-sm text-muted-foreground">{t.legal.lastUpdated}：2024年1月1日</p>
           </div>
         </div>
       </header>
@@ -164,7 +161,7 @@ export default function PrivacyPage() {
 
         <div className="mt-8 text-center">
           <Button variant="outline" asChild>
-            <Link href="/terms">查看用戶協議</Link>
+            <Link href="/terms">{t.legal.viewTerms}</Link>
           </Button>
         </div>
       </main>
