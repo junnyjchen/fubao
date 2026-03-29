@@ -104,7 +104,7 @@ function FeatureCard({ icon: Icon, title, href }: { icon: React.ElementType; tit
 }
 
 // 商品卡片组件
-function GoodsCard({ item }: { item: Goods }) {
+function GoodsCard({ item, t }: { item: Goods; t: any }) {
   return (
     <Link href={`/shop/${item.id}`}>
       <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
@@ -124,7 +124,7 @@ function GoodsCard({ item }: { item: Goods }) {
           )}
           {item.is_certified && (
             <Badge className="absolute top-2 left-2 bg-gold text-gold-foreground">
-              一物一證
+              {t.home.certified}
             </Badge>
           )}
         </div>
@@ -141,7 +141,7 @@ function GoodsCard({ item }: { item: Goods }) {
                 </span>
               )}
             </div>
-            <span className="text-xs text-muted-foreground">已售 {item.sales}</span>
+            <span className="text-xs text-muted-foreground">{t.home.sold} {item.sales}</span>
           </div>
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
             {item.merchants.logo && (
@@ -164,8 +164,13 @@ function GoodsCard({ item }: { item: Goods }) {
 }
 
 // 新闻卡片组件
-function NewsCard({ item }: { item: News }) {
-  const typeLabels = ['全球新聞', '行業資訊', '平台活動', '用戶互動'];
+function NewsCard({ item, t }: { item: News; t: any }) {
+  const typeLabels = [
+    t.newsTypes.global, 
+    t.newsTypes.industry, 
+    t.newsTypes.activity, 
+    t.newsTypes.interaction
+  ];
   
   return (
     <Link href={`/news/${item.slug || item.id}`}>
@@ -188,7 +193,7 @@ function NewsCard({ item }: { item: News }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="outline" className="text-xs">
-              {typeLabels[item.type - 1] || '資訊'}
+              {typeLabels[item.type - 1] || t.newsTypes.industry}
             </Badge>
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Eye className="w-3 h-3" />
@@ -321,10 +326,10 @@ export function HomePage() {
   }, [banners.length]);
 
   const features = [
-    { icon: Gift, title: '免費領取', href: '/free-gifts' },
-    { icon: ShieldCheck, title: '證書驗證', href: '/verify' },
-    { icon: BookOpen, title: '玄門百科', href: '/wiki' },
-    { icon: Sparkles, title: 'AI助手', href: '/ai-assistant' },
+    { icon: Gift, title: t.home.features.freeGift, href: '/free-gifts' },
+    { icon: ShieldCheck, title: t.nav.verify, href: '/verify' },
+    { icon: BookOpen, title: t.home.features.wiki, href: '/wiki' },
+    { icon: Sparkles, title: t.nav.aiAssistant, href: '/ai-assistant' },
   ];
 
   if (loading) {
@@ -432,10 +437,10 @@ export function HomePage() {
       {todayArticle && (
         <section className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">玄門百科</h2>
+            <h2 className="text-2xl font-bold">{t.home.wiki}</h2>
             <Button variant="ghost" asChild>
               <Link href="/wiki" className="text-muted-foreground hover:text-foreground">
-                查看更多
+                {t.home.viewMore}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
             </Button>
@@ -457,7 +462,7 @@ export function HomePage() {
                 )}
               </div>
               <CardContent className="flex-1 p-6 md:p-8">
-                <Badge className="mb-4">推薦閱讀</Badge>
+                <Badge className="mb-4">{t.home.recommendedReading}</Badge>
                 <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
                   {todayArticle.title}
                 </h3>
@@ -467,7 +472,7 @@ export function HomePage() {
                   </p>
                 )}
                 <Button variant="link" className="mt-4 p-0 text-primary">
-                  閱讀全文
+                  {t.home.readFull}
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </CardContent>
@@ -497,18 +502,18 @@ export function HomePage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-xl md:text-2xl font-bold">免費領好禮</h3>
+                        <h3 className="text-xl md:text-2xl font-bold">{t.home.freeGiftBanner.title}</h3>
                         <Badge className="bg-white/30 text-white border-0 animate-pulse">
-                          限量
+                          {t.home.freeGiftBanner.limited}
                         </Badge>
                       </div>
                       <p className="text-white/90 text-sm md:text-base">
-                        精選玄門好物免費領取 · 郵寄或到店自取
+                        {t.home.freeGiftBanner.subtitle}
                       </p>
                     </div>
                   </div>
                   <div className="hidden md:flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-5 py-2.5 group-hover:bg-white/30 transition-colors">
-                    <span className="font-medium">立即領取</span>
+                    <span className="font-medium">{t.home.freeGiftBanner.cta}</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>
                   <ArrowRight className="md:hidden w-5 h-5" />
@@ -532,7 +537,7 @@ export function HomePage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {goods.length > 0 ? (
-            goods.map((item) => <GoodsCard key={item.id} item={item} />)
+            goods.map((item) => <GoodsCard key={item.id} item={item} t={t} />)
           ) : (
             <div className="col-span-full text-center py-12 text-muted-foreground">
               {t.common.noData}
@@ -554,11 +559,11 @@ export function HomePage() {
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <Play className="w-5 h-5 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold">精選視頻</h2>
+              <h2 className="text-2xl font-bold">{t.home.featuredVideos}</h2>
             </div>
             <Button variant="ghost" asChild>
               <Link href="/videos" className="text-muted-foreground hover:text-foreground">
-                更多視頻
+                {t.home.moreVideos}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
             </Button>
@@ -584,7 +589,7 @@ export function HomePage() {
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           {news.length > 0 ? (
-            news.map((item) => <NewsCard key={item.id} item={item} />)
+            news.map((item) => <NewsCard key={item.id} item={item} t={t} />)
           ) : (
             <div className="col-span-full text-center py-12 text-muted-foreground">
               {t.common.noData}
@@ -603,12 +608,12 @@ export function HomePage() {
               </div>
               <div>
                 <h3 className="text-xl font-bold mb-1">{t.nav.video}</h3>
-                <p className="text-muted-foreground">道長說符 · 法器開箱 · 宮觀巡禮</p>
+                <p className="text-muted-foreground">{t.home.videoCategories}</p>
               </div>
             </div>
             <Button size="lg" asChild>
               <Link href="/videos">
-                探索視頻
+                {t.home.exploreVideos}
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Link>
             </Button>
@@ -627,26 +632,26 @@ export function HomePage() {
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
                     <span className="text-2xl">🙏</span>
                   </div>
-                  <h3 className="text-2xl md:text-3xl font-bold">如願</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold">{t.home.ruyuan.title}</h3>
                 </div>
                 <p className="text-muted-foreground text-lg mb-4">
-                  心願達成 · 靈驗分享 · 美好記錄
+                  {t.home.ruyuan.subtitle}
                 </p>
                 <p className="text-sm text-muted-foreground max-w-md">
-                  分享您的心願達成故事，讓更多人見證美好時刻
+                  {t.home.ruyuan.description}
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link href="/shares">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
                     <ImageIcon className="w-5 h-5" />
-                    瀏覽分享
+                    {t.home.ruyuan.browse}
                   </Button>
                 </Link>
                 <Link href="/shares/publish">
                   <Button size="lg" className="w-full sm:w-auto gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
                     <Plus className="w-5 h-5" />
-                    發布分享
+                    {t.home.ruyuan.publish}
                   </Button>
                 </Link>
               </div>

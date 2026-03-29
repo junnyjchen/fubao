@@ -51,15 +51,15 @@ export function Header() {
 
   const navItems = [
     { href: '/', label: t.nav.home },
-    { href: '/wiki', label: t.nav.baike || '玄門百科' },
+    { href: '/wiki', label: t.nav.baike },
     { href: '/shop', label: t.nav.shop },
-    { href: '/video', label: t.nav.video || '視頻學堂' },
-    { href: '/shares', label: '如願', icon: Camera, highlight: true },
-    { href: '/points-mall', label: '積分商城', icon: Ticket },
-    { href: '/vip', label: 'VIP會員', icon: Crown },
+    { href: '/video', label: t.nav.video },
+    { href: '/shares', label: t.nav.ruyuan, icon: Camera, highlight: true },
+    { href: '/points-mall', label: t.nav.pointsMall, icon: Ticket },
+    { href: '/vip', label: t.nav.vip, icon: Crown },
     { href: '/news', label: t.nav.news },
-    { href: '/verify', label: '證書驗證' },
-    { href: '/ai-assistant', label: 'AI助手', icon: Sparkles },
+    { href: '/verify', label: t.nav.verify },
+    { href: '/ai-assistant', label: t.nav.aiAssistant, icon: Sparkles },
   ];
 
   const handleSearch = () => {
@@ -154,23 +154,23 @@ export function Header() {
               <Link href="/user/favorites" className="hidden sm:block">
                 <Button variant="ghost" size="icon" className="h-9 w-9">
                   <Heart className="h-4 w-4" />
-                  <span className="sr-only">收藏</span>
+                  <span className="sr-only">{t.user.favorites}</span>
                 </Button>
               </Link>
 
               {/* Quick Order */}
               <Link href="/quick-order" className="hidden sm:block">
-                <Button variant="ghost" size="icon" className="h-9 w-9" title="快速下單">
+                <Button variant="ghost" size="icon" className="h-9 w-9" title={t.nav.quickOrder}>
                   <Zap className="h-4 w-4" />
-                  <span className="sr-only">快速下單</span>
+                  <span className="sr-only">{t.nav.quickOrder}</span>
                 </Button>
               </Link>
 
               {/* Order Query */}
               <Link href="/order/query" className="hidden sm:block">
-                <Button variant="ghost" size="icon" className="h-9 w-9" title="訂單查詢">
+                <Button variant="ghost" size="icon" className="h-9 w-9" title={t.nav.orderQuery}>
                   <FileSearch className="h-4 w-4" />
-                  <span className="sr-only">訂單查詢</span>
+                  <span className="sr-only">{t.nav.orderQuery}</span>
                 </Button>
               </Link>
 
@@ -220,45 +220,45 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/user" className="flex items-center gap-2">
                         <Package className="w-4 h-4" />
-                        我的訂單
+                        {t.userMenu.orders}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/user/favorites" className="flex items-center gap-2">
                         <Heart className="w-4 h-4" />
-                        我的收藏
+                        {t.userMenu.favorites}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/user/notifications" className="flex items-center gap-2">
                         <Bell className="w-4 h-4" />
-                        消息通知
+                        {t.userMenu.notifications}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/user/coupons" className="flex items-center gap-2">
                         <Ticket className="w-4 h-4" />
-                        我的優惠券
+                        {t.userMenu.coupons}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/user/addresses" className="flex items-center gap-2">
                         <Settings className="w-4 h-4" />
-                        收貨地址
+                        {t.userMenu.addresses}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/distribution" className="flex items-center gap-2">
                         <TrendingUp className="w-4 h-4" />
-                        分銷中心
+                        {t.userMenu.distribution}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/user/settings" className="flex items-center gap-2">
                         <Settings className="w-4 h-4" />
-                        賬號設置
+                        {t.userMenu.settings}
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -267,7 +267,7 @@ export function Header() {
                       onClick={handleLogout}
                     >
                       <LogOut className="w-4 h-4" />
-                      退出登錄
+                      {t.userMenu.logout}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -278,7 +278,7 @@ export function Header() {
                   onClick={() => setShowAuthDialog(true)}
                 >
                   <User className="h-4 w-4 mr-1" />
-                  登錄
+                  {t.common.login}
                 </Button>
               )}
 
@@ -334,13 +334,13 @@ export function Header() {
                 <Button variant="outline" size="sm" asChild className="flex-1">
                   <Link href="/cart" onClick={() => setIsMenuOpen(false)}>
                     <ShoppingCart className="w-4 w-4 mr-2" />
-                    購物車
+                    {t.nav.cart}
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" asChild className="flex-1">
                   <Link href="/user/favorites" onClick={() => setIsMenuOpen(false)}>
                     <Heart className="w-4 h-4 mr-2" />
-                    收藏
+                    {t.user.favorites}
                   </Link>
                 </Button>
               </div>
@@ -372,7 +372,7 @@ export function Header() {
                       setIsMenuOpen(false);
                     }}
                   >
-                    登錄
+                    {t.common.login}
                   </Button>
                   <Button 
                     size="sm" 
@@ -382,7 +382,7 @@ export function Header() {
                       setIsMenuOpen(false);
                     }}
                   >
-                    註冊
+                    {t.common.register}
                   </Button>
                 </div>
               )}

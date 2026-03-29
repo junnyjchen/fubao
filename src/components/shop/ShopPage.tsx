@@ -119,11 +119,11 @@ export function ShopPage() {
               <p className="text-lg text-muted-foreground">{t.shop.subtitle}</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">✓ 正品保障</span>
+              <span className="flex items-center gap-1">✓ {t.shop.guarantee.authentic}</span>
               <span>·</span>
-              <span className="flex items-center gap-1">✓ 平台擔保</span>
+              <span className="flex items-center gap-1">✓ {t.shop.guarantee.platform}</span>
               <span>·</span>
-              <span className="flex items-center gap-1">✓ 全球配送</span>
+              <span className="flex items-center gap-1">✓ {t.shop.guarantee.shipping}</span>
             </div>
           </div>
         </div>
@@ -176,13 +176,13 @@ export function ShopPage() {
             {/* Sort */}
             <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setCurrentPage(1); }}>
               <SelectTrigger className="w-full md:w-[140px]">
-                <SelectValue placeholder="排序" />
+                <SelectValue placeholder={t.shop.sort.placeholder} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="default">默認排序</SelectItem>
-                <SelectItem value="sales">銷量優先</SelectItem>
-                <SelectItem value="price-asc">價格從低到高</SelectItem>
-                <SelectItem value="price-desc">價格從高到低</SelectItem>
+                <SelectItem value="default">{t.shop.sort.default}</SelectItem>
+                <SelectItem value="sales">{t.shop.sort.sales}</SelectItem>
+                <SelectItem value="price-asc">{t.shop.sort.priceAsc}</SelectItem>
+                <SelectItem value="price-desc">{t.shop.sort.priceDesc}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -269,7 +269,7 @@ function ProductCard({ item, t }: { item: Goods; t: ReturnType<typeof useI18n>['
             )}
           </div>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>已售 {item.sales}</span>
+            <span>{t.shop.sold} {item.sales}</span>
           </div>
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
             {item.merchants.logo ? (

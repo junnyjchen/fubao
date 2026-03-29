@@ -20,28 +20,28 @@ export function Footer() {
 
   const footerLinks = {
     platform: [
-      { href: '/about', label: '關於我們' },
-      { href: '/contact', label: '聯繫我們' },
-      { href: '/help', label: '幫助中心' },
-      { href: '/merchant/apply', label: '商戶入駐' },
+      { href: '/about', label: t.nav.about },
+      { href: '/contact', label: t.nav.contact },
+      { href: '/help', label: t.nav.help },
+      { href: '/merchant/apply', label: t.home.features.join },
     ],
     help: [
-      { href: '/help/shopping', label: '購物指南' },
-      { href: '/help/payment', label: '支付問題' },
-      { href: '/help/shipping', label: '配送說明' },
-      { href: '/help/after-sales', label: '售後服務' },
+      { href: '/help/shopping', label: t.help.categories.shopping },
+      { href: '/help/payment', label: t.help.categories.payment },
+      { href: '/help/shipping', label: t.help.categories.shipping },
+      { href: '/help/after-sales', label: t.help.categories.afterSales },
     ],
     legal: [
-      { href: '/terms', label: '用戶協議' },
-      { href: '/privacy', label: '隱私政策' },
-      { href: '/refund', label: '退換貨政策' },
-      { href: '/copyright', label: '版權聲明' },
+      { href: '/terms', label: t.legal.terms },
+      { href: '/privacy', label: t.legal.privacy },
+      { href: '/refund', label: t.legal.refund },
+      { href: '/copyright', label: t.legal.copyright },
     ],
     categories: [
-      { href: '/shop?type=1', label: '符箓' },
-      { href: '/shop?type=2', label: '法器' },
-      { href: '/shop?type=3', label: '開光物品' },
-      { href: '/shop?type=4', label: '書籍' },
+      { href: '/shop?type=1', label: t.categories.fu },
+      { href: '/shop?type=2', label: t.categories.qi },
+      { href: '/shop?type=3', label: t.categories.offering },
+      { href: '/shop?type=4', label: t.categories.books },
     ],
   };
 
@@ -66,25 +66,25 @@ export function Footer() {
               <span className="text-xl font-semibold tracking-tight">符寶網</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
-              全球玄門文化科普交易平台
+              {t.footer.slogan}
             </p>
             
             {/* Newsletter */}
             <div className="space-y-2">
-              <p className="text-sm font-medium">訂閱電子報</p>
+              <p className="text-sm font-medium">{t.footer.newsletter}</p>
               <div className="flex gap-2">
                 <Input 
-                  placeholder="您的郵箱" 
+                  placeholder={t.footer.emailPlaceholder}
                   className="h-9 text-sm"
                 />
-                <Button size="sm">訂閱</Button>
+                <Button size="sm">{t.footer.subscribe}</Button>
               </div>
             </div>
           </div>
 
           {/* Platform */}
           <div>
-            <h3 className="font-semibold mb-4">平台</h3>
+            <h3 className="font-semibold mb-4">{t.footer.platform}</h3>
             <ul className="space-y-2">
               {footerLinks.platform.map((link) => (
                 <li key={link.href}>
@@ -101,7 +101,7 @@ export function Footer() {
 
           {/* Help */}
           <div>
-            <h3 className="font-semibold mb-4">幫助</h3>
+            <h3 className="font-semibold mb-4">{t.footer.help}</h3>
             <ul className="space-y-2">
               {footerLinks.help.map((link) => (
                 <li key={link.href}>
@@ -118,7 +118,7 @@ export function Footer() {
 
           {/* Categories */}
           <div>
-            <h3 className="font-semibold mb-4">商品分類</h3>
+            <h3 className="font-semibold mb-4">{t.footer.categories}</h3>
             <ul className="space-y-2">
               {footerLinks.categories.map((link) => (
                 <li key={link.href}>
@@ -135,7 +135,7 @@ export function Footer() {
 
           {/* Contact */}
           <div>
-            <h3 className="font-semibold mb-4">聯繫方式</h3>
+            <h3 className="font-semibold mb-4">{t.footer.contact}</h3>
             <ul className="space-y-3">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -159,24 +159,24 @@ export function Footer() {
         <div className="py-6 flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Copyright */}
           <div className="text-sm text-muted-foreground text-center md:text-left">
-            © 2024 fubao.ltd All rights reserved.
+            {t.footer.copyright}
           </div>
 
           {/* Features */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-green-500" />
-              一物一證
+              {t.footer.features.certified}
             </span>
             <span className="hidden sm:inline">·</span>
             <span className="hidden sm:flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-blue-500" />
-              平台擔保
+              {t.footer.features.escrow}
             </span>
             <span className="hidden sm:inline">·</span>
             <span className="hidden sm:flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-purple-500" />
-              全球配送
+              {t.footer.features.shipping}
             </span>
           </div>
 
