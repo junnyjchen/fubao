@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,20 +12,16 @@ import { HomeRecommendations } from '@/components/shop/ProductRecommendations';
 import { HomeSkeleton } from '@/components/home/HomeSkeleton';
 import { 
   ShieldCheck, 
-  Building2, 
-  Shield, 
-  Store, 
-  ArrowRight,
-  Play,
-  Eye,
-  Calendar,
   BookOpen,
   Award,
   Sparkles,
   Plus,
   Image as ImageIcon,
-  TrendingUp,
   Gift,
+  Play,
+  Eye,
+  Calendar,
+  ArrowRight,
 } from 'lucide-react';
 
 // 类型定义
@@ -87,13 +83,28 @@ interface Video {
   category: { name: string } | null;
 }
 
-// 功能入口组件
-function FeatureCard({ icon: Icon, title, href }: { icon: React.ElementType; title: string; href: string }) {
+// 功能入口组件 - 使用 memo 优化
+const FeatureCard = memo(function FeatureCard({ 
+  icon: Icon, 
+  title, 
+  href,
+  index 
+}: { 
+  icon: React.ElementType; 
+  title: string; 
+  href: string;
+  index: number;
+}) {
   return (
-    <Link href={href}>
-      <Card className="group hover:shadow-md transition-all duration-300 hover:border-primary/30">
+    <Link 
+      href={href} 
+      className="group block animate-fade-in-up"
+      style={{ animationDelay: `${index * 100}ms` }}
+      aria-label={title}
+    >
+      <Card className="hover:shadow-lg transition-all duration-300 hover:border-primary/30 hover:-translate-y-1">
         <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 transition-colors">
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
             <Icon className="w-6 h-6 text-primary" />
           </div>
           <span className="text-sm font-medium">{title}</span>
@@ -101,21 +112,26 @@ function FeatureCard({ icon: Icon, title, href }: { icon: React.ElementType; tit
       </Card>
     </Link>
   );
-}
+});
 
-// 商品卡片组件
-function GoodsCard({ item, t }: { item: Goods; t: any }) {
+// 商品卡片组件 - 使用 memo 优化
+const GoodsCard = memo(function GoodsCard({ item, t }: { item: Goods; t: any }) {
   return (
-    <Link href={`/shop/${item.id}`}>
-      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
-        <div className="relative aspect-square bg-muted">
+    <Link 
+      href={`/shop/${item.id}`}
+      className="group block animate-fade-in-up"
+      aria-label={`${item.name} - HK$${item.price}`}
+    >
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+        <div className="relative aspect-square bg-muted overflow-hidden">
           {item.main_image ? (
             <Image
               src={item.main_image}
               alt={item.name}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
             />
           ) : (
             <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
@@ -123,13 +139,13 @@ function GoodsCard({ item, t }: { item: Goods; t: any }) {
             </div>
           )}
           {item.is_certified && (
-            <Badge className="absolute top-2 left-2 bg-gold text-gold-foreground">
+            <Badge className="absolute top-2 start-2 bg-gold text-gold-foreground shadow-sm">
               {t.home.certified}
             </Badge>
           )}
         </div>
         <CardContent className="p-4">
-          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
             {item.name}
           </h3>
           <div className="flex items-center justify-between">
@@ -161,10 +177,10 @@ function GoodsCard({ item, t }: { item: Goods; t: any }) {
       </Card>
     </Link>
   );
-}
+});
 
-// 新闻卡片组件
-function NewsCard({ item, t }: { item: News; t: any }) {
+// 新闻卡片组件 - 使用 memo 优化
+const NewsCard = memo(function NewsCard({ item, t }: { item: News; t: any }) {
   const typeLabels = [
     t.newsTypes.global, 
     t.newsTypes.industry, 
@@ -173,8 +189,12 @@ function NewsCard({ item, t }: { item: News; t: any }) {
   ];
   
   return (
-    <Link href={`/news/${item.slug || item.id}`}>
-      <Card className="group flex gap-4 p-4 hover:shadow-md transition-all duration-300">
+    <Link 
+      href={`/news/${item.slug || item.id}`}
+      className="group block"
+      aria-label={item.title}
+    >
+      <Card className="flex gap-4 p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
         <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
           {item.cover ? (
             <Image
@@ -183,6 +203,7 @@ function NewsCard({ item, t }: { item: News; t: any }) {
               fill
               sizes="96px"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
             />
           ) : (
             <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
@@ -190,7 +211,7 @@ function NewsCard({ item, t }: { item: News; t: any }) {
             </div>
           )}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="outline" className="text-xs">
               {typeLabels[item.type - 1] || t.newsTypes.industry}
@@ -218,10 +239,10 @@ function NewsCard({ item, t }: { item: News; t: any }) {
       </Card>
     </Link>
   );
-}
+});
 
-// 视频卡片组件
-function VideoCard({ item }: { item: Video }) {
+// 视频卡片组件 - 使用 memo 优化
+const VideoCard = memo(function VideoCard({ item }: { item: Video }) {
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -229,33 +250,38 @@ function VideoCard({ item }: { item: Video }) {
   };
 
   return (
-    <Link href={`/videos/${item.id}`}>
-      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
-        <div className="relative aspect-video bg-muted">
+    <Link 
+      href={`/videos/${item.id}`}
+      className="group block"
+      aria-label={item.title}
+    >
+      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+        <div className="relative aspect-video bg-muted overflow-hidden">
           {item.cover ? (
             <Image
               src={item.cover}
               alt={item.title}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              loading="lazy"
             />
           ) : (
             <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
               <Play className="text-4xl text-primary/30 w-12 h-12" />
             </div>
           )}
-          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
-              <Play className="w-6 h-6 text-primary-foreground ml-1" />
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300">
+              <Play className="w-6 h-6 text-primary-foreground ms-1" />
             </div>
           </div>
-          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+          <div className="absolute bottom-2 end-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
             {formatDuration(item.duration)}
           </div>
         </div>
         <CardContent className="p-4">
-          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
             {item.title}
           </h3>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -269,10 +295,40 @@ function VideoCard({ item }: { item: Video }) {
       </Card>
     </Link>
   );
-}
+});
+
+// Banner 指示器组件
+const BannerIndicator = memo(function BannerIndicator({ 
+  total, 
+  current, 
+  onClick 
+}: { 
+  total: number; 
+  current: number; 
+  onClick: (index: number) => void;
+}) {
+  return (
+    <div className="absolute bottom-6 start-1/2 -translate-x-1/2 flex gap-2" role="tablist">
+      {Array.from({ length: total }).map((_, index) => (
+        <button
+          key={index}
+          onClick={() => onClick(index)}
+          className={`h-2 rounded-full transition-all duration-300 ${
+            index === current
+              ? 'w-8 bg-primary'
+              : 'w-2 bg-primary/30 hover:bg-primary/50'
+          }`}
+          role="tab"
+          aria-selected={index === current}
+          aria-label={`Go to slide ${index + 1}`}
+        />
+      ))}
+    </div>
+  );
+});
 
 export function HomePage() {
-  const { t } = useI18n();
+  const { t, isRTL } = useI18n();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [goods, setGoods] = useState<Goods[]>([]);
   const [news, setNews] = useState<News[]>([]);
@@ -281,10 +337,10 @@ export function HomePage() {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // 获取数据
   useEffect(() => {
     async function fetchData() {
       try {
-        // 并行获取数据
         const [bannersRes, goodsRes, newsRes, wikiRes, videosRes] = await Promise.all([
           fetch('/api/banners?position=home'),
           fetch('/api/goods?hot=true&limit=8'),
@@ -325,6 +381,11 @@ export function HomePage() {
     return () => clearInterval(timer);
   }, [banners.length]);
 
+  // Banner 点击处理
+  const handleBannerClick = useCallback((index: number) => {
+    setCurrentBanner(index);
+  }, []);
+
   const features = [
     { icon: Gift, title: t.home.features.freeGift, href: '/free-gifts' },
     { icon: ShieldCheck, title: t.nav.verify, href: '/verify' },
@@ -342,15 +403,16 @@ export function HomePage() {
       <AnnouncementBar />
       
       {/* Hero Banner */}
-      <section className="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden">
+      <section className="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden" aria-label="Hero Banner">
         {banners.length > 0 ? (
           <>
             {banners.map((banner, index) => (
               <div
                 key={banner.id}
                 className={`absolute inset-0 transition-opacity duration-1000 ${
-                  index === currentBanner ? 'opacity-100' : 'opacity-0'
+                  index === currentBanner ? 'opacity-100 z-10' : 'opacity-0 z-0'
                 }`}
+                aria-hidden={index !== currentBanner}
               >
                 <Image
                   src={banner.image}
@@ -364,19 +426,19 @@ export function HomePage() {
               </div>
             ))}
             {/* Banner 内容 */}
-            <div className="absolute inset-0 flex items-end pb-16">
+            <div className="absolute inset-0 flex items-end pb-16 z-20">
               <div className="container mx-auto px-4">
-                <div className="max-w-2xl">
+                <div className="max-w-2xl animate-fade-in-up">
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
                     {t.home.banner.title}
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground mb-6">
                     {t.home.banner.subtitle}
                   </p>
-                  <Button size="lg" asChild>
+                  <Button size="lg" asChild className="group">
                     <Link href="/shop">
                       {t.home.banner.cta}
-                      <ArrowRight className="ml-2 w-4 h-4" />
+                      <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
                     </Link>
                   </Button>
                 </div>
@@ -384,19 +446,11 @@ export function HomePage() {
             </div>
             {/* Banner 指示器 */}
             {banners.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-                {banners.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentBanner(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      index === currentBanner
-                        ? 'w-8 bg-primary'
-                        : 'bg-primary/30 hover:bg-primary/50'
-                    }`}
-                  />
-                ))}
-              </div>
+              <BannerIndicator 
+                total={banners.length} 
+                current={currentBanner} 
+                onClick={handleBannerClick} 
+              />
             )}
           </>
         ) : (
@@ -404,17 +458,17 @@ export function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-background">
             <div className="absolute inset-0 flex items-end pb-16">
               <div className="container mx-auto px-4">
-                <div className="max-w-2xl">
+                <div className="max-w-2xl animate-fade-in-up">
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
                     {t.home.banner.title}
                   </h1>
                   <p className="text-lg md:text-xl text-muted-foreground mb-6">
                     {t.home.banner.subtitle}
                   </p>
-                  <Button size="lg" asChild>
+                  <Button size="lg" asChild className="group">
                     <Link href="/shop">
                       {t.home.banner.cta}
-                      <ArrowRight className="ml-2 w-4 h-4" />
+                      <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
                     </Link>
                   </Button>
                 </div>
@@ -425,35 +479,35 @@ export function HomePage() {
       </section>
 
       {/* 功能入口 */}
-      <section className="container mx-auto px-4 py-8 -mt-8 relative z-10">
+      <section className="container mx-auto px-4 py-8 -mt-8 relative z-10" aria-label="Feature Links">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {features.map((feature) => (
-            <FeatureCard key={feature.title} {...feature} />
+          {features.map((feature, index) => (
+            <FeatureCard key={feature.title} {...feature} index={index} />
           ))}
         </div>
       </section>
 
-      {/* 今日符箓 */}
+      {/* 今日符箓/百科推荐 */}
       {todayArticle && (
-        <section className="container mx-auto px-4 py-8">
+        <section className="container mx-auto px-4 py-8" aria-label="Today's Article">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">{t.home.wiki}</h2>
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" asChild className="group">
               <Link href="/wiki" className="text-muted-foreground hover:text-foreground">
                 {t.home.viewMore}
-                <ArrowRight className="ml-2 w-4 h-4" />
+                <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
               </Link>
             </Button>
           </div>
-          <Link href={`/wiki/${todayArticle.slug || todayArticle.id}`}>
-            <Card className="group overflow-hidden md:flex hover:shadow-lg transition-all duration-300">
-              <div className="relative w-full md:w-80 h-48 md:h-auto flex-shrink-0">
+          <Link href={`/wiki/${todayArticle.slug || todayArticle.id}`} className="block group">
+            <Card className="overflow-hidden md:flex hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
+              <div className="relative w-full md:w-80 h-48 md:h-auto flex-shrink-0 overflow-hidden">
                 {todayArticle.cover_image ? (
                   <Image
                     src={todayArticle.cover_image}
                     alt={todayArticle.title}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
                   <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/20 to-primary/10">
@@ -461,8 +515,8 @@ export function HomePage() {
                   </div>
                 )}
               </div>
-              <CardContent className="flex-1 p-6 md:p-8">
-                <Badge className="mb-4">{t.home.recommendedReading}</Badge>
+              <CardContent className="flex-1 p-6 md:p-8 flex flex-col justify-center">
+                <Badge className="mb-4 w-fit">{t.home.recommendedReading}</Badge>
                 <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
                   {todayArticle.title}
                 </h3>
@@ -471,9 +525,9 @@ export function HomePage() {
                     {todayArticle.summary}
                   </p>
                 )}
-                <Button variant="link" className="mt-4 p-0 text-primary">
+                <Button variant="link" className="mt-4 p-0 text-primary w-fit group/btn">
                   {t.home.readFull}
-                  <ArrowRight className="ml-2 w-4 h-4" />
+                  <ArrowRight className={`ms-2 w-4 h-4 group-hover/btn:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover/btn:-translate-x-1' : ''}`} />
                 </Button>
               </CardContent>
             </Card>
@@ -482,17 +536,17 @@ export function HomePage() {
       )}
 
       {/* 免费领专属入口 */}
-      <section className="container mx-auto px-4 py-4 -mt-4">
-        <Link href="/free-gifts">
-          <Card className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer group">
+      <section className="container mx-auto px-4 py-4" aria-label="Free Gifts">
+        <Link href="/free-gifts" className="block group">
+          <Card className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 text-white overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer hover:-translate-y-1">
             <CardContent className="p-0">
               <div className="relative p-6 md:p-8">
                 {/* 背景装饰 */}
-                <div className="absolute inset-0 overflow-hidden">
-                  <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
-                  <div className="absolute -bottom-10 -left-10 w-32 h-32 rounded-full bg-yellow-300/20 blur-xl" />
-                  <Sparkles className="absolute top-4 right-20 w-6 h-6 text-yellow-200/60 animate-pulse" />
-                  <Sparkles className="absolute bottom-6 right-32 w-4 h-4 text-yellow-200/40 animate-pulse delay-500" />
+                <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+                  <div className="absolute -top-10 -end-10 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+                  <div className="absolute -bottom-10 -start-10 w-32 h-32 rounded-full bg-yellow-300/20 blur-xl" />
+                  <Sparkles className="absolute top-4 end-20 w-6 h-6 text-yellow-200/60 animate-pulse" />
+                  <Sparkles className="absolute bottom-6 end-32 w-4 h-4 text-yellow-200/40 animate-pulse" style={{ animationDelay: '0.5s' }} />
                 </div>
                 
                 <div className="relative flex items-center justify-between">
@@ -512,11 +566,11 @@ export function HomePage() {
                       </p>
                     </div>
                   </div>
-                  <div className="hidden md:flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-5 py-2.5 group-hover:bg-white/30 transition-colors">
+                  <div className={`hidden md:flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-5 py-2.5 group-hover:bg-white/30 transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="font-medium">{t.home.freeGiftBanner.cta}</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className={`w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
                   </div>
-                  <ArrowRight className="md:hidden w-5 h-5" />
+                  <ArrowRight className={`md:hidden w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                 </div>
               </div>
             </CardContent>
@@ -525,13 +579,13 @@ export function HomePage() {
       </section>
 
       {/* 热门法器 */}
-      <section className="container mx-auto px-4 py-8">
+      <section className="container mx-auto px-4 py-8" aria-label="Hot Goods">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">{t.home.hotGoods}</h2>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild className="group">
             <Link href="/shop" className="text-muted-foreground hover:text-foreground">
               {t.home.viewMore}
-              <ArrowRight className="ml-2 w-4 h-4" />
+              <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
             </Link>
           </Button>
         </div>
@@ -547,13 +601,13 @@ export function HomePage() {
       </section>
 
       {/* 精选推荐 */}
-      <section className="bg-muted/30 py-8">
+      <section className="bg-muted/30 py-8" aria-label="Recommendations">
         <HomeRecommendations />
       </section>
 
       {/* 精选视频 */}
       {videos.length > 0 && (
-        <section className="container mx-auto px-4 py-8">
+        <section className="container mx-auto px-4 py-8" aria-label="Featured Videos">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -561,10 +615,10 @@ export function HomePage() {
               </div>
               <h2 className="text-2xl font-bold">{t.home.featuredVideos}</h2>
             </div>
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" asChild className="group">
               <Link href="/videos" className="text-muted-foreground hover:text-foreground">
                 {t.home.moreVideos}
-                <ArrowRight className="ml-2 w-4 h-4" />
+                <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
               </Link>
             </Button>
           </div>
@@ -577,13 +631,13 @@ export function HomePage() {
       )}
 
       {/* 玄门头条 */}
-      <section className="container mx-auto px-4 py-8">
+      <section className="container mx-auto px-4 py-8" aria-label="Latest News">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">{t.home.news}</h2>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild className="group">
             <Link href="/news" className="text-muted-foreground hover:text-foreground">
               {t.home.viewMore}
-              <ArrowRight className="ml-2 w-4 h-4" />
+              <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
             </Link>
           </Button>
         </div>
@@ -599,22 +653,22 @@ export function HomePage() {
       </section>
 
       {/* 视频学堂入口 */}
-      <section className="container mx-auto px-4 py-8">
-        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 overflow-hidden">
+      <section className="container mx-auto px-4 py-8" aria-label="Video Learning">
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 overflow-hidden hover:shadow-lg transition-all duration-300">
           <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
                 <Play className="w-8 h-8 text-primary" />
               </div>
-              <div>
+              <div className="text-center md:text-start">
                 <h3 className="text-xl font-bold mb-1">{t.nav.video}</h3>
                 <p className="text-muted-foreground">{t.home.videoCategories}</p>
               </div>
             </div>
-            <Button size="lg" asChild>
+            <Button size="lg" asChild className="group">
               <Link href="/videos">
                 {t.home.exploreVideos}
-                <ArrowRight className="ml-2 w-4 h-4" />
+                <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
               </Link>
             </Button>
           </CardContent>
@@ -622,12 +676,12 @@ export function HomePage() {
       </section>
 
       {/* 如愿 - 晒图分享入口 */}
-      <section className="container mx-auto px-4 py-8 pb-16">
+      <section className="container mx-auto px-4 py-8 pb-16" aria-label="Wish Sharing">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-primary/10">
-          <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-5" />
+          <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-5" aria-hidden="true" />
           <div className="relative p-8 md:p-12">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="text-center md:text-left">
+              <div className="text-center md:text-start">
                 <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
                     <span className="text-2xl">🙏</span>
@@ -641,7 +695,7 @@ export function HomePage() {
                   {t.home.ruyuan.description}
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className={`flex flex-col sm:flex-row gap-3 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
                 <Link href="/shares">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
                     <ImageIcon className="w-5 h-5" />
