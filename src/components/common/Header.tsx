@@ -142,9 +142,12 @@ export function Header() {
                     <DropdownMenuItem
                       key={language.code}
                       onClick={() => setLang(language.code)}
-                      className={lang === language.code ? 'bg-muted' : ''}
+                      className={`flex items-center justify-between gap-2 ${lang === language.code ? 'bg-muted' : ''}`}
                     >
-                      {language.nativeName}
+                      <span>{language.nativeName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {language.direction === 'rtl' ? '←' : '→'}
+                      </span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

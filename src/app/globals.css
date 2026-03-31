@@ -341,3 +341,243 @@ body {
   height: 24px;
   margin-bottom: 2px;
 }
+
+/* ================================
+   RTL (Right-to-Left) Support
+   ================================ */
+
+/* RTL 基础样式 */
+html.rtl {
+  direction: rtl;
+}
+
+html.ltr {
+  direction: ltr;
+}
+
+/* RTL 文本对齐 */
+html.rtl .text-left {
+  text-align: right;
+}
+
+html.rtl .text-right {
+  text-align: left;
+}
+
+/* RTL Flexbox 方向 */
+html.rtl .flex-row {
+  flex-direction: row-reverse;
+}
+
+html.rtl .flex-row-reverse {
+  flex-direction: row;
+}
+
+/* RTL 间距 */
+html.rtl .space-x-2 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html.rtl .space-x-4 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html.rtl .space-x-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+html.rtl .space-x-8 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
+/* RTL 圆角 */
+html.rtl .rounded-l {
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+html.rtl .rounded-r {
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+
+html.rtl .rounded-tl {
+  border-top-right-radius: var(--radius);
+  border-top-left-radius: 0;
+}
+
+html.rtl .rounded-tr {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: 0;
+}
+
+html.rtl .rounded-bl {
+  border-bottom-right-radius: var(--radius);
+  border-bottom-left-radius: 0;
+}
+
+html.rtl .rounded-br {
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: 0;
+}
+
+/* RTL 边框 */
+html.rtl .border-l {
+  border-left-width: 0;
+  border-right-width: 1px;
+}
+
+html.rtl .border-r {
+  border-right-width: 0;
+  border-left-width: 1px;
+}
+
+/* RTL 外边距 */
+html.rtl .ml-auto {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+html.rtl .mr-auto {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+/* RTL 内边距 */
+html.rtl .pl-2 { padding-left: 0; padding-right: 0.5rem; }
+html.rtl .pl-4 { padding-left: 0; padding-right: 1rem; }
+html.rtl .pl-6 { padding-left: 0; padding-right: 1.5rem; }
+html.rtl .pl-8 { padding-left: 0; padding-right: 2rem; }
+
+html.rtl .pr-2 { padding-right: 0; padding-left: 0.5rem; }
+html.rtl .pr-4 { padding-right: 0; padding-left: 1rem; }
+html.rtl .pr-6 { padding-right: 0; padding-left: 1.5rem; }
+html.rtl .pr-8 { padding-right: 0; padding-left: 2rem; }
+
+/* RTL 绝对定位 */
+html.rtl .left-0 {
+  left: auto;
+  right: 0;
+}
+
+html.rtl .right-0 {
+  right: auto;
+  left: 0;
+}
+
+html.rtl .left-2 {
+  left: auto;
+  right: 0.5rem;
+}
+
+html.rtl .right-2 {
+  right: auto;
+  left: 0.5rem;
+}
+
+html.rtl .left-4 {
+  left: auto;
+  right: 1rem;
+}
+
+html.rtl .right-4 {
+  right: auto;
+  left: 1rem;
+}
+
+/* RTL 图标翻转 */
+html.rtl .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* RTL 导航菜单 */
+html.rtl .nav-menu {
+  flex-direction: row-reverse;
+}
+
+/* RTL 下拉菜单位置 */
+html.rtl [data-side="left"] {
+  right: 100%;
+  left: auto;
+}
+
+html.rtl [data-side="right"] {
+  left: 100%;
+  right: auto;
+}
+
+/* RTL 侧边栏 */
+html.rtl .sidebar-left {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+html.rtl .sidebar-right {
+  right: auto;
+  left: 0;
+  border-left: none;
+  border-right: 1px solid var(--border);
+}
+
+/* RTL 表单元素 */
+html.rtl input[type="checkbox"],
+html.rtl input[type="radio"] {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+/* RTL 列表标记 */
+html.rtl ul,
+html.rtl ol {
+  padding-left: 0;
+  padding-right: 1.5rem;
+}
+
+html.rtl ul li::marker {
+  text-align: right;
+}
+
+/* RTL 滚动条 */
+html.rtl ::-webkit-scrollbar {
+  direction: ltr;
+}
+
+/* RTL 动画方向 */
+html.rtl .animate-slide-in-left {
+  animation-name: slide-in-right;
+}
+
+html.rtl .animate-slide-in-right {
+  animation-name: slide-in-left;
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* RTL 阿拉伯语特殊字体优化 */
+html[lang="ar"] {
+  font-family: 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+}
+
+html[lang="ar"] body {
+  line-height: 1.8;
+}

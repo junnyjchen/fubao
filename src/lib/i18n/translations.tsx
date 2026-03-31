@@ -452,6 +452,102 @@ export const translations = {
           },
         },
       },
+      privacyContent: {
+        title: '隱私政策',
+        intro: '符寶網（fubao.ltd）非常重視用戶隱私保護。本隱私政策旨在向您說明我們如何收集、使用、存儲和保護您的個人信息。請您仔細閱讀本政策，了解我們對您個人信息的處理方式。',
+        sections: {
+          collect: {
+            title: '一、我們收集的信息',
+            desc: '我們可能會收集以下類型的個人信息：',
+            items: {
+              register: {
+                title: '1.1 註冊信息',
+                items: ['用戶名、暱稱', '電子郵箱地址', '手機號碼', '密碼（加密存儲）'],
+              },
+              transaction: {
+                title: '1.2 交易信息',
+                items: ['訂單信息（商品、金額、時間等）', '收貨地址和聯繫方式', '支付信息（由第三方支付平台處理）'],
+              },
+              device: {
+                title: '1.3 設備信息',
+                items: ['設備型號、操作系統', '瀏覽器類型和版本', 'IP地址', '設備標識符'],
+              },
+              logs: {
+                title: '1.4 日誌信息',
+                items: ['訪問時間、頁面', '搜索記錄', '點擊記錄'],
+              },
+            },
+          },
+          usage: {
+            title: '二、我們如何使用信息',
+            desc: '我們收集的信息將用於以下目的：',
+            items: [
+              '提供、維護和改進我們的服務',
+              '處理您的訂單和支付',
+              '發送訂單狀態更新和服務通知',
+              '回應您的諮詢和請求',
+              '個性化您的使用體驗',
+              '進行數據分析和研究',
+              '防範欺詐和保障安全',
+              '遵守法律法規要求',
+            ],
+          },
+          share: {
+            title: '三、信息共享',
+            desc: '我們不會向第三方出售您的個人信息。我們可能在以下情況下共享您的信息：',
+            items: {
+              consent: {
+                title: '3.1 獲得您的同意',
+                desc: '在獲得您明確同意後，我們可能會與第三方共享您的信息。',
+              },
+              providers: {
+                title: '3.2 服務提供商',
+                desc: '我們可能會與以下類型的服務提供商共享您的信息：',
+                items: ['支付服務提供商（處理支付交易）', '物流服務商（配送商品）', '雲服務提供商（數據存儲和處理）', '分析服務提供商（數據分析）'],
+              },
+              legal: {
+                title: '3.3 法律要求',
+                desc: '如法律法規要求或政府機關依法要求，我們可能會披露您的信息。',
+              },
+            },
+          },
+          security: {
+            title: '四、信息安全',
+            desc: '我們採取多種安全措施保護您的個人信息：',
+            items: ['使用SSL加密傳輸敏感信息', '密碼加密存儲', '限制員工訪問個人信息', '定期安全審計和漏洞修復', '建立應急響應機制'],
+          },
+          rights: {
+            title: '五、您的權利',
+            desc: '您對您的個人信息享有以下權利：',
+            items: {
+              access: { title: '5.1 訪問權', desc: '您有權訪問我們持有的您的個人信息。' },
+              correct: { title: '5.2 更正權', desc: '您有權更正不準確或不完整的個人信息。' },
+              delete: { title: '5.3 刪除權', desc: '在特定情況下，您有權要求我們刪除您的個人信息。' },
+              withdraw: { title: '5.4 撤回同意權', desc: '您可以隨時撤回之前給予的同意。' },
+              portable: { title: '5.5 數據可攜權', desc: '您有權以結構化、常用格式獲取您的個人信息副本。' },
+            },
+          },
+          cookie: {
+            title: '六、Cookie政策',
+            desc: '我們使用Cookie和類似技術來：',
+            items: ['記住您的登錄狀態', '保存您的偏好設置', '分析網站流量', '個性化廣告推薦'],
+            note: '您可以通過瀏覽器設置管理Cookie，但這可能影響某些功能的使用。',
+          },
+          children: {
+            title: '七、兒童隱私保護',
+            desc: '我們的服務不面向18歲以下的未成年人。如果我們發現在未獲得可證實的父母同意的情況下收集了未成年人的個人信息，我們會盡快刪除相關信息。',
+          },
+          updates: {
+            title: '八、政策更新',
+            desc: '我們可能會不時更新本隱私政策。更新後的政策將在平台公布，建議您定期查看。如有重大變更，我們會通過郵件或其他方式通知您。',
+          },
+          contact: {
+            title: '九、聯繫我們',
+            desc: '如果您對本隱私政策有任何疑問或建議，請通過以下方式聯繫我們：',
+            items: ['電子郵箱：privacy@fubao.ltd', '客服熱線：+852 XXXX XXXX', '公司地址：香港九龍XXX大廈XX樓'],
+          },
+        },
+      },
     },
     // 页脚
     footer: {
@@ -881,6 +977,71 @@ export const translations = {
           contact: { title: '١٠. اتصل بنا', intro: 'للاستفسارات:', items: ['البريد: support@fubao.ltd', 'الهاتف: +852 XXXX XXXX'] },
         },
       },
+      privacyContent: {
+        title: 'سياسة الخصوصية',
+        intro: 'تأخذ فوباو (fubao.ltd) خصوصيتك على محمل الجد. تشرح سياسة الخصوصية هذه كيفية جمع معلوماتك الشخصية واستخدامها وتخزينها وحمايتها.',
+        sections: {
+          collect: {
+            title: '١. المعلومات التي نجمعها',
+            desc: 'قد نجمع الأنواع التالية من المعلومات الشخصية:',
+            items: {
+              register: { title: '١.١ معلومات التسجيل', items: ['اسم المستخدم، اللقب', 'عنوان البريد الإلكتروني', 'رقم الهاتف', 'كلمة المرور (مشفرة)'] },
+              transaction: { title: '١.٢ معلومات المعاملات', items: ['تفاصيل الطلب (المنتجات، المبالغ، التواريخ)', 'عنوان الشحن ومعلومات الاتصال', 'معلومات الدفع (معالجة بواسطة أطراف ثالثة)'] },
+              device: { title: '١.٣ معلومات الجهاز', items: ['طراز الجهاز، نظام التشغيل', 'نوع المتصفح وإصداره', 'عنوان IP', 'معرفات الجهاز'] },
+              logs: { title: '١.٤ معلومات السجلات', items: ['أوقات الوصول، الصفحات التي تمت زيارتها', 'سجل البحث', 'سجل النقر'] },
+            },
+          },
+          usage: {
+            title: '٢. كيف نستخدم معلوماتك',
+            desc: 'نستخدم المعلومات التي نجمعها للأغراض التالية:',
+            items: ['تقديم خدماتنا وصيانتها وتحسينها', 'معالجة طلباتك ومدفوعاتك', 'إرسال تحديثات الطلبات وإشعارات الخدمة', 'الرد على استفساراتك', 'تخصيص تجربتك', 'تحليل البيانات والبحث', 'منع الاحتيال وضمان الأمان', 'الامتثال للمتطلبات القانونية'],
+          },
+          share: {
+            title: '٣. مشاركة المعلومات',
+            desc: 'نحن لا نبيع معلوماتك الشخصية. قد نشارك معلوماتك في الحالات التالية:',
+            items: {
+              consent: { title: '٣.١ بموافقتك', desc: 'قد نشارك معلوماتك مع أطراف ثالثة بعد الحصول على موافقتك الصريحة.' },
+              providers: { title: '٣.٢ مقدمو الخدمات', desc: 'قد نشارك المعلومات مع:', items: ['معالجات الدفع', 'مقدمي الخدمات اللوجستية', 'مقدمي الخدمات السحابية', 'مقدمي خدمات التحليلات'] },
+              legal: { title: '٣.٣ المتطلبات القانونية', desc: 'قد نكشف عن معلوماتك إذا كان القانون يقتضي ذلك.' },
+            },
+          },
+          security: {
+            title: '٤. أمن البيانات',
+            desc: 'نتخذ تدابير أمنية متعددة لحماية معلوماتك الشخصية:',
+            items: ['تشفير SSL لنقل البيانات الحساسة', 'تخزين كلمات المرور مشفرة', 'تقييد وصول الموظفين للمعلومات الشخصية', 'عمليات تدقيق أمني منتظمة', 'إجراءات الاستجابة للحوادث'],
+          },
+          rights: {
+            title: '٥. حقوقك',
+            desc: 'لديك الحقوق التالية فيما يتعلق بمعلوماتك الشخصية:',
+            items: {
+              access: { title: '٥.١ حق الوصول', desc: 'لديك الحق في الوصول إلى المعلومات الشخصية التي نحتفظ بها عنك.' },
+              correct: { title: '٥.٢ حق التصحيح', desc: 'لديك الحق في تصحيح المعلومات غير الدقيقة أو غير المكتملة.' },
+              delete: { title: '٥.٣ حق الحذف', desc: 'في ظل ظروف معينة، لديك الحق في طلب حذف معلوماتك.' },
+              withdraw: { title: '٥.٤ سحب الموافقة', desc: 'يمكنك سحب موافقتك في أي وقت.' },
+              portable: { title: '٥.٥ نقل البيانات', desc: 'لديك الحق في تلقي بياناتك بتنسيق منظم.' },
+            },
+          },
+          cookie: {
+            title: '٦. سياسة ملفات تعريف الارتباط',
+            desc: 'نستخدم ملفات تعريف الارتباط والتقنيات المماثلة لـ:',
+            items: ['تذكر حالة تسجيل دخولك', 'حفظ تفضيلاتك', 'تحليل حركة مرور الموقع', 'تخصيص التوصيات'],
+            note: 'يمكنك إدارة ملفات تعريف الارتباط من خلال إعدادات المتصفح، لكن هذا قد يؤثر على بعض الميزات.',
+          },
+          children: {
+            title: '٧. خصوصية الأطفال',
+            desc: 'خدماتنا غير موجهة للأفراد دون سن 18 عاماً. إذا اكتشفنا أننا جمعنا معلومات شخصية من قاصر بدون موافقة الوالدين، سنحذفها فوراً.',
+          },
+          updates: {
+            title: '٨. تحديثات السياسة',
+            desc: 'قد نقوم بتحديث سياسة الخصوصية هذه من وقت لآخر. سيتم نشر السياسات المحدثة على المنصة. بالنسبة للتغييرات الهامة، سنخطرك عبر البريد الإلكتروني.',
+          },
+          contact: {
+            title: '٩. اتصل بنا',
+            desc: 'إذا كان لديك أي أسئلة حول سياسة الخصوصية هذه، يرجى الاتصال بنا:',
+            items: ['البريد الإلكتروني: privacy@fubao.ltd', 'الهاتف: +852 XXXX XXXX', 'العنوان: هونغ كونغ، كولون، مبنى XXX، الطابق XX'],
+          },
+        },
+      },
     },
     footer: {
       slogan: 'منصة الثقافة الروحية العالمية',
@@ -1303,6 +1464,71 @@ export const translations = {
           modification: { title: '8. Modifications', items: ['We may update these terms.', 'Continued use means acceptance.'] },
           dispute: { title: '9. Disputes', items: ['Hong Kong laws apply.', 'Resolve disputes through negotiation first.'] },
           contact: { title: '10. Contact Us', intro: 'For inquiries:', items: ['Email: support@fubao.ltd', 'Phone: +852 XXXX XXXX'] },
+        },
+      },
+      privacyContent: {
+        title: 'Privacy Policy',
+        intro: 'Fubao (fubao.ltd) takes your privacy seriously. This privacy policy explains how we collect, use, store and protect your personal information.',
+        sections: {
+          collect: {
+            title: '1. Information We Collect',
+            desc: 'We may collect the following types of personal information:',
+            items: {
+              register: { title: '1.1 Registration Information', items: ['Username, nickname', 'Email address', 'Phone number', 'Password (encrypted)'] },
+              transaction: { title: '1.2 Transaction Information', items: ['Order details (products, amounts, dates)', 'Shipping address and contact info', 'Payment information (processed by third parties)'] },
+              device: { title: '1.3 Device Information', items: ['Device model, operating system', 'Browser type and version', 'IP address', 'Device identifiers'] },
+              logs: { title: '1.4 Log Information', items: ['Access times, pages visited', 'Search history', 'Click records'] },
+            },
+          },
+          usage: {
+            title: '2. How We Use Your Information',
+            desc: 'We use the information we collect for the following purposes:',
+            items: ['Provide, maintain and improve our services', 'Process your orders and payments', 'Send order updates and service notifications', 'Respond to your inquiries', 'Personalize your experience', 'Data analysis and research', 'Prevent fraud and ensure security', 'Comply with legal requirements'],
+          },
+          share: {
+            title: '3. Information Sharing',
+            desc: 'We do not sell your personal information. We may share your information in the following circumstances:',
+            items: {
+              consent: { title: '3.1 With Your Consent', desc: 'We may share your information with third parties after obtaining your explicit consent.' },
+              providers: { title: '3.2 Service Providers', desc: 'We may share information with:', items: ['Payment processors', 'Logistics providers', 'Cloud service providers', 'Analytics providers'] },
+              legal: { title: '3.3 Legal Requirements', desc: 'We may disclose your information if required by law.' },
+            },
+          },
+          security: {
+            title: '4. Data Security',
+            desc: 'We take multiple security measures to protect your personal information:',
+            items: ['SSL encryption for sensitive data transmission', 'Encrypted password storage', 'Restricted employee access to personal information', 'Regular security audits', 'Incident response procedures'],
+          },
+          rights: {
+            title: '5. Your Rights',
+            desc: 'You have the following rights regarding your personal information:',
+            items: {
+              access: { title: '5.1 Access Right', desc: 'You have the right to access the personal information we hold about you.' },
+              correct: { title: '5.2 Correction Right', desc: 'You have the right to correct inaccurate or incomplete information.' },
+              delete: { title: '5.3 Deletion Right', desc: 'In certain circumstances, you have the right to request deletion of your information.' },
+              withdraw: { title: '5.4 Withdraw Consent', desc: 'You can withdraw your consent at any time.' },
+              portable: { title: '5.5 Data Portability', desc: 'You have the right to receive your data in a structured format.' },
+            },
+          },
+          cookie: {
+            title: '6. Cookie Policy',
+            desc: 'We use cookies and similar technologies to:',
+            items: ['Remember your login status', 'Save your preferences', 'Analyze website traffic', 'Personalize recommendations'],
+            note: 'You can manage cookies through your browser settings, but this may affect some features.',
+          },
+          children: {
+            title: '7. Children\'s Privacy',
+            desc: 'Our services are not directed to individuals under 18. If we discover we have collected personal information from a minor without parental consent, we will promptly delete it.',
+          },
+          updates: {
+            title: '8. Policy Updates',
+            desc: 'We may update this privacy policy from time to time. Updated policies will be posted on the platform. For significant changes, we will notify you via email.',
+          },
+          contact: {
+            title: '9. Contact Us',
+            desc: 'If you have any questions about this privacy policy, please contact us:',
+            items: ['Email: privacy@fubao.ltd', 'Phone: +852 XXXX XXXX', 'Address: Hong Kong Kowloon XXX Building XX Floor'],
+          },
         },
       },
     },
