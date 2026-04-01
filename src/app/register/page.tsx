@@ -17,9 +17,11 @@ import {
   User,
   Loader2,
   ChevronLeft,
+  ChevronRight,
   CheckCircle,
   Gift,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 /** OAuth提供商 */
 interface OAuthProvider {
@@ -70,6 +72,7 @@ const PROVIDER_ICONS: Record<string, { icon: React.ReactNode; bgColor: string }>
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, isRTL } = useI18n();
   
   const [nickname, setNickname] = useState('');
   const [email, setEmail] = useState('');
@@ -84,9 +87,12 @@ function RegisterForm() {
   const [step, setStep] = useState(1); // 1: 填写信息, 2: 验证邮箱, 3: 注册成功
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // 从URL获取邀请码
   useEffect(() => {
+    setMounted(true);
+    
     const ref = searchParams.get('ref');
     if (ref) {
       setInviteCode(ref);
@@ -117,39 +123,39 @@ function RegisterForm() {
       if (data.authorizeUrl) {
         window.location.href = data.authorizeUrl;
       } else {
-        setError(data.error || '獲取授權鏈接失敗');
+        setError(data.error || t.register.getAuthFailed);
         setOauthLoading(null);
       }
     } catch (err) {
       console.error('OAuth注册失败:', err);
-      setError('註冊失敗，請稍後重試');
+      setError(t.register.registerFailed);
       setOauthLoading(null);
     }
   };
 
   const validateForm = () => {
     if (!nickname.trim()) {
-      setError('請輸入暱稱');
+      setError(t.register.nicknameRequired);
       return false;
     }
     if (!email.trim()) {
-      setError('請輸入郵箱地址');
+      setError(t.register.emailRequired);
       return false;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError('請輸入有效的郵箱地址');
+      setError(t.register.emailInvalid);
       return false;
     }
     if (password.length < 6) {
-      setError('密碼長度至少6位');
+      setError(t.register.passwordMinLength);
       return false;
     }
     if (password !== confirmPassword) {
-      setError('兩次輸入的密碼不一致');
+      setError(t.register.passwordMismatch);
       return false;
     }
     if (!agreeTerms) {
-      setError('請閱讀並同意用戶協議和隱私政策');
+      setError(t.register.agreeRequired);
       return false;
     }
     return true;
@@ -185,31 +191,44 @@ function RegisterForm() {
           router.push('/login');
         }, 3000);
       } else {
-        setError(data.error || '註冊失敗，請重試');
+        setError(data.error || t.register.registerFailed);
       }
     } catch (err) {
       console.error('注册失败:', err);
-      setError('註冊失敗，請稍後重試');
+      setError(t.register.registerFailed);
     } finally {
       setLoading(false);
     }
   };
 
+  // RTL 辅助变量
+  const BackIcon = isRTL ? ChevronRight : ChevronLeft;
+  const IconPosition = isRTL ? 'right-3' : 'left-3';
+  const IconPositionReverse = isRTL ? 'left-3' : 'right-3';
+  const InputPadding = isRTL ? 'pr-10' : 'pl-10';
+  const InputPaddingReverse = isRTL ? 'pl-10 pr-10' : 'pl-10 pr-10';
+
+  // 动画样式
+  const animationClass = mounted ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : 'opacity-0';
+
   // 注册成功页面
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center py-12 px-4">
-        <Card className="w-full max-w-md text-center">
+      <div 
+        className="min-h-screen bg-muted/20 flex items-center justify-center py-12 px-4"
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <Card className={`w-full max-w-md text-center ${animationClass}`}>
           <CardContent className="py-12">
             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-semibold mb-2">註冊成功！</h2>
+            <h2 className="text-2xl font-semibold mb-2">{t.register.registerSuccess}</h2>
             <p className="text-muted-foreground mb-6">
-              您的賬號已創建成功，即將跳轉到登錄頁面...
+              {t.register.registerSuccessDesc}
             </p>
             <Button asChild>
-              <Link href="/login">立即登錄</Link>
+              <Link href="/login">{t.register.loginNowButton}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -218,13 +237,16 @@ function RegisterForm() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center py-12 px-4">
-      <div className="w-full max-w-md">
+    <div 
+      className="min-h-screen bg-muted/20 flex items-center justify-center py-12 px-4"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      <div className={`w-full max-w-md ${animationClass}`}>
         {/* Back Button */}
         <Button variant="ghost" size="sm" asChild className="mb-6">
           <Link href="/">
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            返回首頁
+            <BackIcon className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+            {t.register.backToHome}
           </Link>
         </Button>
 
@@ -236,20 +258,24 @@ function RegisterForm() {
             </div>
             <span className="text-2xl font-semibold">符寶網</span>
           </Link>
-          <p className="text-muted-foreground mt-2">全球玄門文化科普交易平台</p>
+          <p className="text-muted-foreground mt-2">{t.register.platformSlogan}</p>
         </div>
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">註冊賬號</CardTitle>
+            <CardTitle className="text-xl">{t.register.title}</CardTitle>
             <CardDescription>
-              創建賬號，開始您的玄門文化之旅
+              {t.register.subtitle}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {/* Error Message */}
             {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4">
+              <div 
+                className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4 animate-in fade-in-0 slide-in-from-top-2 duration-200"
+                role="alert"
+                aria-live="polite"
+              >
                 {error}
               </div>
             )}
@@ -257,40 +283,49 @@ function RegisterForm() {
             {/* Register Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="nickname">暱稱 *</Label>
+                <Label htmlFor="nickname">
+                  {t.register.nickname} <span className="text-destructive">{t.common.required}</span>
+                </Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <User className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                   <Input
                     id="nickname"
                     value={nickname}
                     onChange={(e) => setNickname(e.target.value)}
-                    placeholder="請輸入暱稱"
-                    className="pl-10"
+                    placeholder={t.register.nicknamePlaceholder}
+                    className={InputPadding}
                     required
+                    aria-required="true"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">電子郵箱 *</Label>
+                <Label htmlFor="email">
+                  {t.register.email} <span className="text-destructive">{t.common.required}</span>
+                </Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Mail className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="請輸入郵箱地址"
-                    className="pl-10"
+                    placeholder={t.register.emailPlaceholder}
+                    className={InputPadding}
                     required
+                    aria-required="true"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">手機號碼（選填）</Label>
+                <Label htmlFor="phone">{t.register.phone}</Label>
                 <div className="flex gap-2">
-                  <select className="h-10 px-3 rounded-md border border-input bg-background text-sm">
+                  <select 
+                    className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+                    aria-label="Country code"
+                  >
                     <option value="+852">+852</option>
                     <option value="+86">+86</option>
                     <option value="+886">+886</option>
@@ -300,31 +335,35 @@ function RegisterForm() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="請輸入手機號碼"
+                    placeholder={t.register.phonePlaceholder}
                     className="flex-1"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">密碼 *</Label>
+                <Label htmlFor="password">
+                  {t.register.password} <span className="text-destructive">{t.common.required}</span>
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="請輸入密碼（至少6位）"
-                    className="pl-10 pr-10"
+                    placeholder={t.register.passwordPlaceholder}
+                    className={InputPaddingReverse}
                     required
+                    aria-required="true"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-10 w-10"
+                    className={`absolute ${IconPositionReverse} top-0 h-10 w-10`}
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4 text-muted-foreground" />
@@ -336,36 +375,39 @@ function RegisterForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">確認密碼 *</Label>
+                <Label htmlFor="confirmPassword">
+                  {t.register.confirmPassword} <span className="text-destructive">{t.common.required}</span>
+                </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                   <Input
                     id="confirmPassword"
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="請再次輸入密碼"
-                    className="pl-10"
+                    placeholder={t.register.confirmPasswordPlaceholder}
+                    className={InputPadding}
                     required
+                    aria-required="true"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="inviteCode">邀請碼（選填）</Label>
+                <Label htmlFor="inviteCode">{t.register.inviteCode}</Label>
                 <div className="relative">
-                  <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Gift className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                   <Input
                     id="inviteCode"
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                    placeholder="請輸入邀請碼（選填）"
-                    className="pl-10 font-mono uppercase"
+                    placeholder={t.register.inviteCodePlaceholder}
+                    className={`${InputPadding} font-mono uppercase`}
                     maxLength={10}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  填寫邀請填寫邀請碼，註冊成功後邀請人可獲得獎勵
+                  {t.register.inviteCodeHint}
                 </p>
               </div>
 
@@ -377,21 +419,21 @@ function RegisterForm() {
                   className="mt-1"
                 />
                 <Label htmlFor="terms" className="text-sm font-normal cursor-pointer leading-relaxed">
-                  我已閱讀並同意
-                  <Link href="/terms" className="text-primary hover:underline">《用戶協議》</Link>
-                  和
-                  <Link href="/privacy" className="text-primary hover:underline">《隱私政策》</Link>
+                  {t.register.agreeTerms}
+                  <Link href="/terms" className="text-primary hover:underline">{t.register.userAgreement}</Link>
+                  {' '}{t.register.and}{' '}
+                  <Link href="/privacy" className="text-primary hover:underline">{t.register.privacyPolicy}</Link>
                 </Label>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading || !agreeTerms}>
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    註冊中...
+                    <Loader2 className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'} animate-spin`} />
+                    {t.register.registering}
                   </>
                 ) : (
-                  '註冊'
+                  t.register.registerButton
                 )}
               </Button>
             </form>
@@ -402,7 +444,7 @@ function RegisterForm() {
                 <div className="relative my-6">
                   <Separator />
                   <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-4 text-xs text-muted-foreground">
-                    或使用以下方式快速註冊
+                    {t.register.orRegisterWith}
                   </span>
                 </div>
 
@@ -426,7 +468,7 @@ function RegisterForm() {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
-                            <span className="w-5 h-5 flex items-center justify-center mr-2">
+                            <span className={`w-5 h-5 flex items-center justify-center ${isRTL ? 'ml-2' : 'mr-2'}`}>
                               {style.icon}
                             </span>
                             {provider.display_name}
@@ -443,9 +485,9 @@ function RegisterForm() {
 
             {/* Login Link */}
             <p className="text-center text-sm text-muted-foreground">
-              已有賬號？{' '}
+              {t.register.hasAccount}{' '}
               <Link href="/login" className="text-primary hover:underline font-medium">
-                立即登錄
+                {t.register.loginNow}
               </Link>
             </p>
           </CardContent>

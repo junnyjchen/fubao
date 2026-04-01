@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   ChevronRight, 
+  ChevronLeft,
   RefreshCw, 
   Shield, 
   Clock,
@@ -15,8 +17,16 @@ import {
   HelpCircle,
   AlertTriangle,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export default function AfterSalesHelpPage() {
+  const { t, isRTL } = useI18n();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const returnPolicy = {
     eligible: [
       '收到商品後7天內，商品存在質量問題',
@@ -104,25 +114,37 @@ export default function AfterSalesHelpPage() {
     },
   ];
 
+  // RTL 辅助变量
+  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
+
+  // 动画样式
+  const animationClass = mounted ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : 'opacity-0';
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div 
+      className="container mx-auto px-4 py-8"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
-        <Link href="/" className="hover:text-foreground">首頁</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link href="/help" className="hover:text-foreground">幫助中心</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-foreground">售後服務</span>
+      <nav 
+        className={`flex items-center gap-2 text-sm text-muted-foreground mb-8 ${animationClass}`}
+        aria-label="Breadcrumb"
+      >
+        <Link href="/" className="hover:text-foreground">{t.nav.home}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <Link href="/help" className="hover:text-foreground">{t.nav.help}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <span className="text-foreground">{t.helpPages.afterSales.title}</span>
       </nav>
 
-      <div className="max-w-4xl mx-auto">
+      <div className={`max-w-4xl mx-auto ${animationClass}`}>
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <RefreshCw className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">售後服務</h1>
-          <p className="text-muted-foreground">平台擔保，退換無憂</p>
+          <h1 className="text-3xl font-bold mb-2">{t.helpPages.afterSales.title}</h1>
+          <p className="text-muted-foreground">{t.helpPages.afterSales.subtitle}</p>
         </div>
 
         {/* Service Guarantee */}
@@ -165,7 +187,7 @@ export default function AfterSalesHelpPage() {
             {/* Eligible */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-600">
+                <CardTitle className={`flex items-center gap-2 text-green-600 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <CheckCircle className="w-5 h-5" />
                   支持退換
                 </CardTitle>
@@ -173,9 +195,9 @@ export default function AfterSalesHelpPage() {
               <CardContent>
                 <ul className="space-y-3">
                   {returnPolicy.eligible.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
+                    <li key={index} className={`flex items-start gap-2 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      {item}
+                      <span className={isRTL ? 'text-right' : ''}>{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -185,7 +207,7 @@ export default function AfterSalesHelpPage() {
             {/* Ineligible */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-600">
+                <CardTitle className={`flex items-center gap-2 text-red-600 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <XCircle className="w-5 h-5" />
                   不支持退換
                 </CardTitle>
@@ -193,9 +215,9 @@ export default function AfterSalesHelpPage() {
               <CardContent>
                 <ul className="space-y-3">
                   {returnPolicy.ineligible.map((item, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
+                    <li key={index} className={`flex items-start gap-2 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <XCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                      {item}
+                      <span className={isRTL ? 'text-right' : ''}>{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -209,12 +231,12 @@ export default function AfterSalesHelpPage() {
           <h2 className="text-xl font-semibold mb-6">售後流程</h2>
           <div className="space-y-4">
             {processSteps.map((step, index) => (
-              <div key={index} className="flex items-start gap-4">
+              <div key={index} className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold flex-shrink-0">
                   {step.step}
                 </div>
-                <div className="flex-1 border-b pb-4">
-                  <div className="flex items-center justify-between mb-1">
+                <div className={`flex-1 border-b pb-4 ${isRTL ? 'text-right' : ''}`}>
+                  <div className={`flex items-center justify-between mb-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <h4 className="font-medium">{step.title}</h4>
                     <Badge variant="outline" className="text-xs">{step.action}</Badge>
                   </div>
@@ -232,9 +254,9 @@ export default function AfterSalesHelpPage() {
             {refundMethods.map((method, index) => (
               <Card key={index}>
                 <CardContent className="p-5">
-                  <h4 className="font-medium mb-2">{method.method}</h4>
-                  <p className="text-sm text-muted-foreground mb-3">{method.description}</p>
-                  <div className="flex items-center gap-4 text-sm">
+                  <h4 className={`font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>{method.method}</h4>
+                  <p className={`text-sm text-muted-foreground mb-3 ${isRTL ? 'text-right' : ''}`}>{method.description}</p>
+                  <div className={`flex items-center gap-4 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
                       {method.time}
@@ -254,9 +276,9 @@ export default function AfterSalesHelpPage() {
         <section className="mb-12">
           <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
             <CardContent className="p-6">
-              <div className="flex items-start gap-4">
+              <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0" />
-                <div>
+                <div className={isRTL ? 'text-right' : ''}>
                   <h3 className="font-semibold mb-2 text-amber-800 dark:text-amber-200">特殊商品說明</h3>
                   <ul className="space-y-2 text-sm text-amber-700 dark:text-amber-300">
                     <li>• <strong>符箓類商品</strong>：因宗教特殊性，一經開光或使用，不支持退換</li>
@@ -272,7 +294,7 @@ export default function AfterSalesHelpPage() {
 
         {/* FAQ */}
         <section>
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <HelpCircle className="w-5 h-5 text-primary" />
             常見問題
           </h2>
@@ -280,8 +302,8 @@ export default function AfterSalesHelpPage() {
             {faqs.map((faq, index) => (
               <Card key={index}>
                 <CardContent className="p-5">
-                  <h4 className="font-medium mb-2">{faq.question}</h4>
-                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                  <h4 className={`font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>{faq.question}</h4>
+                  <p className={`text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{faq.answer}</p>
                 </CardContent>
               </Card>
             ))}
@@ -290,13 +312,13 @@ export default function AfterSalesHelpPage() {
 
         {/* Contact */}
         <section className="mt-12 text-center">
-          <p className="text-muted-foreground mb-4">需要售後服務？</p>
-          <div className="flex justify-center gap-4">
+          <p className="text-muted-foreground mb-4">{t.helpPages.account.contactSupport}</p>
+          <div className={`flex justify-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Button asChild>
-              <Link href="/user">我的訂單</Link>
+              <Link href="/user">{t.user.orders}</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/contact">聯繫客服</Link>
+              <Link href="/contact">{t.helpPages.account.contactButton}</Link>
             </Button>
           </div>
         </section>

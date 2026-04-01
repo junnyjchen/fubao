@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,8 +16,10 @@ import {
   Lock,
   Loader2,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 
 /** OAuth提供商 */
 interface OAuthProvider {
@@ -68,6 +70,7 @@ const PROVIDER_ICONS: Record<string, { icon: React.ReactNode; bgColor: string }>
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t, lang, isRTL } = useI18n();
   
   const [loginType, setLoginType] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
@@ -79,14 +82,18 @@ function LoginPageContent() {
   const [error, setError] = useState('');
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   // 获取URL参数
   const redirectParam = searchParams.get('redirect') || '/';
-  const errorParam = searchParams.get('error');
-  const successParam = searchParams.get('success');
 
   useEffect(() => {
+    setMounted(true);
+    
     // 显示URL中的错误或成功消息
+    const errorParam = searchParams.get('error');
+    const successParam = searchParams.get('success');
+    
     if (errorParam) {
       setError(errorParam);
     }
@@ -96,7 +103,7 @@ function LoginPageContent() {
 
     // 加载OAuth提供商
     loadOAuthProviders();
-  }, [errorParam, successParam]);
+  }, []);
 
   const loadOAuthProviders = async () => {
     try {
@@ -131,11 +138,11 @@ function LoginPageContent() {
       if (data.user) {
         router.push(redirectParam);
       } else {
-        setError(data.error || '登錄失敗，請重試');
+        setError(data.error || t.login.loginFailed);
       }
     } catch (err) {
       console.error('登录失败:', err);
-      setError('登錄失敗，請稍後重試');
+      setError(t.login.loginFailed);
     } finally {
       setLoading(false);
     }
@@ -150,24 +157,37 @@ function LoginPageContent() {
       if (data.authorizeUrl) {
         window.location.href = data.authorizeUrl;
       } else {
-        setError(data.error || '獲取授權鏈接失敗');
+        setError(data.error || t.login.getAuthFailed);
         setOauthLoading(null);
       }
     } catch (err) {
       console.error('OAuth登录失败:', err);
-      setError('登錄失敗，請稍後重試');
+      setError(t.login.loginFailed);
       setOauthLoading(null);
     }
   };
 
+  // 动画样式
+  const animationClass = mounted ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : 'opacity-0';
+
+  // RTL 图标
+  const BackIcon = isRTL ? ChevronRight : ChevronLeft;
+  const IconPosition = isRTL ? 'right-3' : 'left-3';
+  const IconPositionReverse = isRTL ? 'left-3' : 'right-3';
+  const InputPadding = isRTL ? 'pr-10' : 'pl-10';
+  const InputPaddingReverse = isRTL ? 'pl-10 pr-10' : 'pl-10 pr-10';
+
   return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center py-12 px-4">
-      <div className="w-full max-w-md">
+    <div 
+      className="min-h-screen bg-muted/20 flex items-center justify-center py-12 px-4"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
+      <div className={`w-full max-w-md ${animationClass}`}>
         {/* Back Button */}
         <Button variant="ghost" size="sm" asChild className="mb-6">
           <Link href="/">
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            返回首頁
+            <BackIcon className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+            {t.login.backToHome}
           </Link>
         </Button>
 
@@ -179,14 +199,14 @@ function LoginPageContent() {
             </div>
             <span className="text-2xl font-semibold">符寶網</span>
           </Link>
-          <p className="text-muted-foreground mt-2">全球玄門文化科普交易平台</p>
+          <p className="text-muted-foreground mt-2">{t.login.platformSlogan}</p>
         </div>
 
         <Card>
           <CardHeader className="text-center">
-            <CardTitle className="text-xl">登錄賬號</CardTitle>
+            <CardTitle className="text-xl">{t.login.title}</CardTitle>
             <CardDescription>
-              歡迎回來，請登錄您的賬號
+              {t.login.subtitle}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -197,21 +217,25 @@ function LoginPageContent() {
                 className="flex-1"
                 onClick={() => setLoginType('email')}
               >
-                <Mail className="w-4 h-4 mr-2" />
-                郵箱登錄
+                <Mail className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                {t.login.emailLogin}
               </Button>
               <Button
                 variant={loginType === 'phone' ? 'default' : 'outline'}
                 className="flex-1"
                 onClick={() => setLoginType('phone')}
               >
-                手機登錄
+                {t.login.phoneLogin}
               </Button>
             </div>
 
             {/* Error Message */}
             {error && (
-              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4">
+              <div 
+                className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg mb-4 animate-in fade-in-0 slide-in-from-top-2 duration-200"
+                role="alert"
+                aria-live="polite"
+              >
                 {error}
               </div>
             )}
@@ -220,25 +244,29 @@ function LoginPageContent() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {loginType === 'email' ? (
                 <div className="space-y-2">
-                  <Label htmlFor="email">電子郵箱</Label>
+                  <Label htmlFor="email">{t.login.email}</Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Mail className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="請輸入郵箱地址"
-                      className="pl-10"
+                      placeholder={t.login.emailPlaceholder}
+                      className={InputPadding}
                       required
+                      aria-required="true"
                     />
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Label htmlFor="phone">手機號碼</Label>
+                  <Label htmlFor="phone">{t.login.phone}</Label>
                   <div className="flex gap-2">
-                    <select className="h-10 px-3 rounded-md border border-input bg-background text-sm">
+                    <select 
+                      className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+                      aria-label="Country code"
+                    >
                       <option value="+852">+852</option>
                       <option value="+86">+86</option>
                       <option value="+886">+886</option>
@@ -248,9 +276,10 @@ function LoginPageContent() {
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="請輸入手機號碼"
+                      placeholder={t.login.phonePlaceholder}
                       className="flex-1"
                       required
+                      aria-required="true"
                     />
                   </div>
                 </div>
@@ -258,28 +287,30 @@ function LoginPageContent() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">密碼</Label>
+                  <Label htmlFor="password">{t.login.password}</Label>
                   <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                    忘記密碼？
+                    {t.login.forgotPassword}
                   </Link>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Lock className={`absolute ${IconPosition} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="請輸入密碼"
-                    className="pl-10 pr-10"
+                    placeholder={t.login.passwordPlaceholder}
+                    className={InputPaddingReverse}
                     required
+                    aria-required="true"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-10 w-10"
+                    className={`absolute ${IconPositionReverse} top-0 h-10 w-10`}
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4 text-muted-foreground" />
@@ -298,7 +329,7 @@ function LoginPageContent() {
                     onCheckedChange={(v) => setRememberMe(v as boolean)}
                   />
                   <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-                    記住我
+                    {t.login.rememberMe}
                   </Label>
                 </div>
               </div>
@@ -306,11 +337,11 @@ function LoginPageContent() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    登錄中...
+                    <Loader2 className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'} animate-spin`} />
+                    {t.login.loggingIn}
                   </>
                 ) : (
-                  '登錄'
+                  t.login.loginButton
                 )}
               </Button>
             </form>
@@ -321,7 +352,7 @@ function LoginPageContent() {
                 <div className="relative my-6">
                   <Separator />
                   <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-4 text-xs text-muted-foreground">
-                    或使用以下方式登錄
+                    {t.login.orLoginWith}
                   </span>
                 </div>
 
@@ -345,7 +376,7 @@ function LoginPageContent() {
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
-                            <span className="w-5 h-5 flex items-center justify-center mr-2">
+                            <span className={`w-5 h-5 flex items-center justify-center ${isRTL ? 'ml-2' : 'mr-2'}`}>
                               {style.icon}
                             </span>
                             {provider.display_name}
@@ -362,9 +393,9 @@ function LoginPageContent() {
 
             {/* Register Link */}
             <p className="text-center text-sm text-muted-foreground">
-              還沒有賬號？{' '}
+              {t.login.noAccount}{' '}
               <Link href="/register" className="text-primary hover:underline font-medium">
-                立即註冊
+                {t.login.registerNow}
               </Link>
             </p>
           </CardContent>
@@ -372,10 +403,10 @@ function LoginPageContent() {
 
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-6">
-          登錄即表示您同意我們的{' '}
-          <Link href="/terms" className="hover:underline">用戶協議</Link>
-          {' '}和{' '}
-          <Link href="/privacy" className="hover:underline">隱私政策</Link>
+          {t.login.agreeTerms}{' '}
+          <Link href="/terms" className="hover:underline">{t.login.userAgreement}</Link>
+          {' '}{t.login.and}{' '}
+          <Link href="/privacy" className="hover:underline">{t.login.privacyPolicy}</Link>
         </p>
       </div>
     </div>

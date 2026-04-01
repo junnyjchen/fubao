@@ -1,21 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   ChevronRight, 
+  ChevronLeft,
   Shield, 
   Lock,
   Eye,
   FileCheck,
   AlertTriangle,
   HelpCircle,
-  CheckCircle,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export default function SecurityHelpPage() {
+  const { t, isRTL } = useI18n();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const securityFeatures = [
     {
       icon: Lock,
@@ -93,25 +101,37 @@ export default function SecurityHelpPage() {
     '發現異常請立即聯繫客服',
   ];
 
+  // RTL 辅助变量
+  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
+
+  // 动画样式
+  const animationClass = mounted ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : 'opacity-0';
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div 
+      className="container mx-auto px-4 py-8"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
-        <Link href="/" className="hover:text-foreground">首頁</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link href="/help" className="hover:text-foreground">幫助中心</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-foreground">安全保障</span>
+      <nav 
+        className={`flex items-center gap-2 text-sm text-muted-foreground mb-8 ${animationClass}`}
+        aria-label="Breadcrumb"
+      >
+        <Link href="/" className="hover:text-foreground">{t.nav.home}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <Link href="/help" className="hover:text-foreground">{t.nav.help}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <span className="text-foreground">{t.helpPages.security.title}</span>
       </nav>
 
-      <div className="max-w-4xl mx-auto">
+      <div className={`max-w-4xl mx-auto ${animationClass}`}>
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <Shield className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">安全保障</h1>
-          <p className="text-muted-foreground">多重安全防護，讓您安心交易</p>
+          <h1 className="text-3xl font-bold mb-2">{t.helpPages.security.title}</h1>
+          <p className="text-muted-foreground">{t.helpPages.security.subtitle}</p>
         </div>
 
         {/* Security Features */}
@@ -123,11 +143,11 @@ export default function SecurityHelpPage() {
               return (
                 <Card key={index}>
                   <CardContent className="p-5">
-                    <div className="flex items-start gap-3">
+                    <div className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <Icon className="w-5 h-5 text-primary" />
                       </div>
-                      <div>
+                      <div className={isRTL ? 'text-right' : ''}>
                         <h3 className="font-medium mb-1">{feature.title}</h3>
                         <p className="text-sm text-muted-foreground">{feature.description}</p>
                       </div>
@@ -146,9 +166,9 @@ export default function SecurityHelpPage() {
             {transactionSafety.map((item, index) => (
               <Card key={index} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
-                  <div className="flex items-start gap-3">
+                  <div className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <span className="text-2xl">{item.icon}</span>
-                    <div>
+                    <div className={isRTL ? 'text-right' : ''}>
                       <h3 className="font-medium mb-1">{item.title}</h3>
                       <p className="text-sm text-muted-foreground">{item.description}</p>
                     </div>
@@ -163,13 +183,13 @@ export default function SecurityHelpPage() {
         <section className="mb-12">
           <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900">
             <CardContent className="p-6">
-              <div className="flex items-start gap-4">
+              <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
-                <div>
+                <div className={isRTL ? 'text-right' : ''}>
                   <h3 className="font-semibold mb-3 text-red-800 dark:text-red-200">防詐騙提示</h3>
                   <ul className="space-y-2 text-sm text-red-700 dark:text-red-300">
                     {fraudPrevention.map((tip, index) => (
-                      <li key={index} className="flex items-center gap-2">
+                      <li key={index} className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
                         {tip}
                       </li>
@@ -183,7 +203,7 @@ export default function SecurityHelpPage() {
 
         {/* FAQ */}
         <section>
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <HelpCircle className="w-5 h-5 text-primary" />
             常見問題
           </h2>
@@ -191,8 +211,8 @@ export default function SecurityHelpPage() {
             {faqs.map((faq, index) => (
               <Card key={index}>
                 <CardContent className="p-5">
-                  <h4 className="font-medium mb-2">{faq.question}</h4>
-                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                  <h4 className={`font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>{faq.question}</h4>
+                  <p className={`text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{faq.answer}</p>
                 </CardContent>
               </Card>
             ))}
@@ -201,9 +221,9 @@ export default function SecurityHelpPage() {
 
         {/* Contact */}
         <section className="mt-12 text-center">
-          <p className="text-muted-foreground mb-4">發現安全問題？</p>
+          <p className="text-muted-foreground mb-4">{t.helpPages.account.contactSupport}</p>
           <Button asChild>
-            <Link href="/contact">立即反饋</Link>
+            <Link href="/contact">{t.helpPages.account.contactButton}</Link>
           </Button>
         </section>
       </div>

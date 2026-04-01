@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   ChevronRight, 
+  ChevronLeft,
   Truck, 
   Globe, 
   Clock,
@@ -15,8 +17,16 @@ import {
   CheckCircle,
   AlertCircle,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export default function ShippingHelpPage() {
+  const { t, isRTL } = useI18n();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const shippingZones = [
     {
       region: '港澳地區',
@@ -91,7 +101,7 @@ export default function ShippingHelpPage() {
   const faqs = [
     {
       question: '如何查詢物流信息？',
-      answer: '登錄賬號後，進入「我的訂我的訂單」頁面，點擊訂單詳情即可查看實時物流狀態。我們會通過短信和郵件通知您訂單狀態變化。',
+      answer: '登錄賬號後，進入「我的訂「我的訂單」頁面，點擊訂單詳情即可查看實時物流狀態。我們會通過短信和郵件通知您訂單狀態變化。',
     },
     {
       question: '可以指定配送時間嗎？',
@@ -111,35 +121,47 @@ export default function ShippingHelpPage() {
     },
   ];
 
+  // RTL 辅助变量
+  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
+
+  // 动画样式
+  const animationClass = mounted ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : 'opacity-0';
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div 
+      className="container mx-auto px-4 py-8"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
-        <Link href="/" className="hover:text-foreground">首頁</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link href="/help" className="hover:text-foreground">幫助中心</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-foreground">配送說明</span>
+      <nav 
+        className={`flex items-center gap-2 text-sm text-muted-foreground mb-8 ${animationClass}`}
+        aria-label="Breadcrumb"
+      >
+        <Link href="/" className="hover:text-foreground">{t.nav.home}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <Link href="/help" className="hover:text-foreground">{t.nav.help}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <span className="text-foreground">{t.helpPages.shipping.title}</span>
       </nav>
 
-      <div className="max-w-4xl mx-auto">
+      <div className={`max-w-4xl mx-auto ${animationClass}`}>
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <Truck className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">配送說明</h1>
-          <p className="text-muted-foreground">全球配送，安全直達</p>
+          <h1 className="text-3xl font-bold mb-2">{t.helpPages.shipping.title}</h1>
+          <p className="text-muted-foreground">{t.helpPages.shipping.subtitle}</p>
         </div>
 
         {/* Shipping Process */}
         <section className="mb-12">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Package className="w-5 h-5 text-primary" />
             配送流程
           </h2>
           <div className="relative">
-            <div className="absolute top-8 left-8 right-8 h-0.5 bg-border hidden md:block" />
+            <div className={`absolute top-8 ${isRTL ? 'right-8 left-8' : 'left-8 right-8'} h-0.5 bg-border hidden md:block`} />
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {processSteps.map((step, index) => (
                 <div key={index} className="relative text-center">
@@ -147,7 +169,7 @@ export default function ShippingHelpPage() {
                     {step.step}
                   </div>
                   <h4 className="font-medium mb-1">{step.title}</h4>
-                  <p className="text-xs text-muted-foreground mb-1">{step.description}</p>
+                  <p className={`text-xs text-muted-foreground mb-1 ${isRTL ? 'text-right' : ''}`}>{step.description}</p>
                   <Badge variant="outline" className="text-xs">
                     {step.time}
                   </Badge>
@@ -159,7 +181,7 @@ export default function ShippingHelpPage() {
 
         {/* Shipping Zones */}
         <section className="mb-12">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Globe className="w-5 h-5 text-primary" />
             配送範圍及時效
           </h2>
@@ -167,31 +189,31 @@ export default function ShippingHelpPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium">配送地區</th>
-                  <th className="text-left py-3 px-4 font-medium">物流公司</th>
-                  <th className="text-left py-3 px-4 font-medium">時效</th>
-                  <th className="text-left py-3 px-4 font-medium">運費</th>
-                  <th className="text-left py-3 px-4 font-medium">備註</th>
+                  <th className={`py-3 px-4 font-medium ${isRTL ? 'text-right' : 'text-left'}`}>配送地區</th>
+                  <th className={`py-3 px-4 font-medium ${isRTL ? 'text-right' : 'text-left'}`}>物流公司</th>
+                  <th className={`py-3 px-4 font-medium ${isRTL ? 'text-right' : 'text-left'}`}>時效</th>
+                  <th className={`py-3 px-4 font-medium ${isRTL ? 'text-right' : 'text-left'}`}>運費</th>
+                  <th className={`py-3 px-4 font-medium ${isRTL ? 'text-right' : 'text-left'}`}>備註</th>
                 </tr>
               </thead>
               <tbody>
                 {shippingZones.map((zone, index) => (
                   <tr key={index} className="border-b">
                     <td className="py-3 px-4">
-                      <span className="flex items-center gap-2">
+                      <span className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <MapPin className="w-4 h-4 text-primary" />
                         {zone.region}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">{zone.courier}</td>
+                    <td className={`py-3 px-4 text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{zone.courier}</td>
                     <td className="py-3 px-4">
-                      <span className="flex items-center gap-1">
+                      <span className={`flex items-center gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <Clock className="w-4 h-4" />
                         {zone.time}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">{zone.fee}</td>
-                    <td className="py-3 px-4 text-sm text-muted-foreground">{zone.note}</td>
+                    <td className={`py-3 px-4 text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{zone.fee}</td>
+                    <td className={`py-3 px-4 text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{zone.note}</td>
                   </tr>
                 ))}
               </tbody>
@@ -203,15 +225,15 @@ export default function ShippingHelpPage() {
         <section className="mb-12">
           <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
             <CardContent className="p-6">
-              <div className="flex items-start gap-4">
+              <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0" />
-                <div>
+                <div className={isRTL ? 'text-right' : ''}>
                   <h3 className="font-semibold mb-2 text-amber-800 dark:text-amber-200">重要提示</h3>
                   <ul className="space-y-2 text-sm text-amber-700 dark:text-amber-300">
-                    <li>• 符箓法器為特殊商品，需妥善包裝，請勿暴力拆解</li>
-                    <li>• 建議當面驗收，確認商品完好後再簽收</li>
-                    <li>• 部分地區可能因宗教政策限制，請提前了解當地法規</li>
-                    <li>• 偏遠地區配送時間可能延長，敬請諒解</li>
+                    <li className={isRTL ? 'text-right' : ''}>• 符箓法器為特殊商品，需妥善包裝，請勿暴力拆解</li>
+                    <li className={isRTL ? 'text-right' : ''}>• 建議當面驗收，確認商品完好後再簽收</li>
+                    <li className={isRTL ? 'text-right' : ''}>• 部分地區可能因宗教政策限制，請提前了解當地法規</li>
+                    <li className={isRTL ? 'text-right' : ''}>• 偏遠地區配送時間可能延長，敬請諒解</li>
                   </ul>
                 </div>
               </div>
@@ -221,7 +243,7 @@ export default function ShippingHelpPage() {
 
         {/* FAQ */}
         <section>
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <HelpCircle className="w-5 h-5 text-primary" />
             常見問題
           </h2>
@@ -229,8 +251,8 @@ export default function ShippingHelpPage() {
             {faqs.map((faq, index) => (
               <Card key={index}>
                 <CardContent className="p-5">
-                  <h4 className="font-medium mb-2">{faq.question}</h4>
-                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                  <h4 className={`font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>{faq.question}</h4>
+                  <p className={`text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{faq.answer}</p>
                 </CardContent>
               </Card>
             ))}
@@ -239,9 +261,9 @@ export default function ShippingHelpPage() {
 
         {/* Contact */}
         <section className="mt-12 text-center">
-          <p className="text-muted-foreground mb-4">還有其他問題？</p>
+          <p className="text-muted-foreground mb-4">{t.helpPages.account.contactSupport}</p>
           <Button asChild>
-            <Link href="/contact">聯繫客服</Link>
+            <Link href="/contact">{t.helpPages.account.contactButton}</Link>
           </Button>
         </section>
       </div>

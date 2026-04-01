@@ -1,11 +1,13 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   ChevronRight, 
+  ChevronLeft,
   CreditCard, 
   Wallet, 
   Smartphone,
@@ -17,7 +19,12 @@ import {
 import { useI18n } from '@/lib/i18n';
 
 export default function PaymentHelpPage() {
-  const { t } = useI18n();
+  const { t, isRTL } = useI18n();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const paymentMethods = [
     {
@@ -77,30 +84,42 @@ export default function PaymentHelpPage() {
     },
   ];
 
+  // RTL 辅助变量
+  const ChevronIcon = isRTL ? ChevronLeft : ChevronRight;
+
+  // 动画样式
+  const animationClass = mounted ? 'animate-in fade-in-0 slide-in-from-bottom-4 duration-500' : 'opacity-0';
+
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div 
+      className="container mx-auto px-4 py-8"
+      dir={isRTL ? 'rtl' : 'ltr'}
+    >
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
-        <Link href="/" className="hover:text-foreground">首頁</Link>
-        <ChevronRight className="w-4 h-4" />
-        <Link href="/help" className="hover:text-foreground">幫助中心</Link>
-        <ChevronRight className="w-4 h-4" />
-        <span className="text-foreground">支付問題</span>
+      <nav 
+        className={`flex items-center gap-2 text-sm text-muted-foreground mb-8 ${animationClass}`}
+        aria-label="Breadcrumb"
+      >
+        <Link href="/" className="hover:text-foreground">{t.nav.home}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <Link href="/help" className="hover:text-foreground">{t.nav.help}</Link>
+        <ChevronIcon className="w-4 h-4" />
+        <span className="text-foreground">{t.helpPages.payment.title}</span>
       </nav>
 
-      <div className="max-w-4xl mx-auto">
+      <div className={`max-w-4xl mx-auto ${animationClass}`}>
         {/* Header */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <CreditCard className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">支付問題</h1>
-          <p className="text-muted-foreground">了解平台支持的支付方式及常見問題解答</p>
+          <h1 className="text-3xl font-bold mb-2">{t.helpPages.payment.title}</h1>
+          <p className="text-muted-foreground">{t.helpPages.payment.subtitle}</p>
         </div>
 
         {/* Payment Methods */}
         <section className="mb-12">
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Wallet className="w-5 h-5 text-primary" />
             支持的支付方式
           </h2>
@@ -110,25 +129,25 @@ export default function PaymentHelpPage() {
               return (
                 <Card key={index} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                         <Icon className="w-5 h-5 text-primary" />
                       </div>
-                      <div>
+                      <div className={isRTL ? 'text-right' : ''}>
                         <CardTitle className="text-base">{method.name}</CardTitle>
                         <p className="text-sm text-muted-foreground">{method.description}</p>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex flex-wrap gap-2 mb-3">
+                    <div className={`flex flex-wrap gap-2 mb-3 ${isRTL ? 'justify-end' : ''}`}>
                       {method.supported.map((s) => (
                         <Badge key={s} variant="secondary" className="text-xs">
                           {s}
                         </Badge>
                       ))}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <div className={`flex items-center gap-4 text-sm text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <span className="flex items-center gap-1">
                         <CheckCircle className="w-4 h-4 text-green-500" />
                         {method.fee}
@@ -149,26 +168,26 @@ export default function PaymentHelpPage() {
         <section className="mb-12">
           <Card className="bg-gradient-to-r from-primary/5 to-transparent border-primary/20">
             <CardContent className="p-6">
-              <div className="flex items-start gap-4">
+              <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Shield className="w-6 h-6 text-primary" />
                 </div>
-                <div>
+                <div className={isRTL ? 'text-right' : ''}>
                   <h3 className="font-semibold mb-2">支付安全保障</h3>
                   <ul className="space-y-2 text-sm text-muted-foreground">
-                    <li className="flex items-center gap-2">
+                    <li className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                       採用256位SSL加密傳輸，確保數據安全
                     </li>
-                    <li className="flex items-center gap-2">
+                    <li className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                       PCI-DSS認證，符合國際支付安全標準
                     </li>
-                    <li className="flex items-center gap-2">
+                    <li className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                       平台擔保交易，資金安全有保障
                     </li>
-                    <li className="flex items-center gap-2">
+                    <li className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                       異常交易實時監控，主動防範風險
                     </li>
@@ -181,7 +200,7 @@ export default function PaymentHelpPage() {
 
         {/* FAQ */}
         <section>
-          <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <h2 className={`text-xl font-semibold mb-6 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <HelpCircle className="w-5 h-5 text-primary" />
             常見問題
           </h2>
@@ -189,8 +208,8 @@ export default function PaymentHelpPage() {
             {faqs.map((faq, index) => (
               <Card key={index}>
                 <CardContent className="p-5">
-                  <h4 className="font-medium mb-2">{faq.question}</h4>
-                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                  <h4 className={`font-medium mb-2 ${isRTL ? 'text-right' : ''}`}>{faq.question}</h4>
+                  <p className={`text-sm text-muted-foreground ${isRTL ? 'text-right' : ''}`}>{faq.answer}</p>
                 </CardContent>
               </Card>
             ))}
@@ -199,9 +218,9 @@ export default function PaymentHelpPage() {
 
         {/* Contact */}
         <section className="mt-12 text-center">
-          <p className="text-muted-foreground mb-4">還有其他問題？</p>
+          <p className="text-muted-foreground mb-4">{t.helpPages.account.contactSupport}</p>
           <Button asChild>
-            <Link href="/contact">聯繫客服</Link>
+            <Link href="/contact">{t.helpPages.account.contactButton}</Link>
           </Button>
         </section>
       </div>
