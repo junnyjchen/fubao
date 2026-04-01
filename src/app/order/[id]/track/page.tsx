@@ -6,13 +6,14 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useI18n } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   Package,
   Truck,
@@ -21,9 +22,13 @@ import {
   Clock,
   Phone,
   ArrowLeft,
+  ArrowRight,
   Loader2,
   AlertCircle,
+  Copy,
+  Check,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TrackingStep {
   status: string;
@@ -49,33 +54,96 @@ interface OrderTracking {
   }>;
 }
 
-// 物流状态映射
-const statusMap: Record<number, { label: string; icon: typeof Package; color: string }> = {
-  0: { label: '已下單', icon: CheckCircle, color: 'text-blue-600' },
-  1: { label: '已攬收', icon: Package, color: 'text-yellow-600' },
-  2: { label: '運輸中', icon: Truck, color: 'text-purple-600' },
-  3: { label: '派送中', icon: Truck, color: 'text-orange-600' },
-  4: { label: '已簽收', icon: CheckCircle, color: 'text-green-600' },
-};
+// 物流时间线项组件
+const TimelineItem = memo(function TimelineItem({
+  step,
+  isLatest,
+  isRTL,
+}: {
+  step: TrackingStep;
+  isLatest: boolean;
+  isRTL: boolean;
+}) {
+  return (
+    <div className={`flex gap-4 pb-6 last:pb-0 ${isRTL ? 'flex-row-reverse' : ''}`}>
+      {/* 时间线 */}
+      <div className="flex flex-col items-center">
+        <div className={`w-3 h-3 rounded-full ${isLatest ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+        <div className="flex-1 w-0.5 bg-muted-foreground/20 min-h-8" />
+      </div>
 
-export default function OrderTrackingPage() {
+      {/* 内容 */}
+      <div className={`flex-1 pb-4 ${isRTL ? 'text-end' : ''}`}>
+        <div className={`flex items-start justify-between mb-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <p className={`font-medium ${isLatest ? 'text-primary' : ''}`}>
+            {step.status}
+          </p>
+          <span className="text-xs text-muted-foreground">{step.time}</span>
+        </div>
+        <p className="text-sm text-muted-foreground">{step.description}</p>
+        <p className="text-xs text-muted-foreground mt-1">{step.location}</p>
+      </div>
+    </div>
+  );
+});
+
+// 商品项组件
+const GoodsItem = memo(function GoodsItem({
+  item,
+  isRTL,
+}: {
+  item: { name: string; image: string; quantity: number };
+  isRTL: boolean;
+}) {
+  return (
+    <div className={`flex items-center gap-4 p-4 border-b last:border-b-0 ${isRTL ? 'flex-row-reverse' : ''}`}>
+      <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
+        {item.image ? (
+          <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" loading="lazy" />
+        ) : (
+          <Package className="w-6 h-6 text-muted-foreground" />
+        )}
+      </div>
+      <div className={`flex-1 ${isRTL ? 'text-end' : ''}`}>
+        <p className="font-medium">{item.name}</p>
+        <p className="text-sm text-muted-foreground">x{item.quantity}</p>
+      </div>
+    </div>
+  );
+});
+
+function OrderTrackingContent() {
   const params = useParams();
   const router = useRouter();
+  const { t, isRTL } = useI18n();
   const orderId = params.id as string;
 
   const [loading, setLoading] = useState(true);
   const [tracking, setTracking] = useState<OrderTracking | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const ot = t.orderTracking;
+  const BackIcon = isRTL ? ArrowRight : ArrowLeft;
+
+  // 物流状态映射
+  const statusMap: Record<number, { label: string; icon: typeof Package; color: string }> = {
+    0: { label: ot.timeline.placed, icon: CheckCircle, color: 'text-blue-600' },
+    1: { label: ot.timeline.placed, icon: Package, color: 'text-yellow-600' },
+    2: { label: ot.timeline.inTransit, icon: Truck, color: 'text-purple-600' },
+    3: { label: ot.timeline.inTransit, icon: Truck, color: 'text-orange-600' },
+    4: { label: ot.timeline.delivered, icon: CheckCircle, color: 'text-green-600' },
+  };
 
   useEffect(() => {
     loadTracking();
   }, [orderId]);
 
-  const loadTracking = async () => {
+  const loadTracking = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/logistics/${orderId}`);
       const data = await res.json();
-      
+
       if (data.data) {
         setTracking(data.data);
       } else {
@@ -90,11 +158,11 @@ export default function OrderTrackingPage() {
           receiverName: '陳先生',
           receiverPhone: '****8888',
           timeline: [
-            { status: '已下單', location: '江西龍虎山', time: '03-24 10:30', description: '訂單已提交' },
-            { status: '已攬收', location: '江西鷹潭', time: '03-24 15:20', description: '快遞員已攬收' },
-            { status: '運輸中', location: '深圳轉運中心', time: '03-25 08:45', description: '快件已到達深圳轉運中心' },
-            { status: '運輸中', location: '深圳轉運中心', time: '03-25 10:30', description: '快件已發往香港' },
-            { status: '派送中', location: '香港九龍分撥中心', time: '03-26 09:00', description: '快件正在派送中' },
+            { status: ot.timeline.placed, location: '江西龍虎山', time: '03-24 10:30', description: ot.timeline.placed },
+            { status: ot.timeline.shipped, location: '江西鷹潭', time: '03-24 15:20', description: ot.timeline.shipped },
+            { status: ot.timeline.inTransit, location: '深圳轉運中心', time: '03-25 08:45', description: ot.timeline.inTransit },
+            { status: ot.timeline.inTransit, location: '深圳轉運中心', time: '03-25 10:30', description: ot.timeline.inTransit },
+            { status: ot.timeline.inTransit, location: '香港九龍分撥中心', time: '03-26 09:00', description: ot.timeline.inTransit },
           ],
           goods: [
             { name: '太上老君鎮宅符', image: '', quantity: 1 },
@@ -107,7 +175,16 @@ export default function OrderTrackingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId, ot.timeline]);
+
+  const handleCopyTrackingNo = useCallback(() => {
+    if (tracking?.trackingNo) {
+      navigator.clipboard.writeText(tracking.trackingNo);
+      setCopied(true);
+      toast.success(t.common.copied);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [tracking?.trackingNo, t.common.copied]);
 
   if (loading) {
     return (
@@ -120,12 +197,12 @@ export default function OrderTrackingPage() {
   if (!tracking) {
     return (
       <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Card className="max-w-md">
+        <Card className="max-w-md animate-fade-in">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
-            <h2 className="text-xl font-bold mb-2">無法獲取物流信息</h2>
-            <p className="text-muted-foreground mb-4">該訂單暫無物流信息</p>
-            <Button onClick={() => router.back()}>返回</Button>
+            <h2 className="text-xl font-bold mb-2">{ot.noTracking}</h2>
+            <p className="text-muted-foreground mb-4">{ot.noTracking}</p>
+            <Button onClick={() => router.back()}>{t.common.back}</Button>
           </CardContent>
         </Card>
       </div>
@@ -139,29 +216,29 @@ export default function OrderTrackingPage() {
       {/* 头部 */}
       <header className="bg-background border-b sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="w-5 h-5" />
+          <Button variant="ghost" size="icon" onClick={() => router.back()} aria-label={t.common.back}>
+            <BackIcon className="w-5 h-5" />
           </Button>
-          <div>
-            <h1 className="text-lg font-bold">物流詳情</h1>
-            <p className="text-sm text-muted-foreground">訂單編號: {tracking.orderNo}</p>
+          <div className={isRTL ? 'text-end' : ''}>
+            <h1 className="text-lg font-bold">{ot.title}</h1>
+            <p className="text-sm text-muted-foreground">{t.orderDetail.orderNo}: {tracking.orderNo}</p>
           </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         {/* 物流状态概览 */}
-        <Card>
+        <Card className="animate-fade-in-up">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
+            <div className={`flex items-center justify-between mb-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                 <div className={`w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center ${currentStatus.color}`}>
                   <currentStatus.icon className="w-6 h-6" />
                 </div>
-                <div>
+                <div className={isRTL ? 'text-end' : ''}>
                   <p className="font-bold text-lg">{currentStatus.label}</p>
                   <p className="text-sm text-muted-foreground">
-                    預計 {tracking.estimatedDelivery} 送達
+                    {tracking.estimatedDelivery}
                   </p>
                 </div>
               </div>
@@ -171,16 +248,27 @@ export default function OrderTrackingPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">快遞單號</p>
-                <p className="font-mono">{tracking.trackingNo}</p>
+              <div className={isRTL ? 'text-end' : ''}>
+                <p className="text-muted-foreground">{ot.trackingNo}</p>
+                <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse justify-end' : ''}`}>
+                  <p className="font-mono">{tracking.trackingNo}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleCopyTrackingNo}
+                    aria-label={ot.copy}
+                  >
+                    {copied ? <Check className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                  </Button>
+                </div>
               </div>
-              <div>
-                <p className="text-muted-foreground">承運公司</p>
+              <div className={isRTL ? 'text-end' : ''}>
+                <p className="text-muted-foreground">{ot.courier}</p>
                 <p>{tracking.carrier}</p>
               </div>
-              <div className="col-span-2">
-                <p className="text-muted-foreground">收貨地址</p>
+              <div className={`col-span-2 ${isRTL ? 'text-end' : ''}`}>
+                <p className="text-muted-foreground">{t.orderDetail.shipping.title}</p>
                 <p>{tracking.shippingAddress}</p>
               </div>
             </div>
@@ -188,109 +276,94 @@ export default function OrderTrackingPage() {
         </Card>
 
         {/* 物流时间线 */}
-        <Card>
+        <Card className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
           <CardHeader>
-            <CardTitle className="text-base">物流軌跡</CardTitle>
+            <CardTitle className={`text-base ${isRTL ? 'text-end' : ''}`}>{ot.subtitle}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="p-6">
               {tracking.timeline.map((step, index) => (
-                <div key={index} className="flex gap-4 pb-6 last:pb-0">
-                  {/* 时间线 */}
-                  <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full ${
-                      index === 0 ? 'bg-primary' : 'bg-muted-foreground/30'
-                    }`} />
-                    {index < tracking.timeline.length - 1 && (
-                      <div className="flex-1 w-0.5 bg-muted-foreground/20 min-h-8" />
-                    )}
-                  </div>
-                  
-                  {/* 内容 */}
-                  <div className="flex-1 pb-4">
-                    <div className="flex items-start justify-between mb-1">
-                      <p className={`font-medium ${index === 0 ? 'text-primary' : ''}`}>
-                        {step.status}
-                      </p>
-                      <span className="text-xs text-muted-foreground">{step.time}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{step.description}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{step.location}</p>
-                  </div>
-                </div>
+                <TimelineItem
+                  key={index}
+                  step={step}
+                  isLatest={index === 0}
+                  isRTL={isRTL}
+                />
               ))}
             </div>
           </CardContent>
         </Card>
 
         {/* 收货信息 */}
-        <Card>
+        <Card className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className={`text-base flex items-center gap-2 ${isRTL ? 'flex-row-reverse justify-end' : ''}`}>
               <MapPin className="w-4 h-4" />
-              收貨信息
+              {t.orderDetail.shipping.title}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">收貨人</span>
+              <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <span className="text-muted-foreground">{t.userPage.address.form.name}</span>
                 <span>{tracking.receiverName}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">聯繫電話</span>
+              <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <span className="text-muted-foreground">{t.userPage.address.form.phone}</span>
                 <span>{tracking.receiverPhone}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">收貨地址</span>
-                <span className="text-right max-w-[200px]">{tracking.shippingAddress}</span>
+              <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <span className="text-muted-foreground">{t.orderDetail.shipping.title}</span>
+                <span className={`max-w-[200px] ${isRTL ? 'text-end' : 'text-right'}`}>{tracking.shippingAddress}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* 商品信息 */}
-        <Card>
+        <Card className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
+            <CardTitle className={`text-base flex items-center gap-2 ${isRTL ? 'flex-row-reverse justify-end' : ''}`}>
               <Package className="w-4 h-4" />
-              商品信息
+              {t.orderDetail.goodsList}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {tracking.goods.map((item, index) => (
-              <div key={index} className="flex items-center gap-4 p-4 border-b last:border-b-0">
-                <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center">
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-lg" />
-                  ) : (
-                    <Package className="w-6 h-6 text-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">x{item.quantity}</p>
-                </div>
-              </div>
+              <GoodsItem key={index} item={item} isRTL={isRTL} />
             ))}
           </CardContent>
         </Card>
 
         {/* 操作按钮 */}
-        <div className="flex gap-4">
+        <div className={`flex gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Button variant="outline" className="flex-1" asChild>
-            <Link href={`/user/orders/${orderId}`}>
-              查看訂單
+            <Link href={`/order/${orderId}`}>
+              {t.orderDetail.title}
             </Link>
           </Button>
           <Button className="flex-1" asChild>
-            <Link href={`tel:400-888-8888`}>
-              <Phone className="w-4 h-4 mr-2" />
-              聯繫客服
+            <Link href="tel:400-888-8888">
+              <Phone className={`w-4 h-4 ${isRTL ? 'ms-2' : 'me-2'}`} />
+              {t.nav.contact}
             </Link>
           </Button>
         </div>
       </main>
     </div>
+  );
+}
+
+export default function OrderTrackingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <OrderTrackingContent />
+    </Suspense>
   );
 }
