@@ -215,6 +215,67 @@ export const translations = {
         fastShipping: '快速發貨',
       },
     },
+    // 结账页面
+    checkoutPage: {
+      title: '確認訂單',
+      selectAddress: '請選擇收貨地址',
+      cartEmpty: '購物車為空',
+      selectGoods: '請先選擇要購買的商品',
+      backToCart: '返回購物車',
+      // 地址
+      address: {
+        title: '收貨地址',
+        add: '添加收貨地址',
+        default: '默認',
+        selectOther: '選擇其他地址',
+      },
+      // 商品清单
+      goodsList: {
+        title: '商品清單',
+        merchant: '商家',
+        quantity: '數量',
+      },
+      // 优惠券
+      coupon: {
+        title: '優惠券',
+        available: '有可用優惠券',
+        select: '選擇優惠券',
+      },
+      // 支付方式
+      payment: {
+        title: '支付方式',
+        alipay: '支付寶',
+        alipayDesc: '推薦使用',
+        wechat: '微信支付',
+        wechatDesc: '掃碼支付',
+        balance: '餘額支付',
+        balanceDesc: '當前餘額',
+      },
+      // 订单备注
+      remark: {
+        title: '訂單備註',
+        placeholder: '選填，請輸入您的特殊需求...',
+      },
+      // 订单汇总
+      summary: {
+        title: '訂單匯總',
+        goodsAmount: '商品金額',
+        items: '件',
+        discount: '優惠券抵扣',
+        shipping: '運費',
+        freeShipping: '免運費',
+        freeShippingThreshold: '滿 HK$500 免運費',
+        total: '應付金額',
+        submit: '提交訂單',
+        submitting: '提交中...',
+      },
+      // 服务保障
+      service: {
+        authentic: '正品保證',
+        fastShipping: '快速發貨',
+      },
+      submitFailed: '提交失敗，請重試',
+    },
     // 新闻
     news: {
       title: '玄門動態',
@@ -887,6 +948,41 @@ export const translations = {
       },
       guarantee: { authentic: 'ضمان الأصالة', fastShipping: 'شحن سريع' },
     },
+    // صفحة الدفع
+    checkoutPage: {
+      title: 'تأكيد الطلب',
+      selectAddress: 'الرجاء تحديد عنوان التوصيل',
+      cartEmpty: 'السلة فارغة',
+      selectGoods: 'الرجاء تحديد المنتجات للشراء',
+      backToCart: 'العودة للسلة',
+      address: { title: 'عنوان التوصيل', add: 'إضافة عنوان', default: 'افتراضي', selectOther: 'تحديد عنوان آخر' },
+      goodsList: { title: 'قائمة المنتجات', merchant: 'البائع', quantity: 'الكمية' },
+      coupon: { title: 'قسيمة', available: 'قسيمة متاحة', select: 'اختر قسيمة' },
+      payment: {
+        title: 'طريقة الدفع',
+        alipay: 'أليباي',
+        alipayDesc: 'موصى به',
+        wechat: 'وي شات',
+        wechatDesc: 'مسح الكود',
+        balance: 'الرصيد',
+        balanceDesc: 'الرصيد الحالي',
+      },
+      remark: { title: 'ملاحظات الطلب', placeholder: 'اختياري، أدخل متطلباتك الخاصة...' },
+      summary: {
+        title: 'ملخص الطلب',
+        goodsAmount: 'المبلغ',
+        items: 'قطعة',
+        discount: 'خصم القسيمة',
+        shipping: 'الشحن',
+        freeShipping: 'شحن مجاني',
+        freeShippingThreshold: 'شحن مجاني فوق 500$',
+        total: 'المبلغ المستحق',
+        submit: 'تأكيد الطلب',
+        submitting: 'جاري الإرسال...',
+      },
+      service: { authentic: 'ضمان الأصالة', fastShipping: 'شحن سريع' },
+      submitFailed: 'فشل الإرسال، حاول مرة أخرى',
+    },
     news: {
       title: 'الأخبار والتحديثات',
       categories: {
@@ -1443,6 +1539,41 @@ export const translations = {
         selectItems: 'Please select items to checkout',
       },
       guarantee: { authentic: 'Authentic', fastShipping: 'Fast Shipping' },
+    },
+    // Checkout Page
+    checkoutPage: {
+      title: 'Confirm Order',
+      selectAddress: 'Please select a shipping address',
+      cartEmpty: 'Your cart is empty',
+      selectGoods: 'Please select items to purchase',
+      backToCart: 'Back to Cart',
+      address: { title: 'Shipping Address', add: 'Add Address', default: 'Default', selectOther: 'Select another address' },
+      goodsList: { title: 'Order Items', merchant: 'Merchant', quantity: 'Qty' },
+      coupon: { title: 'Coupon', available: 'Coupons available', select: 'Select coupon' },
+      payment: {
+        title: 'Payment Method',
+        alipay: 'Alipay',
+        alipayDesc: 'Recommended',
+        wechat: 'WeChat Pay',
+        wechatDesc: 'Scan to pay',
+        balance: 'Balance',
+        balanceDesc: 'Current balance',
+      },
+      remark: { title: 'Order Notes', placeholder: 'Optional, enter your special requirements...' },
+      summary: {
+        title: 'Order Summary',
+        goodsAmount: 'Subtotal',
+        items: 'items',
+        discount: 'Coupon discount',
+        shipping: 'Shipping',
+        freeShipping: 'Free Shipping',
+        freeShippingThreshold: 'Free shipping over HK$500',
+        total: 'Total',
+        submit: 'Place Order',
+        submitting: 'Processing...',
+      },
+      service: { authentic: 'Authentic', fastShipping: 'Fast Shipping' },
+      submitFailed: 'Failed to submit, please try again',
     },
     news: {
       title: 'News & Updates',
