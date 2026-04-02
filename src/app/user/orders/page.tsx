@@ -6,8 +6,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { UserLayout } from '@/components/user/UserLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,9 +28,11 @@ import {
   Truck,
   X,
   ChevronRight,
+  ChevronLeft,
   AlertCircle,
 } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
+import { useI18n } from '@/lib/i18n';
 
 /** 订单数据类型 */
 interface OrderItem {
@@ -61,27 +64,14 @@ interface Order {
   items: OrderItem[];
 }
 
-/** 订单状态映射 */
-const orderStatusMap: Record<number, { label: string; color: string }> = {
-  0: { label: '待付款', color: 'bg-yellow-100 text-yellow-800' },
-  1: { label: '待發貨', color: 'bg-blue-100 text-blue-800' },
-  2: { label: '已發貨', color: 'bg-purple-100 text-purple-800' },
-  3: { label: '已完成', color: 'bg-green-100 text-green-800' },
-  4: { label: '已取消', color: 'bg-gray-100 text-gray-800' },
-};
-
-/** 支付方式映射 */
-const payMethodMap: Record<string, string> = {
-  alipay: '支付寶',
-  wechat: '微信支付',
-  paypal: 'PayPal',
-};
-
 /**
  * 用户订单页面组件
  * @returns 订单页面
  */
 export default function OrdersPage() {
+  const { t, isRTL } = useI18n();
+  const op = t.userPage.ordersPage;
+  
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -92,6 +82,28 @@ export default function OrdersPage() {
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const pageSize = 10;
+
+  // 订单状态映射 - 使用翻译
+  const getOrderStatus = (status: number) => {
+    const statusMap: Record<number, { label: string; color: string }> = {
+      0: { label: op.status.pending, color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+      1: { label: op.status.paid, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+      2: { label: op.status.shipped, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
+      3: { label: op.status.completed, color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+      4: { label: op.status.cancelled, color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400' },
+    };
+    return statusMap[status] || statusMap[0];
+  };
+
+  // 支付方式映射 - 使用翻译
+  const getPayMethod = (method: string) => {
+    const methodMap: Record<string, string> = {
+      alipay: op.payMethod.alipay,
+      wechat: op.payMethod.wechat,
+      paypal: op.payMethod.paypal,
+    };
+    return methodMap[method] || method;
+  };
 
   /**
    * 加载订单列表
@@ -114,7 +126,7 @@ export default function OrdersPage() {
       setTotalItems(data.total || 0);
       setTotalPages(data.total_pages || 0);
     } catch (error) {
-      console.error('加載訂單失敗:', error);
+      console.error('Load orders failed:', error);
     } finally {
       setLoading(false);
     }
@@ -157,7 +169,7 @@ export default function OrdersPage() {
         loadOrders();
       }
     } catch (error) {
-      console.error('取消訂單失敗:', error);
+      console.error('Cancel order failed:', error);
     }
   };
 
@@ -165,7 +177,7 @@ export default function OrdersPage() {
    * 确认收货
    */
   const handleConfirmReceive = async (order: Order) => {
-    if (!confirm('確認已收到貨物嗎？')) return;
+    if (!confirm(op.confirm.receive)) return;
 
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
@@ -179,7 +191,7 @@ export default function OrdersPage() {
         loadOrders();
       }
     } catch (error) {
-      console.error('確認收貨失敗:', error);
+      console.error('Confirm receive failed:', error);
     }
   };
 
@@ -195,38 +207,41 @@ export default function OrdersPage() {
     return true;
   });
 
+  const NextIcon = isRTL ? ChevronLeft : ChevronRight;
+  const ActionIcon = isRTL ? ChevronLeft : ChevronRight;
+
   return (
-    <UserLayout title="我的訂單" description="查看和管理您的訂單">
+    <UserLayout title={op.title} description={op.subtitle}>
       <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-4">
-          <TabsTrigger value="all">全部訂單</TabsTrigger>
-          <TabsTrigger value="unpaid">待付款</TabsTrigger>
-          <TabsTrigger value="unshipped">待發貨</TabsTrigger>
-          <TabsTrigger value="shipped">已發貨</TabsTrigger>
-          <TabsTrigger value="completed">已完成</TabsTrigger>
+          <TabsTrigger value="all">{op.tabs.all}</TabsTrigger>
+          <TabsTrigger value="unpaid">{op.tabs.unpaid}</TabsTrigger>
+          <TabsTrigger value="unshipped">{op.tabs.unshipped}</TabsTrigger>
+          <TabsTrigger value="shipped">{op.tabs.shipped}</TabsTrigger>
+          <TabsTrigger value="completed">{op.tabs.completed}</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab}>
           {loading ? (
             <div className="text-center py-12 text-muted-foreground">
-              載入中...
+              {t.common.loading}
             </div>
           ) : filteredOrders.length === 0 ? (
             <EmptyState type="orders" />
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => {
-                const status = orderStatusMap[order.order_status] || orderStatusMap[0];
+                const status = getOrderStatus(order.order_status);
                 const firstItem = order.items?.[0];
                 const itemCount = order.items?.length || 0;
 
                 return (
-                  <Card key={order.id}>
+                  <Card key={order.id} className="animate-fade-in-up">
                     <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm">
+                      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                        <div className={`flex items-center gap-4 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
                           <span className="text-muted-foreground">
-                            訂單編號：{order.order_no}
+                            {op.list.orderNo}：{order.order_no}
                           </span>
                           <span className="text-muted-foreground">
                             {new Date(order.created_at).toLocaleDateString()}
@@ -236,15 +251,25 @@ export default function OrdersPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-start gap-4">
+                      <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         {/* 商品信息 */}
                         <div className="flex-1">
                           {firstItem && (
-                            <div className="flex items-center gap-3">
-                              <div className="w-16 h-16 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                                {firstItem.goods_image ? '圖片' : '商品'}
+                            <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                              <div className="w-16 h-16 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground overflow-hidden relative">
+                                {firstItem.goods_image ? (
+                                  <Image
+                                    src={firstItem.goods_image}
+                                    alt={firstItem.goods_name}
+                                    fill
+                                    sizes="64px"
+                                    className="object-cover"
+                                  />
+                                ) : (
+                                  <Package className="w-6 h-6" />
+                                )}
                               </div>
-                              <div className="flex-1 min-w-0">
+                              <div className={`flex-1 min-w-0 ${isRTL ? 'text-end' : ''}`}>
                                 <p className="font-medium truncate">
                                   {firstItem.goods_name}
                                 </p>
@@ -253,7 +278,7 @@ export default function OrdersPage() {
                                 </p>
                                 {itemCount > 1 && (
                                   <p className="text-xs text-muted-foreground">
-                                    等 {itemCount} 件商品
+                                    {op.list.itemsCount.replace('{count}', String(itemCount))}
                                   </p>
                                 )}
                               </div>
@@ -262,29 +287,29 @@ export default function OrdersPage() {
                         </div>
 
                         {/* 金额和操作 */}
-                        <div className="text-right">
+                        <div className={`${isRTL ? 'text-start' : 'text-right'}`}>
                           <p className="font-semibold">
-                            共 {order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0} 件商品
+                            {op.list.totalItems.replace('{count}', String(order.items?.reduce((sum, i) => sum + i.quantity, 0) || 0))}
                           </p>
                           <p className="text-primary font-semibold">
-                            實付 HK${order.pay_amount}
+                            {op.list.actualPay} HK${order.pay_amount}
                           </p>
-                          <div className="flex gap-2 mt-2 justify-end">
+                          <div className={`flex gap-2 mt-2 ${isRTL ? 'justify-start' : 'justify-end'}`}>
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleViewDetail(order)}
                             >
-                              <Eye className="w-4 h-4 mr-1" />
-                              查看詳情
+                              <Eye className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+                              {op.list.viewDetail}
                             </Button>
                             {order.order_status === 2 && (
                               <Button
                                 size="sm"
                                 onClick={() => handleConfirmReceive(order)}
                               >
-                                <Truck className="w-4 h-4 mr-1" />
-                                確認收貨
+                                <Truck className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+                                {op.list.confirmReceive}
                               </Button>
                             )}
                             {order.order_status === 0 && (
@@ -296,8 +321,8 @@ export default function OrdersPage() {
                                   setCancelDialogOpen(true);
                                 }}
                               >
-                                <X className="w-4 h-4 mr-1" />
-                                取消訂單
+                                <X className={`w-4 h-4 ${isRTL ? 'ml-1' : 'mr-1'}`} />
+                                {op.list.cancelOrder}
                               </Button>
                             )}
                           </div>
@@ -329,44 +354,44 @@ export default function OrdersPage() {
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>訂單詳情</DialogTitle>
+            <DialogTitle>{op.detail.title}</DialogTitle>
           </DialogHeader>
 
           {selectedOrder && (
             <div className="space-y-4">
               {/* 订单状态 */}
-              <div className="flex items-center justify-between py-2 border-b">
-                <span className="text-muted-foreground">訂單狀態</span>
-                <Badge className={orderStatusMap[selectedOrder.order_status]?.color}>
-                  {orderStatusMap[selectedOrder.order_status]?.label}
+              <div className={`flex items-center justify-between py-2 border-b ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <span className="text-muted-foreground">{op.detail.orderStatus}</span>
+                <Badge className={getOrderStatus(selectedOrder.order_status).color}>
+                  {getOrderStatus(selectedOrder.order_status).label}
                 </Badge>
               </div>
 
               {/* 订单信息 */}
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">訂單編號</span>
+                <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-muted-foreground">{op.detail.orderNo}</span>
                   <span>{selectedOrder.order_no}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">下單時間</span>
+                <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-muted-foreground">{op.detail.orderTime}</span>
                   <span>{new Date(selectedOrder.created_at).toLocaleString()}</span>
                 </div>
                 {selectedOrder.pay_time && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">支付時間</span>
+                  <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <span className="text-muted-foreground">{op.detail.payTime}</span>
                     <span>{new Date(selectedOrder.pay_time).toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">支付方式</span>
-                  <span>{payMethodMap[selectedOrder.pay_method] || selectedOrder.pay_method}</span>
+                <div className={`flex justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="text-muted-foreground">{op.detail.payMethod}</span>
+                  <span>{getPayMethod(selectedOrder.pay_method)}</span>
                 </div>
               </div>
 
               {/* 收货信息 */}
-              <div className="space-y-2 text-sm border-t pt-4">
-                <p className="font-medium">收貨信息</p>
+              <div className={`space-y-2 text-sm border-t pt-4 ${isRTL ? 'text-end' : ''}`}>
+                <p className="font-medium">{op.detail.shippingInfo}</p>
                 <p className="text-muted-foreground">
                   {selectedOrder.shipping_name} {selectedOrder.shipping_phone}
                 </p>
@@ -376,14 +401,24 @@ export default function OrdersPage() {
               </div>
 
               {/* 商品列表 */}
-              <div className="space-y-2 border-t pt-4">
-                <p className="font-medium">商品明細</p>
+              <div className={`space-y-2 border-t pt-4 ${isRTL ? 'text-end' : ''}`}>
+                <p className="font-medium">{op.detail.productList}</p>
                 {selectedOrder.items?.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                      商品
+                  <div key={item.id} className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                    <div className="w-12 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground overflow-hidden relative">
+                      {item.goods_image ? (
+                        <Image
+                          src={item.goods_image}
+                          alt={item.goods_name}
+                          fill
+                          sizes="48px"
+                          className="object-cover"
+                        />
+                      ) : (
+                        <Package className="w-4 h-4" />
+                      )}
                     </div>
-                    <div className="flex-1">
+                    <div className={`flex-1 ${isRTL ? 'text-end' : ''}`}>
                       <p className="text-sm">{item.goods_name}</p>
                       <p className="text-xs text-muted-foreground">
                         HK${item.price} × {item.quantity}
@@ -395,8 +430,8 @@ export default function OrdersPage() {
               </div>
 
               {/* 金额 */}
-              <div className="flex justify-between font-semibold border-t pt-4">
-                <span>實付金額</span>
+              <div className={`flex justify-between font-semibold border-t pt-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <span>{op.detail.actualAmount}</span>
                 <span className="text-primary">HK${selectedOrder.pay_amount}</span>
               </div>
             </div>
@@ -404,7 +439,7 @@ export default function OrdersPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
-              關閉
+              {op.detail.close}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -414,20 +449,20 @@ export default function OrdersPage() {
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <AlertCircle className="w-5 h-5 text-yellow-500" />
-              取消訂單
+              {op.cancel.title}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-muted-foreground">
-            確定要取消此訂單嗎？取消後將無法恢復。
+          <p className={`text-muted-foreground ${isRTL ? 'text-end' : ''}`}>
+            {op.cancel.description}
           </p>
-          <DialogFooter>
+          <DialogFooter className={isRTL ? 'flex-row-reverse' : ''}>
             <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-              返回
+              {op.cancel.back}
             </Button>
             <Button variant="destructive" onClick={handleCancelOrder}>
-              確認取消
+              {op.cancel.confirm}
             </Button>
           </DialogFooter>
         </DialogContent>
