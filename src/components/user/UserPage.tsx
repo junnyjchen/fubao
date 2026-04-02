@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useI18n } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   Star,
   Bell,
   ChevronRight,
+  ChevronLeft,
   Loader2,
   Wallet,
   CreditCard,
@@ -65,34 +67,19 @@ interface UserProfile {
   memberSince: string;
 }
 
-const orderStatusMap: Record<number, { label: string; color: string }> = {
-  '-1': { label: '已取消', color: 'bg-gray-100 text-gray-600' },
-  '0': { label: '待付款', color: 'bg-yellow-100 text-yellow-800' },
-  '1': { label: '待發貨', color: 'bg-blue-100 text-blue-800' },
-  '2': { label: '已發貨', color: 'bg-purple-100 text-purple-800' },
-  '3': { label: '已完成', color: 'bg-green-100 text-green-800' },
-};
-
-// 会员等级配置
-const memberLevels = [
-  { level: 1, name: '普通會員', minPoints: 0, discount: 1.0, color: 'bg-gray-500' },
-  { level: 2, name: '銅牌會員', minPoints: 100, discount: 0.98, color: 'bg-orange-600' },
-  { level: 3, name: '銀牌會員', minPoints: 500, discount: 0.95, color: 'bg-gray-400' },
-  { level: 4, name: '金牌會員', minPoints: 2000, discount: 0.92, color: 'bg-yellow-500' },
-  { level: 5, name: '鑽石會員', minPoints: 5000, discount: 0.88, color: 'bg-blue-500' },
-];
-
-function OrderCard({ order }: { order: Order }) {
+function OrderCard({ order, t, isRTL }: { order: Order; t: any; isRTL: boolean }) {
   const status = orderStatusMap[order.orderStatus] || orderStatusMap[0];
   const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const orderDetailUrl = '/user/orders/' + order.id;
   const payUrl = orderDetailUrl + '?pay=true';
+  const uh = t.userPage.home;
+  const os = uh.orderSection;
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <div className="bg-muted/50 px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-muted-foreground">訂單編號：</span>
+      <div className={`bg-muted/50 px-4 py-2 flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-4 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <span className="text-muted-foreground">{t.userPage.ordersPage.list.orderNo}：</span>
           <span className="font-mono">{order.orderNo}</span>
           <span className="text-muted-foreground">{order.createdAt}</span>
         </div>
@@ -101,15 +88,15 @@ function OrderCard({ order }: { order: Order }) {
       <CardContent className="p-4">
         <div className="space-y-3">
           {order.items.slice(0, 2).map((item) => (
-            <div key={item.id} className="flex gap-3">
+            <div key={item.id} className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center text-muted-foreground text-xs overflow-hidden">
                 {item.goodsImage ? (
-                  <img src={item.goodsImage} alt={item.goodsName} className="w-full h-full object-cover" />
+                  <Image src={item.goodsImage} alt={item.goodsName} width={64} height={64} className="w-full h-full object-cover" />
                 ) : (
                   <Package className="w-6 h-6" />
                 )}
               </div>
-              <div className="flex-1">
+              <div className={`flex-1 ${isRTL ? 'text-end' : ''}`}>
                 <p className="text-sm font-medium truncate">{item.goodsName}</p>
                 <p className="text-xs text-muted-foreground">
                   HK${item.price} x {item.quantity}
@@ -119,30 +106,30 @@ function OrderCard({ order }: { order: Order }) {
           ))}
           {order.items.length > 2 && (
             <p className="text-xs text-muted-foreground text-center">
-              還有 {order.items.length - 2} 件商品
+              {os.moreItems.replace('{count}', String(order.items.length - 2))}
             </p>
           )}
         </div>
         <Separator className="my-3" />
-        <div className="flex items-center justify-between">
-          <p className="text-sm">
-            共 {totalItems} 件商品
-            <span className="ml-4">
-              實付：<span className="text-primary font-semibold">HK${order.payAmount}</span>
+        <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <p className={`text-sm ${isRTL ? 'text-end' : ''}`}>
+            {os.totalItems.replace('{count}', String(totalItems))}
+            <span className="mx-4">
+              {os.actualPay}：<span className="text-primary font-semibold">HK${order.payAmount}</span>
             </span>
           </p>
-          <div className="flex gap-2">
+          <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Button variant="outline" size="sm" asChild>
-              <Link href={orderDetailUrl}>查看詳情</Link>
+              <Link href={orderDetailUrl}>{os.viewDetail}</Link>
             </Button>
             {order.orderStatus === 0 && (
               <Button size="sm" asChild>
-                <Link href={payUrl}>去支付</Link>
+                <Link href={payUrl}>{os.goPay}</Link>
               </Button>
             )}
             {order.orderStatus === 2 && (
               <Button size="sm" asChild>
-                <Link href={orderDetailUrl}>確認收貨</Link>
+                <Link href={orderDetailUrl}>{os.confirmReceive}</Link>
               </Button>
             )}
           </div>
@@ -152,8 +139,30 @@ function OrderCard({ order }: { order: Order }) {
   );
 }
 
+// 订单状态映射 - 使用函数获取翻译
+const orderStatusMap: Record<number, { label: string; color: string }> = {
+  '-1': { label: '已取消', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400' },
+  '0': { label: '待付款', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  '1': { label: '待發貨', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+  '2': { label: '已發貨', color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' },
+  '3': { label: '已完成', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+};
+
+// 会员等级配置 - 使用翻译
+const getMemberLevels = (t: any) => [
+  { level: 1, name: t.userPage.home.memberLevel.normal, minPoints: 0, discount: 1.0, color: 'bg-gray-500' },
+  { level: 2, name: t.userPage.home.memberLevel.bronze, minPoints: 100, discount: 0.98, color: 'bg-orange-600' },
+  { level: 3, name: t.userPage.home.memberLevel.silver, minPoints: 500, discount: 0.95, color: 'bg-gray-400' },
+  { level: 4, name: t.userPage.home.memberLevel.gold, minPoints: 2000, discount: 0.92, color: 'bg-yellow-500' },
+  { level: 5, name: t.userPage.home.memberLevel.diamond, minPoints: 5000, discount: 0.88, color: 'bg-blue-500' },
+];
+
 export function UserPage() {
-  const { t } = useI18n();
+  const { t, isRTL } = useI18n();
+  const uh = t.userPage.home;
+  const memberLevels = getMemberLevels(t);
+  const NextIcon = isRTL ? ChevronLeft : ChevronRight;
+  
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -177,7 +186,7 @@ export function UserPage() {
       if (profileData.user) {
         setProfile({
           id: profileData.user.id,
-          username: profileData.user.username || '用戶',
+          username: profileData.user.username || uh.userInfo.defaultUsername,
           email: profileData.user.email || '',
           phone: profileData.user.phone,
           avatar: profileData.user.avatar,
@@ -190,11 +199,11 @@ export function UserPage() {
         });
       }
     } catch (error) {
-      console.error('获取数据失败:', error);
+      console.error('Failed to fetch data:', error);
       // 设置默认数据
       setProfile({
         id: 1,
-        username: '用戶',
+        username: uh.userInfo.defaultUsername,
         email: 'user@example.com',
         level: 1,
         points: 0,
@@ -217,19 +226,47 @@ export function UserPage() {
     return true;
   });
 
-  const quickStats = [
-    { label: '待付款', count: orders.filter(o => o.orderStatus === 0).length, icon: Clock, color: 'text-yellow-600', href: '/user/orders?status=unpaid' },
-    { label: '待發貨', count: orders.filter(o => o.orderStatus === 1).length, icon: Package, color: 'text-blue-600', href: '/user/orders?status=unshipped' },
-    { label: '已發貨', count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, color: 'text-purple-600', href: '/user/orders?status=shipped' },
-    { label: '待評價', count: orders.filter(o => o.orderStatus === 3).length, icon: Star, color: 'text-orange-600', href: '/user/reviews/pending' },
-  ];
-
   // 获取当前会员等级信息
   const currentLevel = memberLevels.find(l => l.level === (profile?.level || 1)) || memberLevels[0];
   const nextLevel = memberLevels.find(l => l.level === (profile?.level || 1) + 1);
   const pointsProgress = nextLevel 
     ? ((profile?.points || 0) / nextLevel.minPoints) * 100 
     : 100;
+
+  // 快捷入口配置
+  const quickAccessItems = [
+    { label: uh.quickAccess.unpaid, count: orders.filter(o => o.orderStatus === 0).length, icon: Clock, color: 'text-yellow-600', href: '/user/orders?status=unpaid' },
+    { label: uh.quickAccess.unshipped, count: orders.filter(o => o.orderStatus === 1).length, icon: Package, color: 'text-blue-600', href: '/user/orders?status=unshipped' },
+    { label: uh.quickAccess.shipped, count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, color: 'text-purple-600', href: '/user/orders?status=shipped' },
+    { label: uh.quickAccess.toReview, count: orders.filter(o => o.orderStatus === 3).length, icon: Star, color: 'text-orange-600', href: '/user/reviews/pending' },
+  ];
+
+  // 快捷入口网格
+  const quickGridItems = [
+    { label: uh.quickAccess.unpaid, count: orders.filter(o => o.orderStatus === 0).length, icon: Clock, href: '/user/orders?status=unpaid' },
+    { label: uh.quickAccess.unshipped, count: orders.filter(o => o.orderStatus === 1).length, icon: Package, href: '/user/orders?status=unshipped' },
+    { label: uh.quickAccess.shipped, count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, href: '/user/orders?status=shipped' },
+    { label: uh.quickAccess.toReview, count: orders.filter(o => o.orderStatus === 3).length, icon: Star, href: '/user/reviews/pending' },
+    { label: uh.quickAccess.vip, icon: Crown, href: '/vip', highlight: true, highlightColor: 'gold' },
+    { label: uh.quickAccess.distribution, icon: TrendingUp, href: '/distribution', highlight: true, highlightColor: 'purple' },
+    { label: uh.quickAccess.coupons, icon: Ticket, href: '/user/coupons' },
+    { label: uh.quickAccess.myPoints, icon: Coins, href: '/user/points' },
+  ];
+
+  // 侧边菜单配置
+  const menuItems = [
+    { label: uh.menu.myOrders, icon: Package, href: '/user', active: true },
+    { label: uh.menu.myFavorites, icon: Heart, href: '/user/favorites' },
+    { label: uh.menu.addresses, icon: MapPin, href: '/user/addresses' },
+    { label: uh.menu.coupons, icon: Ticket, href: '/user/coupons' },
+    { label: uh.menu.pointsDetail, icon: Coins, href: '/user/points' },
+    { label: uh.menu.myWallet, icon: Wallet, href: '/user/wallet' },
+  ];
+
+  const menuItemsBottom = [
+    { label: uh.menu.notifications, icon: Bell, href: '/user/notifications' },
+    { label: uh.menu.accountSettings, icon: Settings, href: '/user/settings' },
+  ];
 
   if (loading) {
     return (
@@ -244,39 +281,39 @@ export function UserPage() {
       {/* 用户头部 */}
       <header className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <div className="w-20 h-20 rounded-full bg-primary-foreground/20 flex items-center justify-center border-2 border-primary-foreground/30">
                 {profile?.avatar ? (
-                  <img src={profile.avatar} alt={profile.username} className="w-full h-full rounded-full object-cover" />
+                  <Image src={profile.avatar} alt={profile.username} width={80} height={80} className="w-full h-full rounded-full object-cover" />
                 ) : (
                   <User className="w-10 h-10" />
                 )}
               </div>
-              <div>
-                <h1 className="text-2xl font-bold">{profile?.username || '用戶'}</h1>
-                <div className="flex items-center gap-3 mt-1">
+              <div className={isRTL ? 'text-end' : ''}>
+                <h1 className="text-2xl font-bold">{profile?.username || uh.userInfo.defaultUsername}</h1>
+                <div className={`flex items-center gap-3 mt-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <Badge className={`${currentLevel.color} text-white`}>
                     {currentLevel.name}
                   </Badge>
                   <span className="text-primary-foreground/80 text-sm">
-                    會員ID: {profile?.id}
+                    {uh.userInfo.memberId}: {profile?.id}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="hidden md:flex items-center gap-6">
+            <div className={`hidden md:flex items-center gap-6 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <div className="text-center">
                 <p className="text-2xl font-bold">{profile?.points || 0}</p>
-                <p className="text-xs text-primary-foreground/80">積分</p>
+                <p className="text-xs text-primary-foreground/80">{uh.stats.points}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold">HK${profile?.balance?.toFixed(2) || '0.00'}</p>
-                <p className="text-xs text-primary-foreground/80">餘額</p>
+                <p className="text-xs text-primary-foreground/80">{uh.stats.balance}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold">{profile?.orderCount || 0}</p>
-                <p className="text-xs text-primary-foreground/80">訂單</p>
+                <p className="text-xs text-primary-foreground/80">{uh.stats.orders}</p>
               </div>
             </div>
           </div>
@@ -284,9 +321,13 @@ export function UserPage() {
           {/* 会员等级进度 */}
           {nextLevel && (
             <div className="mt-6 bg-primary-foreground/10 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm">距離 {nextLevel.name} 還需 {nextLevel.minPoints - (profile?.points || 0)} 積分</span>
-                <span className="text-sm">當前 {currentLevel.discount * 10} 折優惠</span>
+              <div className={`flex items-center justify-between mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <span className="text-sm">
+                  {uh.levelProgress.needPoints.replace('{points}', String(nextLevel.minPoints - (profile?.points || 0))).replace('{level}', nextLevel.name)}
+                </span>
+                <span className="text-sm">
+                  {uh.levelProgress.currentDiscount.replace('{discount}', String(currentLevel.discount * 10))}
+                </span>
               </div>
               <Progress value={pointsProgress} className="h-2 bg-primary-foreground/20" />
             </div>
@@ -297,16 +338,7 @@ export function UserPage() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {/* 快捷入口 */}
         <div className="grid grid-cols-4 md:grid-cols-8 gap-4 mb-6">
-          {[
-            { label: '待付款', count: orders.filter(o => o.orderStatus === 0).length, icon: Clock, href: '/user/orders?status=unpaid' },
-            { label: '待發貨', count: orders.filter(o => o.orderStatus === 1).length, icon: Package, href: '/user/orders?status=unshipped' },
-            { label: '已發貨', count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, href: '/user/orders?status=shipped' },
-            { label: '待評價', count: orders.filter(o => o.orderStatus === 3).length, icon: Star, href: '/user/reviews/pending' },
-            { label: 'VIP會員', icon: Crown, href: '/vip', highlight: true, highlightColor: 'gold' },
-            { label: '分銷中心', icon: TrendingUp, href: '/distribution', highlight: true, highlightColor: 'purple' },
-            { label: '優惠券', icon: Ticket, href: '/user/coupons' },
-            { label: '我的積分', icon: Coins, href: '/user/points' },
-          ].map((item) => {
+          {quickGridItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link key={item.label} href={item.href}>
@@ -339,12 +371,12 @@ export function UserPage() {
                     )}
                     {item.highlightColor === 'gold' && (
                       <Badge className="mt-1 h-5 px-1.5 text-xs bg-gradient-to-r from-amber-500 to-yellow-500">
-                        特權
+                        {uh.quickAccess.privilege}
                       </Badge>
                     )}
                     {item.highlightColor === 'purple' && (
                       <Badge className="mt-1 h-5 px-1.5 text-xs bg-gradient-to-r from-purple-500 to-indigo-500">
-                        賺錢
+                        {uh.quickAccess.earnMoney}
                       </Badge>
                     )}
                   </CardContent>
@@ -354,17 +386,17 @@ export function UserPage() {
           })}
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-6">
+        <div className={`grid lg:grid-cols-4 gap-6 ${isRTL ? 'direction-rtl' : ''}`}>
           {/* 左侧菜单 */}
           <div className="lg:col-span-1">
             {/* VIP和分销突出卡片 */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className={`grid grid-cols-2 gap-3 mb-4 ${isRTL ? 'direction-rtl' : ''}`}>
               <Link href="/vip">
                 <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 border-amber-300/50 hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-3 text-center">
                     <Crown className="w-6 h-6 mx-auto mb-1 text-amber-500" />
-                    <p className="text-xs font-medium text-amber-700">VIP會員</p>
-                    <p className="text-[10px] text-amber-600/70 mt-0.5">專享特權</p>
+                    <p className="text-xs font-medium text-amber-700">{uh.quickAccess.vip}</p>
+                    <p className="text-[10px] text-amber-600/70 mt-0.5">{uh.quickAccess.privilege}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -372,8 +404,8 @@ export function UserPage() {
                 <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border-purple-300/50 hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-3 text-center">
                     <TrendingUp className="w-6 h-6 mx-auto mb-1 text-purple-500" />
-                    <p className="text-xs font-medium text-purple-700">分銷中心</p>
-                    <p className="text-[10px] text-purple-600/70 mt-0.5">賺取佣金</p>
+                    <p className="text-xs font-medium text-purple-700">{uh.quickAccess.distribution}</p>
+                    <p className="text-[10px] text-purple-600/70 mt-0.5">{uh.quickAccess.earnMoney}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -382,76 +414,48 @@ export function UserPage() {
             <Card>
               <CardContent className="p-4">
                 <nav className="space-y-1">
-                  <Link href="/user">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary font-medium">
-                      <Package className="w-5 h-5" />
-                      <span>我的訂單</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Link href="/user/favorites">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <Heart className="w-5 h-5" />
-                      <span>我的收藏</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Link href="/user/addresses">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <MapPin className="w-5 h-5" />
-                      <span>收貨地址</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Link href="/user/coupons">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <Ticket className="w-5 h-5" />
-                      <span>優惠券</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Link href="/user/points">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <Coins className="w-5 h-5" />
-                      <span>積分明細</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Link href="/user/wallet">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <Wallet className="w-5 h-5" />
-                      <span>我的錢包</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
+                  {menuItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.label} href={item.href}>
+                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${
+                          item.active 
+                            ? 'bg-primary/10 text-primary font-medium' 
+                            : 'text-muted-foreground hover:bg-muted'
+                        } ${isRTL ? 'flex-row-reverse' : ''}`}>
+                          <Icon className="w-5 h-5" />
+                          <span className={isRTL ? 'ms-0 me-auto' : ''}>{item.label}</span>
+                          <NextIcon className={`w-4 h-4 ${isRTL ? 'mr-auto' : 'ml-auto'}`} />
+                        </div>
+                      </Link>
+                    );
+                  })}
                   <Separator className="my-2" />
-                  <Link href="/user/notifications">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <Bell className="w-5 h-5" />
-                      <span>消息通知</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
-                  <Link href="/user/settings">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
-                      <Settings className="w-5 h-5" />
-                      <span>賬號設置</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
-                    </div>
-                  </Link>
+                  {menuItemsBottom.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.label} href={item.href}>
+                        <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted ${isRTL ? 'flex-row-reverse' : ''}`}>
+                          <Icon className="w-5 h-5" />
+                          <span className={isRTL ? 'ms-0 me-auto' : ''}>{item.label}</span>
+                          <NextIcon className={`w-4 h-4 ${isRTL ? 'mr-auto' : 'ml-auto'}`} />
+                        </div>
+                      </Link>
+                    );
+                  })}
                   <Separator className="my-2" />
                   <Link href="/free-gifts">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20">
+                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <Gift className="w-5 h-5 text-red-500" />
-                      <span className="font-medium text-red-600">免費領</span>
-                      <Badge className="ml-auto bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs">HOT</Badge>
+                      <span className={`font-medium text-red-600 ${isRTL ? 'ms-0' : ''}`}>{uh.menu.freeGift}</span>
+                      <Badge className={`${isRTL ? 'mr-auto' : 'ml-auto'} bg-gradient-to-r from-red-500 to-orange-500 text-white text-xs`}>HOT</Badge>
                     </div>
                   </Link>
                   <Link href="/user/free-gifts">
-                    <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted">
+                    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-muted ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <Gift className="w-5 h-5" />
-                      <span>領取記錄</span>
-                      <ChevronRight className="w-4 h-4 ml-auto" />
+                      <span className={isRTL ? 'ms-0 me-auto' : ''}>{uh.menu.giftRecord}</span>
+                      <NextIcon className={`w-4 h-4 ${isRTL ? 'mr-auto' : 'ml-auto'}`} />
                     </div>
                   </Link>
                 </nav>
@@ -462,35 +466,35 @@ export function UserPage() {
           {/* 右侧内容 */}
           <div className="lg:col-span-3 space-y-6">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle>我的訂單</CardTitle>
+              <CardHeader className={`flex flex-row items-center justify-between pb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <CardTitle>{uh.orderSection.title}</CardTitle>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link href="/user/orders">查看全部</Link>
+                  <Link href="/user/orders">{uh.orderSection.viewAll}</Link>
                 </Button>
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="w-full justify-start mb-4">
-                    <TabsTrigger value="all">全部</TabsTrigger>
-                    <TabsTrigger value="unpaid">待付款</TabsTrigger>
-                    <TabsTrigger value="unshipped">待發貨</TabsTrigger>
-                    <TabsTrigger value="shipped">已發貨</TabsTrigger>
-                    <TabsTrigger value="completed">已完成</TabsTrigger>
+                  <TabsList className={`w-full mb-4 ${isRTL ? 'flex-row-reverse justify-end' : 'justify-start'}`}>
+                    <TabsTrigger value="all">{uh.orderSection.tabs.all}</TabsTrigger>
+                    <TabsTrigger value="unpaid">{uh.orderSection.tabs.unpaid}</TabsTrigger>
+                    <TabsTrigger value="unshipped">{uh.orderSection.tabs.unshipped}</TabsTrigger>
+                    <TabsTrigger value="shipped">{uh.orderSection.tabs.shipped}</TabsTrigger>
+                    <TabsTrigger value="completed">{uh.orderSection.tabs.completed}</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value={activeTab}>
                     {filteredOrders.length === 0 ? (
                       <div className="text-center py-12">
                         <Package className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-                        <p className="text-muted-foreground mb-4">暫無訂單</p>
+                        <p className="text-muted-foreground mb-4">{uh.orderSection.empty}</p>
                         <Button asChild>
-                          <Link href="/shop">去購物</Link>
+                          <Link href="/shop">{uh.orderSection.goShopping}</Link>
                         </Button>
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {filteredOrders.map((order) => (
-                          <OrderCard key={order.id} order={order} />
+                          <OrderCard key={order.id} order={order} t={t} isRTL={isRTL} />
                         ))}
                       </div>
                     )}
@@ -502,13 +506,13 @@ export function UserPage() {
             {/* 猜你喜欢 */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <Gift className="w-5 h-5 text-primary" />
-                  為您推薦
+                  {uh.recommendSection.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${isRTL ? 'direction-rtl' : ''}`}>
                   {[1, 2, 3, 4].map((i) => (
                     <Link key={i} href={`/shop/${i}`}>
                       <div className="group cursor-pointer">
@@ -517,8 +521,8 @@ export function UserPage() {
                             <span className="text-2xl text-primary/30">符</span>
                           </div>
                         </div>
-                        <p className="text-sm font-medium line-clamp-1">推薦商品 {i}</p>
-                        <p className="text-sm text-primary font-semibold">HK$88.00</p>
+                        <p className={`text-sm font-medium line-clamp-1 ${isRTL ? 'text-end' : ''}`}>{uh.recommendSection.recommendedProduct} {i}</p>
+                        <p className={`text-sm text-primary font-semibold ${isRTL ? 'text-end' : ''}`}>HK$88.00</p>
                       </div>
                     </Link>
                   ))}

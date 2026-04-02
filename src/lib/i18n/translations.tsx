@@ -494,6 +494,84 @@ export const translations = {
         },
         empty: '暫無訂單',
       },
+      // 用户中心主页
+      home: {
+        // 会员等级
+        memberLevel: {
+          normal: '普通會員',
+          bronze: '銅牌會員',
+          silver: '銀牌會員',
+          gold: '金牌會員',
+          diamond: '鑽石會員',
+        },
+        // 统计标签
+        stats: {
+          points: '積分',
+          balance: '餘額',
+          orders: '訂單',
+        },
+        // 等级进度
+        levelProgress: {
+          needPoints: '距離 {level} 還需 {points} 積分',
+          currentDiscount: '當前 {discount} 折優惠',
+        },
+        // 快捷入口
+        quickAccess: {
+          unpaid: '待付款',
+          unshipped: '待發貨',
+          shipped: '已發貨',
+          toReview: '待評價',
+          vip: 'VIP會員',
+          distribution: '分銷中心',
+          coupons: '優惠券',
+          myPoints: '我的積分',
+          privilege: '特權',
+          earnMoney: '賺錢',
+        },
+        // 侧边菜单
+        menu: {
+          myOrders: '我的訂單',
+          myFavorites: '我的收藏',
+          addresses: '收貨地址',
+          coupons: '優惠券',
+          pointsDetail: '積分明細',
+          myWallet: '我的錢包',
+          notifications: '消息通知',
+          accountSettings: '賬號設置',
+          freeGift: '免費領',
+          giftRecord: '領取記錄',
+        },
+        // 订单区域
+        orderSection: {
+          title: '我的訂單',
+          viewAll: '查看全部',
+          tabs: {
+            all: '全部',
+            unpaid: '待付款',
+            unshipped: '待發貨',
+            shipped: '已發貨',
+            completed: '已完成',
+          },
+          empty: '暫無訂單',
+          goShopping: '去購物',
+          moreItems: '還有 {count} 件商品',
+          totalItems: '共 {count} 件商品',
+          actualPay: '實付',
+          viewDetail: '查看詳情',
+          goPay: '去支付',
+          confirmReceive: '確認收貨',
+        },
+        // 推荐区域
+        recommendSection: {
+          title: '為您推薦',
+          recommendedProduct: '推薦商品',
+        },
+        // 用户信息
+        userInfo: {
+          memberId: '會員ID',
+          defaultUsername: '用戶',
+        },
+      },
     },
     // 订单详情
     orderDetail: {
@@ -1649,6 +1727,84 @@ export const translations = {
         },
         empty: 'لا توجد طلبات',
       },
+      // User Home Page
+      home: {
+        // Member Levels
+        memberLevel: {
+          normal: 'عضو عادي',
+          bronze: 'عضو برونزي',
+          silver: 'عضو فضي',
+          gold: 'عضو ذهبي',
+          diamond: 'عضو ماسي',
+        },
+        // Stats Labels
+        stats: {
+          points: 'النقاط',
+          balance: 'الرصيد',
+          orders: 'الطلبات',
+        },
+        // Level Progress
+        levelProgress: {
+          needPoints: '{points} نقطة للوصول إلى {level}',
+          currentDiscount: 'خصم {discount} حالياً',
+        },
+        // Quick Access
+        quickAccess: {
+          unpaid: 'في انتظار الدفع',
+          unshipped: 'في انتظار الشحن',
+          shipped: 'تم الشحن',
+          toReview: 'في انتظار التقييم',
+          vip: 'عضوية VIP',
+          distribution: 'مركز التوزيع',
+          coupons: 'القسائم',
+          myPoints: 'نقاطي',
+          privilege: 'امتياز',
+          earnMoney: 'كسب المال',
+        },
+        // Side Menu
+        menu: {
+          myOrders: 'طلباتي',
+          myFavorites: 'المفضلة',
+          addresses: 'العناوين',
+          coupons: 'القسائم',
+          pointsDetail: 'تفاصيل النقاط',
+          myWallet: 'محفظتي',
+          notifications: 'الإشعارات',
+          accountSettings: 'إعدادات الحساب',
+          freeGift: 'مجاني',
+          giftRecord: 'سجل الاستلام',
+        },
+        // Order Section
+        orderSection: {
+          title: 'طلباتي',
+          viewAll: 'عرض الكل',
+          tabs: {
+            all: 'الكل',
+            unpaid: 'في انتظار الدفع',
+            unshipped: 'في انتظار الشحن',
+            shipped: 'تم الشحن',
+            completed: 'مكتمل',
+          },
+          empty: 'لا توجد طلبات',
+          goShopping: 'تسوق الآن',
+          moreItems: 'و {count} منتجات أخرى',
+          totalItems: '{count} منتج',
+          actualPay: 'المبلغ المدفوع',
+          viewDetail: 'عرض التفاصيل',
+          goPay: 'ادفع الآن',
+          confirmReceive: 'تأكيد الاستلام',
+        },
+        // Recommend Section
+        recommendSection: {
+          title: 'موصى به لك',
+          recommendedProduct: 'منتج موصى به',
+        },
+        // User Info
+        userInfo: {
+          memberId: 'رقم العضوية',
+          defaultUsername: 'مستخدم',
+        },
+      },
     },
     // Order Detail
     orderDetail: {
@@ -2691,6 +2847,84 @@ export const translations = {
           paypal: 'PayPal',
         },
         empty: 'No orders',
+      },
+      // User Home Page
+      home: {
+        // Member Levels
+        memberLevel: {
+          normal: 'Member',
+          bronze: 'Bronze Member',
+          silver: 'Silver Member',
+          gold: 'Gold Member',
+          diamond: 'Diamond Member',
+        },
+        // Stats Labels
+        stats: {
+          points: 'Points',
+          balance: 'Balance',
+          orders: 'Orders',
+        },
+        // Level Progress
+        levelProgress: {
+          needPoints: '{points} points to {level}',
+          currentDiscount: '{discount} off currently',
+        },
+        // Quick Access
+        quickAccess: {
+          unpaid: 'Pending Payment',
+          unshipped: 'Pending Shipment',
+          shipped: 'Shipped',
+          toReview: 'To Review',
+          vip: 'VIP Member',
+          distribution: 'Distribution Center',
+          coupons: 'Coupons',
+          myPoints: 'My Points',
+          privilege: 'Privilege',
+          earnMoney: 'Earn',
+        },
+        // Side Menu
+        menu: {
+          myOrders: 'My Orders',
+          myFavorites: 'My Favorites',
+          addresses: 'Addresses',
+          coupons: 'Coupons',
+          pointsDetail: 'Points Detail',
+          myWallet: 'My Wallet',
+          notifications: 'Notifications',
+          accountSettings: 'Account Settings',
+          freeGift: 'Free Gift',
+          giftRecord: 'Gift Records',
+        },
+        // Order Section
+        orderSection: {
+          title: 'My Orders',
+          viewAll: 'View All',
+          tabs: {
+            all: 'All',
+            unpaid: 'Pending',
+            unshipped: 'Unshipped',
+            shipped: 'Shipped',
+            completed: 'Completed',
+          },
+          empty: 'No orders yet',
+          goShopping: 'Go Shopping',
+          moreItems: 'and {count} more items',
+          totalItems: '{count} items',
+          actualPay: 'Paid',
+          viewDetail: 'View Details',
+          goPay: 'Pay Now',
+          confirmReceive: 'Confirm Receipt',
+        },
+        // Recommend Section
+        recommendSection: {
+          title: 'Recommended for You',
+          recommendedProduct: 'Recommended Product',
+        },
+        // User Info
+        userInfo: {
+          memberId: 'Member ID',
+          defaultUsername: 'User',
+        },
       },
     },
     // Order Detail
