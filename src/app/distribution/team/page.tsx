@@ -24,6 +24,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { DistributionSubSkeleton } from '@/components/common/PageSkeletons';
+import { useI18n } from '@/lib/i18n';
 
 interface TeamMember {
   user_id: string;
@@ -47,6 +48,36 @@ interface TeamData {
 }
 
 export default function TeamPage() {
+  const { t, isRTL } = useI18n();
+  const d = t.distribution;
+  const teamText = (d as any).team || {
+    title: '我的團隊',
+    totalMembers: '團隊總人數',
+    directMembers: '直推人數',
+    indirectMembers: '間推人數',
+    tabs: {
+      all: '全部',
+      level1: '一級',
+      level2: '二級',
+      level3: '三級',
+    },
+    levels: {
+      1: '一級',
+      2: '二級',
+      3: '三級',
+    },
+    joinTime: '加入時間',
+    sales: '銷售額',
+    orders: '訂單數',
+    commission: '貢獻佣金',
+    noMembers: '暫無團隊成員',
+    inviteTitle: '邀請更多好友',
+    inviteDesc: '分享邀請鏈接，好友註冊購物後您可獲得佣金獎勵',
+    inviteNow: '立即邀請',
+    loadFailed: '加載失敗，請重試',
+  };
+  const team = typeof teamText === 'object' ? teamText : teamText;
+  
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<TeamData | null>(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -86,25 +117,17 @@ export default function TeamPage() {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleDateString('zh-TW');
+    return date.toLocaleDateString(isRTL ? 'ar-SA' : 'zh-TW');
   };
 
   const maskedName = (name: string) => {
-    if (!name) return '用戶';
+    const userText = (t.common as any).user || 'User';
+    if (!name) return userText;
     return name.slice(0, 1) + '***' + name.slice(-1);
   };
 
   const getLevelText = (level: number) => {
-    switch (level) {
-      case 1:
-        return '一級';
-      case 2:
-        return '二級';
-      case 3:
-        return '三級';
-      default:
-        return '';
-    }
+    return team.levels[level] || '';
   };
 
   const getLevelColor = (level: number) => {
@@ -127,7 +150,7 @@ export default function TeamPage() {
   if (!data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>加載失敗，請重試</p>
+        <p>{team.loadFailed}</p>
       </div>
     );
   }
@@ -138,11 +161,11 @@ export default function TeamPage() {
     <div className="min-h-screen bg-muted/20">
       {/* 顶部 */}
       <div className="bg-card border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+        <div className={`container mx-auto px-4 py-3 flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Link href="/distribution">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-semibold">我的團隊</h1>
+          <h1 className="text-lg font-semibold">{team.title}</h1>
         </div>
       </div>
 
@@ -152,13 +175,13 @@ export default function TeamPage() {
           <Card>
             <CardContent className="pt-4 text-center">
               <p className="text-2xl font-bold text-amber-600">{data.total_count}</p>
-              <p className="text-xs text-muted-foreground mt-1">團隊總人數</p>
+              <p className="text-xs text-muted-foreground mt-1">{team.totalMembers}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 text-center">
               <p className="text-2xl font-bold text-green-600">{data.direct_count}</p>
-              <p className="text-xs text-muted-foreground mt-1">直推人數</p>
+              <p className="text-xs text-muted-foreground mt-1">{team.directMembers}</p>
             </CardContent>
           </Card>
           <Card>
@@ -166,7 +189,7 @@ export default function TeamPage() {
               <p className="text-2xl font-bold text-blue-600">
                 {data.level_2_count + data.level_3_count}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">間推人數</p>
+              <p className="text-xs text-muted-foreground mt-1">{team.indirectMembers}</p>
             </CardContent>
           </Card>
         </div>
@@ -174,32 +197,32 @@ export default function TeamPage() {
         {/* Tab 切换 */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full grid grid-cols-4">
-            <TabsTrigger value="all">全部</TabsTrigger>
-            <TabsTrigger value="level1">一級</TabsTrigger>
-            <TabsTrigger value="level2">二級</TabsTrigger>
-            <TabsTrigger value="level3">三級</TabsTrigger>
+            <TabsTrigger value="all">{team.tabs.all}</TabsTrigger>
+            <TabsTrigger value="level1">{team.tabs.level1}</TabsTrigger>
+            <TabsTrigger value="level2">{team.tabs.level2}</TabsTrigger>
+            <TabsTrigger value="level3">{team.tabs.level3}</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-4">
             {filteredMembers.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">暫無團隊成員</p>
+                <p className="text-muted-foreground">{team.noMembers}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {filteredMembers.map((member, index) => (
                   <Card key={index}>
                     <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
+                      <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <Avatar className="w-12 h-12">
                           <AvatarImage src={member.avatar_url} />
                           <AvatarFallback>
                             {member.nickname?.[0] || '用'}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                        <div className={`flex-1 ${isRTL ? 'text-right' : ''}`}>
+                          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <span className="font-medium">
                               {maskedName(member.nickname)}
                             </span>
@@ -211,10 +234,10 @@ export default function TeamPage() {
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">
-                            加入時間：{formatDate(member.join_time)}
+                            {team.joinTime}：{formatDate(member.join_time)}
                           </p>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        <ChevronRight className={`w-5 h-5 text-muted-foreground ${isRTL ? 'rotate-180' : ''}`} />
                       </div>
 
                       <Separator className="my-3" />
@@ -224,17 +247,17 @@ export default function TeamPage() {
                           <p className="text-sm font-semibold">
                             HK${member.total_sales.toFixed(0)}
                           </p>
-                          <p className="text-xs text-muted-foreground">銷售額</p>
+                          <p className="text-xs text-muted-foreground">{team.sales}</p>
                         </div>
                         <div>
                           <p className="text-sm font-semibold">{member.total_orders}</p>
-                          <p className="text-xs text-muted-foreground">訂單數</p>
+                          <p className="text-xs text-muted-foreground">{team.orders}</p>
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-green-600">
                             HK${member.total_commission.toFixed(0)}
                           </p>
-                          <p className="text-xs text-muted-foreground">貢獻佣金</p>
+                          <p className="text-xs text-muted-foreground">{team.commission}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -248,18 +271,18 @@ export default function TeamPage() {
         {/* 推广提示 */}
         <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200/50">
           <CardContent className="py-4">
-            <div className="flex items-center gap-4">
+            <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
                 <UserPlus className="w-6 h-6 text-amber-600" />
               </div>
-              <div className="flex-1">
-                <p className="font-medium">邀請更多好友</p>
+              <div className={`flex-1 ${isRTL ? 'text-right' : ''}`}>
+                <p className="font-medium">{team.inviteTitle}</p>
                 <p className="text-sm text-muted-foreground">
-                  分享邀請鏈接，好友註冊購物後您可獲得佣金獎勵
+                  {team.inviteDesc}
                 </p>
               </div>
               <Link href="/distribution">
-                <Button size="sm">立即邀請</Button>
+                <Button size="sm">{team.inviteNow}</Button>
               </Link>
             </div>
           </CardContent>

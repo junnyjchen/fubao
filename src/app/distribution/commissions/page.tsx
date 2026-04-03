@@ -21,6 +21,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { DistributionSubSkeleton } from '@/components/common/PageSkeletons';
+import { useI18n } from '@/lib/i18n';
 
 interface Commission {
   id: string;
@@ -46,6 +47,45 @@ interface CommissionData {
 }
 
 export default function CommissionsPage() {
+  const { t, isRTL } = useI18n();
+  const d = t.distribution;
+  const commissionsText = (d as any).commissions || {
+    title: '佣金明細',
+    monthCommission: '本月佣金',
+    pendingCommission: '待結算',
+    tabs: {
+      all: '全部',
+      pending: '待結算',
+      settled: '已結算',
+    },
+    types: {
+      level1: '一級佣金',
+      level2: '二級佣金',
+      level3: '三級佣金',
+      team_leader: '團隊長獎勵',
+      activity: '活動獎勵',
+      other: '其他',
+    },
+    status: {
+      pending: '待結算',
+      settled: '已結算',
+      unknown: '未知',
+    },
+    from: '來自',
+    order: '訂單',
+    noRecords: '暫無佣金記錄',
+    explainTitle: '佣金說明',
+    rules: [
+      '一級分銷：好友購物可獲 10% 佣金',
+      '二級分銷：好友的好友購物可獲 5% 佣金',
+      '三級分銷：間接好友購物可獲 3% 佣金',
+      '團隊長獎長獎勵：團隊總銷售額額外 1%',
+      '訂單完成後 7 天自動結算',
+    ],
+    loadFailed: '加載失敗，請重試',
+  };
+  const comm = typeof commissionsText === 'object' ? commissionsText : commissionsText;
+  
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CommissionData | null>(null);
   const [activeTab, setActiveTab] = useState('all');
@@ -70,20 +110,7 @@ export default function CommissionsPage() {
   };
 
   const getTypeText = (type: string) => {
-    switch (type) {
-      case 'level1':
-        return '一級佣金';
-      case 'level2':
-        return '二級佣金';
-      case 'level3':
-        return '三級佣金';
-      case 'team_leader':
-        return '團隊長獎勵';
-      case 'activity':
-        return '活動獎勵';
-      default:
-        return '其他';
-    }
+    return comm.types[type as keyof typeof comm.types] || comm.types.other;
   };
 
   const getTypeIcon = (type: string) => {
@@ -104,17 +131,17 @@ export default function CommissionsPage() {
   const getStatusBadge = (status: number) => {
     switch (status) {
       case 0:
-        return <Badge variant="secondary">待結算</Badge>;
+        return <Badge variant="secondary">{comm.status.pending}</Badge>;
       case 1:
-        return <Badge className="bg-green-100 text-green-700">已結算</Badge>;
+        return <Badge className="bg-green-100 text-green-700">{comm.status.settled}</Badge>;
       default:
-        return <Badge variant="outline">未知</Badge>;
+        return <Badge variant="outline">{comm.status.unknown}</Badge>;
     }
   };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return date.toLocaleString('zh-TW', {
+    return date.toLocaleString(isRTL ? 'ar-SA' : 'zh-TW', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -141,7 +168,7 @@ export default function CommissionsPage() {
   if (!data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>加載失敗，請重試</p>
+        <p>{comm.loadFailed}</p>
       </div>
     );
   }
@@ -152,11 +179,11 @@ export default function CommissionsPage() {
     <div className="min-h-screen bg-muted/20">
       {/* 顶部 */}
       <div className="bg-card border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex items-center gap-3">
+        <div className={`container mx-auto px-4 py-3 flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <Link href="/distribution">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-semibold">佣金明細</h1>
+          <h1 className="text-lg font-semibold">{comm.title}</h1>
         </div>
       </div>
 
@@ -166,13 +193,13 @@ export default function CommissionsPage() {
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground">本月佣金</p>
+                <p className="text-xs text-muted-foreground">{comm.monthCommission}</p>
                 <p className="text-xl font-bold text-green-600 mt-1">
                   HK${data.month_commission.toFixed(2)}
                 </p>
               </div>
               <div className="text-center p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground">待結算</p>
+                <p className="text-xs text-muted-foreground">{comm.pendingCommission}</p>
                 <p className="text-xl font-bold text-amber-600 mt-1">
                   HK${data.frozen_commission.toFixed(2)}
                 </p>
@@ -184,28 +211,28 @@ export default function CommissionsPage() {
         {/* Tab 切换 */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="all">全部</TabsTrigger>
-            <TabsTrigger value="pending">待結算</TabsTrigger>
-            <TabsTrigger value="settled">已結算</TabsTrigger>
+            <TabsTrigger value="all">{comm.tabs.all}</TabsTrigger>
+            <TabsTrigger value="pending">{comm.tabs.pending}</TabsTrigger>
+            <TabsTrigger value="settled">{comm.tabs.settled}</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-4 space-y-3">
             {filteredCommissions.length === 0 ? (
               <div className="text-center py-12">
                 <DollarSign className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">暫無佣金記錄</p>
+                <p className="text-muted-foreground">{comm.noRecords}</p>
               </div>
             ) : (
               filteredCommissions.map((commission, index) => (
                 <Card key={index}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
+                    <div className={`flex items-start justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+                      <div className={`flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
                         <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg">
                           {getTypeIcon(commission.type)}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
+                        <div className={isRTL ? 'text-right' : ''}>
+                          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <p className="font-medium">{getTypeText(commission.type)}</p>
                             {getStatusBadge(commission.status)}
                           </div>
@@ -213,11 +240,11 @@ export default function CommissionsPage() {
                             {commission.product_name}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            訂單：{commission.order_no}
+                            {comm.order}：{commission.order_no}
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className={`text-right ${isRTL ? 'text-left' : ''}`}>
                         <p className="text-lg font-bold text-green-600">
                           +HK${commission.amount.toFixed(2)}
                         </p>
@@ -227,9 +254,9 @@ export default function CommissionsPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground">
+                    <div className={`mt-3 pt-3 border-t flex items-center justify-between text-xs text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <span>
-                        {commission.buyer_name && `來自 ${commission.buyer_name}`}
+                        {commission.buyer_name && `${comm.from} ${commission.buyer_name}`}
                       </span>
                       <span>{formatDate(commission.created_at)}</span>
                     </div>
@@ -243,16 +270,14 @@ export default function CommissionsPage() {
         {/* 佣金说明 */}
         <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200/50">
           <CardContent className="py-4">
-            <h3 className="font-medium mb-2 flex items-center gap-2">
+            <h3 className={`font-medium mb-2 flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <TrendingUp className="w-4 h-4" />
-              佣金說明
+              {comm.explainTitle}
             </h3>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>· 一級分銷：好友購物可獲 10% 佣金</li>
-              <li>· 二級分銷：好友的好友購物可獲 5% 佣金</li>
-              <li>· 三級分銷：間接好友購物可獲 3% 佣金</li>
-              <li>· 團隊長獎長獎勵：團隊總銷售額額外 1%</li>
-              <li>· 訂單完成後 7 天自動結算</li>
+              {comm.rules.map((rule: string, index: number) => (
+                <li key={index}>· {rule}</li>
+              ))}
             </ul>
           </CardContent>
         </Card>
