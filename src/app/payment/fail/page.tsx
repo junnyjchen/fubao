@@ -34,10 +34,10 @@ function PaymentFailContent() {
 
           {/* 失败标题 */}
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            {pm.failed.title}
+            {pm.failedTitle}
           </h1>
           <p className="text-muted-foreground mb-6">
-            {error || pm.failed.message}
+            {error || pm.failedMessage}
           </p>
 
           {/* 订单信息 */}
@@ -54,7 +54,7 @@ function PaymentFailContent() {
               <Button asChild className="w-full" size="lg">
                 <Link href={`/order/${orderId}`}>
                   <RefreshCw className={`w-4 h-4 ${isRTL ? 'ms-2' : 'me-2'}`} />
-                  {pm.failed.retry}
+                  {pm.retryPayment}
                 </Link>
               </Button>
             )}
@@ -73,7 +73,7 @@ function PaymentFailContent() {
 
           {/* 客服提示 */}
           <div className={`mt-8 text-xs text-muted-foreground ${isRTL ? 'text-end' : ''}`}>
-            <p>{pm.failed.contactSupport}</p>
+            <p>{pm.contactSupportText}</p>
             <Button asChild variant="link" className={`h-auto p-0 mt-1 ${isRTL ? 'text-end' : ''}`}>
               <Link href="/help">
                 <MessageCircle className={`w-3 h-3 ${isRTL ? 'ms-1' : 'me-1'}`} />

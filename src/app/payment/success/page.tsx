@@ -35,10 +35,10 @@ function PaymentSuccessContent() {
 
           {/* 成功标题 */}
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            {pm.success.title}
+            {pm.successTitle}
           </h1>
           <p className="text-muted-foreground mb-6">
-            {pm.success.message}
+            {pm.successMessage}
           </p>
 
           {/* 订单信息 */}
@@ -55,7 +55,7 @@ function PaymentSuccessContent() {
               <Button asChild className="w-full" size="lg">
                 <Link href={`/order/${orderId}`}>
                   <ShoppingBag className={`w-4 h-4 ${isRTL ? 'ms-2' : 'me-2'}`} />
-                  {pm.success.viewOrder}
+                  {pm.viewOrder}
                 </Link>
               </Button>
             )}

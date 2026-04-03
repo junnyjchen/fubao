@@ -30,9 +30,9 @@ function PaymentCancelContent() {
             <XCircle className="w-10 h-10 text-orange-600" />
           </div>
 
-          <h1 className="text-2xl font-bold mb-2">{pm.cancelled.title}</h1>
+          <h1 className="text-2xl font-bold mb-2">{pm.cancelledTitle}</h1>
           <p className="text-muted-foreground mb-6">
-            {pm.cancelled.message}
+            {pm.cancelledMessage}
           </p>
 
           {paymentId && (
@@ -44,7 +44,7 @@ function PaymentCancelContent() {
 
           <div className="flex flex-col gap-3">
             <Button asChild className="w-full">
-              <Link href="/user/orders">{pm.cancelled.backToOrder}</Link>
+              <Link href="/user/orders">{pm.backToOrderText}</Link>
             </Button>
             <Button variant="outline" asChild className="w-full">
               <Link href="/shop">
