@@ -21,6 +21,7 @@ import {
   QrCode,
   HelpCircle,
 } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 /**
  * 证书验证页面组件
@@ -28,6 +29,9 @@ import {
  */
 export function CertificateVerifyPage() {
   const router = useRouter();
+  const { t, isRTL } = useI18n();
+  const cert = t.certificatePage;
+  
   const [certificateNo, setCertificateNo] = useState('');
   const [error, setError] = useState('');
 
@@ -36,7 +40,7 @@ export function CertificateVerifyPage() {
    */
   const handleVerify = () => {
     if (!certificateNo.trim()) {
-      setError('請輸入證書編號');
+      setError(cert.search.error);
       return;
     }
 
@@ -56,10 +60,10 @@ export function CertificateVerifyPage() {
             <Shield className="w-8 h-8" />
           </div>
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            一物一證認證查詢
+            {cert.title}
           </h1>
           <p className="text-primary-foreground/80">
-            驗證您購買商品的真偽與認證信息
+            {cert.subtitle}
           </p>
         </div>
       </header>
@@ -68,18 +72,18 @@ export function CertificateVerifyPage() {
         {/* 查询卡片 */}
         <Card className="max-w-xl mx-auto shadow-lg">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="flex items-center justify-center gap-2">
+            <CardTitle className={`flex items-center justify-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <Search className="w-5 h-5" />
-              證書查詢
+              {cert.search.title}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="certificateNo">證書編號</Label>
+                <Label htmlFor="certificateNo">{cert.search.label}</Label>
                 <Input
                   id="certificateNo"
-                  placeholder="請輸入證書編號，如：FB-2024-00001"
+                  placeholder={cert.search.placeholder}
                   value={certificateNo}
                   onChange={(e) => {
                     setCertificateNo(e.target.value);
@@ -88,7 +92,7 @@ export function CertificateVerifyPage() {
                   className="h-12 text-lg"
                 />
                 {error && (
-                  <p className="text-sm text-destructive flex items-center gap-1">
+                  <p className={`text-sm text-destructive flex items-center gap-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
                     <AlertCircle className="w-4 h-4" />
                     {error}
                   </p>
@@ -99,12 +103,12 @@ export function CertificateVerifyPage() {
                 className="w-full h-12 text-lg"
                 onClick={handleVerify}
               >
-                <Search className="w-5 h-5 mr-2" />
-                查詢驗證
+                <Search className={`w-5 h-5 ${isRTL ? 'ms-2' : 'me-2'}`} />
+                {cert.search.button}
               </Button>
 
               <p className="text-center text-sm text-muted-foreground">
-                證書編號可在商品包裝或認證標籤上找到
+                {cert.search.hint}
               </p>
             </div>
           </CardContent>
@@ -117,9 +121,9 @@ export function CertificateVerifyPage() {
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
-              <h3 className="font-semibold mb-2">真品驗證</h3>
+              <h3 className="font-semibold mb-2">{cert.features.auth.title}</h3>
               <p className="text-sm text-muted-foreground">
-                每件商品都有唯一證書編號，確保正品來源
+                {cert.features.auth.desc}
               </p>
             </CardContent>
           </Card>
@@ -129,9 +133,9 @@ export function CertificateVerifyPage() {
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
                 <Award className="w-6 h-6 text-blue-600" />
               </div>
-              <h3 className="font-semibold mb-2">認證信息</h3>
+              <h3 className="font-semibold mb-2">{cert.features.info.title}</h3>
               <p className="text-sm text-muted-foreground">
-                查看商品的材質、產地、開光法師等詳細信息
+                {cert.features.info.desc}
               </p>
             </CardContent>
           </Card>
@@ -141,9 +145,9 @@ export function CertificateVerifyPage() {
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
                 <Shield className="w-6 h-6 text-purple-600" />
               </div>
-              <h3 className="font-semibold mb-2">品質保障</h3>
+              <h3 className="font-semibold mb-2">{cert.features.guarantee.title}</h3>
               <p className="text-sm text-muted-foreground">
-                經認證的商品享有品質保障與售後服務
+                {cert.features.guarantee.desc}
               </p>
             </CardContent>
           </Card>
@@ -152,28 +156,28 @@ export function CertificateVerifyPage() {
         {/* 常见问题 */}
         <Card className="mt-12 max-w-xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className={`text-lg flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <HelpCircle className="w-5 h-5" />
-              常見問題
+              {t.common.faq}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="font-medium mb-1">證書編號在哪裡？</p>
+              <p className="font-medium mb-1">{t.common.faqItems?.certificateWhere || '證書編號在哪裡？'}</p>
               <p className="text-sm text-muted-foreground">
-                證書編號通常位於商品包裝上的認證標籤，或隨商品附帶的證書卡片上。
+                {t.common.faqItems?.certificateWhereDesc || '證書編號通常位於商品包裝上的認證標籤，或隨商品附帶的證書卡片上。'}
               </p>
             </div>
             <div>
-              <p className="font-medium mb-1">證書驗證失敗怎麼辦？</p>
+              <p className="font-medium mb-1">{t.common.faqItems?.certificateFailed || '證書驗證失敗怎麼辦？'}</p>
               <p className="text-sm text-muted-foreground">
-                請確認證書編號輸入正確。如仍無法驗證，請聯繫客服或商品商戶。
+                {t.common.faqItems?.certificateFailedDesc || '請確認證書編號輸入正確。如仍無法驗證，請聯繫客服或商品商戶。'}
               </p>
             </div>
             <div>
-              <p className="font-medium mb-1">證書過期還有效嗎？</p>
+              <p className="font-medium mb-1">{t.common.faqItems?.certificateExpired || '證書過期還有效嗎？'}</p>
               <p className="text-sm text-muted-foreground">
-                證書過期表示認證期限已到，但不影響商品本身的真實性。可聯繫商戶申請續期。
+                {t.common.faqItems?.certificateExpiredDesc || '證書過期表示認證期限已到，但不影響商品本身的真實性。可聯繫商戶申請續期。'}
               </p>
             </div>
           </CardContent>

@@ -78,6 +78,57 @@ export const translations = {
         temples: '宮觀百科',
       },
     },
+    // 百科页面
+    wikiPage: {
+      title: '玄門文化百科',
+      subtitle: '傳承千年道家智慧，弘揚正統玄門文化',
+      searchPlaceholder: '搜索百科知識...',
+      search: '搜索',
+      hotTags: '熱門標籤',
+      hotTagsList: ['符箓入門', '道家基礎', '開光儀式', '風水知識', '法器介紹', '道教歷史', '符咒禁忌', '修行方法'],
+      categories: '知識分類',
+      allArticles: '全部文章',
+      featured: '精選推薦',
+      featuredBadge: '精選',
+      articleList: '全部文章',
+      noArticles: '暫無相關文章',
+      sort: {
+        newest: '最新發布',
+        popular: '最多瀏覽',
+        likes: '最多點讚',
+      },
+      info: {
+        views: '瀏覽',
+        likes: '點讚',
+      },
+    },
+    // 证书验证页面
+    certificatePage: {
+      title: '一物一證認證查詢',
+      subtitle: '驗證您購買商品的真偽與認證信息',
+      search: {
+        title: '證書查詢',
+        label: '證書編號',
+        placeholder: '請輸入證書編號，如：FB-2024-00001',
+        button: '查詢驗證',
+        hint: '證書編號可在商品包裝或認證標籤上找到',
+        error: '請輸入證書編號',
+      },
+      features: {
+        auth: {
+          title: '真品驗證',
+          desc: '每件商品都有唯一證書編號，確保正品來源',
+        },
+        info: {
+          title: '認證信息',
+          desc: '查看商品的材質、產地、開光法師等詳細信息',
+        },
+        guarantee: {
+          title: '品質保障',
+          desc: '經認證的商品享有品質保障與售後服務',
+        },
+      },
+    },
     // 商城
     shop: {
       title: '寶品商城',
@@ -1271,6 +1322,16 @@ export const translations = {
       loadFailed: '加載失敗',
       operationFailed: '操作失敗',
       required: '*',
+      readMore: '閱讀全文',
+      faq: '常見問題',
+      faqItems: {
+        certificateWhere: '證書編號在哪裡？',
+        certificateWhereDesc: '證書編號通常位於商品包裝上的認證標籤，或隨商品附帶的證書卡片上。',
+        certificateFailed: '證書驗證失敗怎麼辦？',
+        certificateFailedDesc: '請確認證書編號輸入正確。如仍無法驗證，請聯繫客服或商品商戶。',
+        certificateExpired: '證書過期還有效嗎？',
+        certificateExpiredDesc: '證書過期表示認證期限已到，但不影響商品本身的真實性。可聯繫商戶申請續期。',
+      },
     },
     // 新闻类型
     newsTypes: {
@@ -1360,6 +1421,57 @@ export const translations = {
         qi: 'دليل الآثار',
         knowledge: 'قاعدة المعرفة',
         temples: 'المعابد والمزارات',
+      },
+    },
+    // 百科页面
+    wikiPage: {
+      title: 'موسوعة الثقافة الروحية',
+      subtitle: 'إرث آلاف السنين من الحكمة الطاوية',
+      searchPlaceholder: 'ابحث في الموسوعة...',
+      search: 'بحث',
+      hotTags: 'الوسوم الشائعة',
+      hotTagsList: ['مقدمة التعويذات', 'أساسيات الطاوية', 'طقوس التكريس', 'معرفة فنغ شوي', 'مقدمة الآثار', 'تاريخ الطاوية', 'محظورات التعويذات', 'طرق الممارسة'],
+      categories: 'تصنيفات المعرفة',
+      allArticles: 'جميع المقالات',
+      featured: 'موصى به',
+      featuredBadge: 'مميز',
+      articleList: 'جميع المقالات',
+      noArticles: 'لا توجد مقالات ذات صلة',
+      sort: {
+        newest: 'الأحدث',
+        popular: 'الأكثر مشاهدة',
+        likes: 'الأكثر إعجاباً',
+      },
+      info: {
+        views: 'مشاهدات',
+        likes: 'إعجابات',
+      },
+    },
+    // 证书验证页面
+    certificatePage: {
+      title: 'التحقق من الشهادة',
+      subtitle: 'تحقق من صحة المنتج ومعلومات الاعتماد',
+      search: {
+        title: 'البحث عن الشهادة',
+        label: 'رقم الشهادة',
+        placeholder: 'أدخل رقم الشهادة، مثل: FB-2024-00001',
+        button: 'تحقق',
+        hint: 'يمكن العثور على رقم الشهادة على تغليف المنتج أو ملصق الاعتماد',
+        error: 'الرجاء إدخال رقم الشهادة',
+      },
+      features: {
+        auth: {
+          title: 'التحقق من الأصالة',
+          desc: 'كل منتج له رقم شهادة فريد لضمان المصدر الأصلي',
+        },
+        info: {
+          title: 'معلومات الاعتماد',
+          desc: 'عرض تفاصيل المواد والمنشأ والمعلم الروحي',
+        },
+        guarantee: {
+          title: 'ضمان الجودة',
+          desc: 'المنتجات المعتمدة تتمتع بضمان الجودة وخدمة ما بعد البيع',
+        },
       },
     },
     shop: {
@@ -2394,6 +2506,16 @@ export const translations = {
       loadFailed: 'فشل التحميل',
       operationFailed: 'فشلت العملية',
       required: '*',
+      readMore: 'اقرأ المزيد',
+      faq: 'الأسئلة الشائعة',
+      faqItems: {
+        certificateWhere: 'أين رقم الشهادة؟',
+        certificateWhereDesc: 'رقم الشهادة عادة ما يكون على ملصق الاعتماد على تغليف المنتج أو بطاقة الشهادة المرفقة.',
+        certificateFailed: 'ماذا لو فشل التحقق؟',
+        certificateFailedDesc: 'تأكد من إدخال رقم الشهادة بشكل صحيح. إذا لم تنجح، تواصل مع خدمة العملاء أو التاجر.',
+        certificateExpired: 'هل الشهادة المنتهية لا تزال صالحة؟',
+        certificateExpiredDesc: 'انتهاء الشهادة يعني انتهاء فترة الاعتماد، لكن هذا لا يؤثر على أصالة المنتج. يمكنك التواصل مع التاجر للتجديد.',
+      },
     },
     newsTypes: {
       global: 'أخبار عالمية',
@@ -2481,6 +2603,57 @@ export const translations = {
         qi: 'Artifacts Guide',
         knowledge: 'Knowledge Base',
         temples: 'Temples & Shrines',
+      },
+    },
+    // Wiki Page
+    wikiPage: {
+      title: 'Spiritual Culture Encyclopedia',
+      subtitle: 'Inheriting thousands of years of Taoist wisdom',
+      searchPlaceholder: 'Search encyclopedia...',
+      search: 'Search',
+      hotTags: 'Popular Tags',
+      hotTagsList: ['Talisman Intro', 'Taoist Basics', 'Consecration Rituals', 'Feng Shui', 'Artifacts Guide', 'Taoist History', 'Talisman Taboos', 'Practice Methods'],
+      categories: 'Knowledge Categories',
+      allArticles: 'All Articles',
+      featured: 'Featured',
+      featuredBadge: 'Featured',
+      articleList: 'All Articles',
+      noArticles: 'No related articles',
+      sort: {
+        newest: 'Newest',
+        popular: 'Most Viewed',
+        likes: 'Most Liked',
+      },
+      info: {
+        views: 'Views',
+        likes: 'Likes',
+      },
+    },
+    // Certificate Page
+    certificatePage: {
+      title: 'Certificate Verification',
+      subtitle: 'Verify the authenticity of your purchase',
+      search: {
+        title: 'Certificate Lookup',
+        label: 'Certificate Number',
+        placeholder: 'Enter certificate number, e.g., FB-2024-00001',
+        button: 'Verify',
+        hint: 'Certificate number can be found on product packaging or certification label',
+        error: 'Please enter certificate number',
+      },
+      features: {
+        auth: {
+          title: 'Authenticity Verification',
+          desc: 'Each product has a unique certificate number to ensure authentic origin',
+        },
+        info: {
+          title: 'Certification Info',
+          desc: 'View details of materials, origin, consecrating master, etc.',
+        },
+        guarantee: {
+          title: 'Quality Guarantee',
+          desc: 'Certified products enjoy quality guarantee and after-sales service',
+        },
       },
     },
     shop: {
@@ -3515,6 +3688,16 @@ export const translations = {
       loadFailed: 'Failed to load',
       operationFailed: 'Operation failed',
       required: '*',
+      readMore: 'Read More',
+      faq: 'FAQ',
+      faqItems: {
+        certificateWhere: 'Where is the certificate number?',
+        certificateWhereDesc: 'The certificate number is usually on the certification label on the product packaging or the certificate card included with the product.',
+        certificateFailed: 'What if verification fails?',
+        certificateFailedDesc: 'Please make sure the certificate number is entered correctly. If it still fails, contact customer service or the merchant.',
+        certificateExpired: 'Is an expired certificate still valid?',
+        certificateExpiredDesc: 'An expired certificate means the certification period has ended, but it does not affect the authenticity of the product. You can contact the merchant for renewal.',
+      },
     },
     newsTypes: {
       global: 'Global News',

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import { WikiSkeleton } from '@/components/common/PageSkeletons';
+import { useI18n } from '@/lib/i18n';
 
 interface WikiArticle {
   id: number;
@@ -57,6 +58,9 @@ interface WikiCategory {
 }
 
 export default function WikiPage() {
+  const { t, isRTL } = useI18n();
+  const wiki = t.wikiPage;
+  
   const [articles, setArticles] = useState<WikiArticle[]>([]);
   const [categories, setCategories] = useState<WikiCategory[]>([]);
   const [featuredArticles, setFeaturedArticles] = useState<WikiArticle[]>([]);
@@ -111,35 +115,29 @@ export default function WikiPage() {
     loadData();
   };
 
-  // 热门标签
-  const hotTags = [
-    '符箓入門', '道家基礎', '開光儀式', '風水知識',
-    '法器介紹', '道教歷史', '符咒禁忌', '修行方法',
-  ];
-
   return (
     <div className="min-h-screen bg-muted/20">
       {/* Hero Section */}
       <section className="bg-primary text-primary-foreground py-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-80" />
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">玄門文化百科</h1>
+          <h1 className="text-3xl md:text-4xl font-bold mb-4">{wiki.title}</h1>
           <p className="text-lg opacity-80 mb-8">
-            傳承千年道家智慧，弘揚正統玄門文化
+            {wiki.subtitle}
           </p>
           
           {/* 搜索框 */}
           <div className="max-w-2xl mx-auto relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className={`absolute ${isRTL ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground`} />
             <Input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="搜索百科知識..."
-              className="pl-12 h-12 bg-primary-foreground text-foreground"
+              placeholder={wiki.searchPlaceholder}
+              className={`${isRTL ? 'pr-12' : 'pl-12'} h-12 bg-primary-foreground text-foreground`}
             />
-            <Button className="absolute right-2 top-1/2 -translate-y-1/2" onClick={handleSearch}>
-              搜索
+            <Button className={`absolute ${isRTL ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2`} onClick={handleSearch}>
+              {wiki.search}
             </Button>
           </div>
         </div>
@@ -148,12 +146,12 @@ export default function WikiPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* 热门标签 */}
         <section className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
+          <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <Flame className="w-5 h-5 text-orange-500" />
-            <h2 className="font-semibold">熱門標籤</h2>
+            <h2 className="font-semibold">{wiki.hotTags}</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {hotTags.map((tag) => (
+          <div className={`flex flex-wrap gap-2 ${isRTL ? 'justify-end' : ''}`}>
+            {wiki.hotTagsList.map((tag: string) => (
               <Badge
                 key={tag}
                 variant="outline"
@@ -169,12 +167,12 @@ export default function WikiPage() {
           </div>
         </section>
 
-        <div className="grid lg:grid-cols-4 gap-8">
+        <div className={`grid lg:grid-cols-4 gap-8 ${isRTL ? 'lg:flex-row-reverse' : ''}`}>
           {/* 左侧分类 */}
           <aside className="lg:col-span-1">
             <Card className="sticky top-20">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">知識分類</CardTitle>
+                <CardTitle className="text-base">{wiki.categories}</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
@@ -185,7 +183,7 @@ export default function WikiPage() {
                     }`}
                     onClick={() => { setSelectedCategory('all'); setCurrentPage(1); }}
                   >
-                    <span>全部文章</span>
+                    <span>{wiki.allArticles}</span>
                     <Badge variant="secondary">
                       {categories.reduce((sum, c) => sum + c.article_count, 0)}
                     </Badge>
@@ -213,9 +211,9 @@ export default function WikiPage() {
             {/* 精选文章 */}
             {featuredArticles.length > 0 && (
               <section>
-                <div className="flex items-center gap-2 mb-4">
+                <div className={`flex items-center gap-2 mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                   <TrendingUp className="w-5 h-5 text-primary" />
-                  <h2 className="font-semibold text-lg">精選推薦</h2>
+                  <h2 className="font-semibold text-lg">{wiki.featured}</h2>
                 </div>
                 <div className="grid md:grid-cols-3 gap-4">
                   {featuredArticles.map((article) => (
@@ -236,14 +234,14 @@ export default function WikiPage() {
                           <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
                             {article.summary}
                           </p>
-                          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                          <div className={`flex items-center gap-4 mt-3 text-xs text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
                             <span className="flex items-center gap-1">
                               <Eye className="w-3 h-3" />
-                              {article.views}
+                              {article.views} {wiki.info.views}
                             </span>
                             <span className="flex items-center gap-1">
                               <Heart className="w-3 h-3" />
-                              {article.likes}
+                              {article.likes} {wiki.info.likes}
                             </span>
                           </div>
                         </CardContent>
@@ -256,16 +254,16 @@ export default function WikiPage() {
 
             {/* 文章列表 */}
             <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-lg">全部文章</h2>
+              <div className={`flex items-center justify-between mb-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <h2 className="font-semibold text-lg">{wiki.articleList}</h2>
                 <Select value={sortBy} onValueChange={(value) => { setSortBy(value); setCurrentPage(1); }}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="newest">最新發布</SelectItem>
-                    <SelectItem value="popular">最多瀏覽</SelectItem>
-                    <SelectItem value="likes">最多點讚</SelectItem>
+                    <SelectItem value="newest">{wiki.sort.newest}</SelectItem>
+                    <SelectItem value="popular">{wiki.sort.popular}</SelectItem>
+                    <SelectItem value="likes">{wiki.sort.likes}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -275,14 +273,14 @@ export default function WikiPage() {
               ) : articles.length === 0 ? (
                 <div className="text-center py-12">
                   <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">暫無相關文章</p>
+                  <p className="text-muted-foreground">{wiki.noArticles}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {articles.map((article) => (
                     <Link key={article.id} href={`/wiki/${article.slug}`}>
                       <Card className="hover:shadow-lg transition-shadow">
-                        <div className="flex flex-col md:flex-row">
+                        <div className={`flex flex-col md:flex-row ${isRTL ? 'md:flex-row-reverse' : ''}`}>
                           {article.cover_image && (
                             <div className="md:w-48 h-32 md:h-auto bg-muted flex-shrink-0 overflow-hidden">
                               <img
@@ -293,18 +291,18 @@ export default function WikiPage() {
                             </div>
                           )}
                           <CardContent className="flex-1 p-4">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className={`flex items-center gap-2 mb-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                               <Badge variant="outline">{article.category_name}</Badge>
                               {article.is_featured && (
-                                <Badge className="bg-orange-500">精選</Badge>
+                                <Badge className="bg-orange-500">{wiki.featuredBadge}</Badge>
                               )}
                             </div>
                             <h3 className="font-medium text-lg mb-2">{article.title}</h3>
                             <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
                               {article.summary}
                             </p>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <div className="flex items-center gap-4">
+                            <div className={`flex items-center justify-between text-xs text-muted-foreground ${isRTL ? 'flex-row-reverse' : ''}`}>
+                              <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   {new Date(article.created_at).toLocaleDateString('zh-TW')}
@@ -318,9 +316,9 @@ export default function WikiPage() {
                                   {article.likes}
                                 </span>
                               </div>
-                              <span className="flex items-center text-primary">
-                                閱讀全文
-                                <ChevronRight className="w-4 h-4" />
+                              <span className={`flex items-center text-primary ${isRTL ? 'flex-row-reverse' : ''}`}>
+                                {t.common.readMore}
+                                <ChevronRight className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
                               </span>
                             </div>
                           </CardContent>
