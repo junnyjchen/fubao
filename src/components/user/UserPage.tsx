@@ -67,19 +67,32 @@ interface UserProfile {
   memberSince: string;
 }
 
-function OrderCard({ order, t, isRTL }: { order: Order; t: any; isRTL: boolean }) {
+// 使用更灵活的翻译类型定义
+type TranslationType = Record<string, any> & {
+  userPage?: {
+    home?: {
+      orderSection?: Record<string, any>;
+      memberLevel?: Record<string, any>;
+      [key: string]: any;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+};
+
+function OrderCard({ order, t, isRTL }: { order: Order; t: TranslationType; isRTL: boolean }) {
   const status = orderStatusMap[order.orderStatus] || orderStatusMap[0];
   const totalItems = order.items.reduce((sum, item) => sum + item.quantity, 0);
   const orderDetailUrl = '/user/orders/' + order.id;
   const payUrl = orderDetailUrl + '?pay=true';
-  const uh = t.userPage.home;
-  const os = uh.orderSection;
+  const uh = t.userPage?.home || {};
+  const os = uh.orderSection || {};
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
       <div className={`bg-muted/50 px-4 py-2 flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
         <div className={`flex items-center gap-4 text-sm ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <span className="text-muted-foreground">{t.userPage.ordersPage.list.orderNo}：</span>
+          <span className="text-muted-foreground">{t.userPage?.ordersPage?.list?.orderNo || '訂單編號'}：</span>
           <span className="font-mono">{order.orderNo}</span>
           <span className="text-muted-foreground">{order.createdAt}</span>
         </div>
@@ -149,17 +162,17 @@ const orderStatusMap: Record<number, { label: string; color: string }> = {
 };
 
 // 会员等级配置 - 使用翻译
-const getMemberLevels = (t: any) => [
-  { level: 1, name: t.userPage.home.memberLevel.normal, minPoints: 0, discount: 1.0, color: 'bg-gray-500' },
-  { level: 2, name: t.userPage.home.memberLevel.bronze, minPoints: 100, discount: 0.98, color: 'bg-orange-600' },
-  { level: 3, name: t.userPage.home.memberLevel.silver, minPoints: 500, discount: 0.95, color: 'bg-gray-400' },
-  { level: 4, name: t.userPage.home.memberLevel.gold, minPoints: 2000, discount: 0.92, color: 'bg-yellow-500' },
-  { level: 5, name: t.userPage.home.memberLevel.diamond, minPoints: 5000, discount: 0.88, color: 'bg-blue-500' },
+const getMemberLevels = (t: TranslationType) => [
+  { level: 1, name: t.userPage?.home?.memberLevel?.normal || '普通會員', minPoints: 0, discount: 1.0, color: 'bg-gray-500' },
+  { level: 2, name: t.userPage?.home?.memberLevel?.bronze || '青銅會員', minPoints: 100, discount: 0.98, color: 'bg-orange-600' },
+  { level: 3, name: t.userPage?.home?.memberLevel?.silver || '白銀會員', minPoints: 500, discount: 0.95, color: 'bg-gray-400' },
+  { level: 4, name: t.userPage?.home?.memberLevel?.gold || '黃金會員', minPoints: 2000, discount: 0.92, color: 'bg-yellow-500' },
+  { level: 5, name: t.userPage?.home?.memberLevel?.diamond || '鑽石會員', minPoints: 5000, discount: 0.88, color: 'bg-blue-500' },
 ];
 
 export function UserPage() {
   const { t, isRTL } = useI18n();
-  const uh = t.userPage.home;
+  const uh = t.userPage?.home || {};
   const memberLevels = getMemberLevels(t);
   const NextIcon = isRTL ? ChevronLeft : ChevronRight;
   

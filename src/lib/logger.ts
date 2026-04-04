@@ -1,293 +1,177 @@
 /**
- * @fileoverview 日志工具函数
- * @description 统一的日志记录和管理工具
+ * @fileoverview 日志工具
+ * @description 统一的日志记录和管理
  * @module lib/logger
  */
 
-import type { LogLevel, LogModule, SystemLog } from '@/app/api/admin/logs/route';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-// 日志配置
-interface LoggerConfig {
-  enabled: boolean;
-  apiUrl: string;
-  batchSize: number;
-  flushInterval: number; // ms
+interface LogEntry {
+  level: LogLevel;
+  message: string;
+  timestamp: string;
+  context?: Record<string, any>;
+  userId?: string;
+  requestId?: string;
 }
 
-// 默认配置
-const defaultConfig: LoggerConfig = {
-  enabled: true,
-  apiUrl: '/api/admin/logs',
-  batchSize: 10,
-  flushInterval: 5000,
-};
+class Logger {
+  private readonly isDevelopment = process.env.NODE_ENV === 'development';
+  private readonly isProduction = process.env.NODE_ENV === 'production';
+  private logs: LogEntry[] = [];
+  private maxLogs = 100;
 
-// 日志缓冲区
-let logBuffer: SystemLog[] = [];
-let flushTimer: NodeJS.Timeout | null = null;
-let config: LoggerConfig = defaultConfig;
-
-/**
- * 配置日志器
- */
-export function configureLogger(newConfig: Partial<LoggerConfig>) {
-  config = { ...config, ...newConfig };
-}
-
-/**
- * 写入日志
- */
-export function log(
-  level: LogLevel,
-  module: LogModule,
-  action: string,
-  message: string,
-  extra?: Partial<SystemLog>
-) {
-  if (!config.enabled) return;
-
-  const logEntry: SystemLog = {
-    level,
-    module,
-    action,
-    message,
-    ...extra,
-    created_at: new Date().toISOString(),
-  };
-
-  // 开发环境直接输出到控制台
-  if (process.env.NODE_ENV === 'development') {
-    const logMethod = level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log';
-    console[logMethod](`[${level.toUpperCase()}] [${module}] ${action}:`, message, extra || '');
+  private formatMessage(level: LogLevel, message: string, context?: Record<string, any>): string {
+    const timestamp = new Date().toISOString();
+    const contextStr = context ? ` ${JSON.stringify(context)}` : '';
+    return `[${timestamp}] [${level.toUpperCase()}] ${message}${contextStr}`;
   }
 
-  // 添加到缓冲区
-  logBuffer.push(logEntry);
-
-  // 达到批量大小时立即刷新
-  if (logBuffer.length >= config.batchSize) {
-    flushLogs();
-  } else {
-    // 启动定时刷新
-    scheduleFlush();
-  }
-}
-
-/**
- * 预设日志方法
- */
-export const logger = {
-  info: (module: LogModule, action: string, message: string, extra?: Partial<SystemLog>) =>
-    log('info', module, action, message, extra),
-  
-  warn: (module: LogModule, action: string, message: string, extra?: Partial<SystemLog>) =>
-    log('warn', module, action, message, extra),
-  
-  error: (module: LogModule, action: string, message: string, extra?: Partial<SystemLog>) =>
-    log('error', module, action, message, extra),
-  
-  debug: (module: LogModule, action: string, message: string, extra?: Partial<SystemLog>) =>
-    log('debug', module, action, message, extra),
-};
-
-/**
- * 安排定时刷新
- */
-function scheduleFlush() {
-  if (flushTimer) return;
-  
-  flushTimer = setTimeout(() => {
-    flushLogs();
-    flushTimer = null;
-  }, config.flushInterval);
-}
-
-/**
- * 刷新日志缓冲区
- */
-async function flushLogs() {
-  if (logBuffer.length === 0) return;
-
-  // 取出当前缓冲区的日志
-  const logsToSend = [...logBuffer];
-  logBuffer = [];
-
-  // 清除定时器
-  if (flushTimer) {
-    clearTimeout(flushTimer);
-    flushTimer = null;
+  private shouldLog(level: LogLevel): boolean {
+    if (this.isDevelopment) return true;
+    // 生产环境只记录 info 及以上级别
+    return level === 'info' || level === 'warn' || level === 'error';
   }
 
-  // 发送日志
-  try {
-    // 批量发送
-    for (const logEntry of logsToSend) {
-      await fetch(config.apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logEntry),
-      });
+  private addToLog(level: LogLevel, message: string, context?: Record<string, any>): void {
+    const entry: LogEntry = {
+      level,
+      message,
+      timestamp: new Date().toISOString(),
+      context,
+    };
+
+    this.logs.push(entry);
+    if (this.logs.length > this.maxLogs) {
+      this.logs.shift();
     }
-  } catch (error) {
-    console.error('Failed to flush logs:', error);
-    // 失败时重新加入缓冲区
-    logBuffer = [...logsToSend, ...logBuffer];
   }
-}
 
-/**
- * 手动刷新
- */
-export async function flushLogger() {
-  await flushLogs();
-}
+  private log(level: LogLevel, message: string, context?: Record<string, any>): void {
+    if (!this.shouldLog(level)) return;
 
-/**
- * 记录API请求日志
- */
-export function logApiRequest(
-  method: string,
-  url: string,
-  params?: Record<string, unknown>,
-  userId?: string
-) {
-  logger.info('api', 'request', `${method} ${url}`, {
-    user_id: userId,
-    request_method: method,
-    request_url: url,
-    request_params: params,
-  });
-}
+    const formattedMessage = this.formatMessage(level, message, context);
+    this.addToLog(level, message, context);
 
-/**
- * 记录API响应日志
- */
-export function logApiResponse(
-  method: string,
-  url: string,
-  status: number,
-  duration: number,
-  userId?: string
-) {
-  const level: LogLevel = status >= 400 ? 'error' : 'info';
-  log(level, 'api', 'response', `${method} ${url} - ${status} (${duration}ms)`, {
-    user_id: userId,
-    request_method: method,
-    request_url: url,
-    response_status: status,
-  });
-}
+    switch (level) {
+      case 'debug':
+        if (this.isDevelopment) console.debug(formattedMessage);
+        break;
+      case 'info':
+        console.log(formattedMessage);
+        break;
+      case 'warn':
+        console.warn(formattedMessage);
+        break;
+      case 'error':
+        console.error(formattedMessage);
+        break;
+    }
+  }
 
-/**
- * 记录用户操作日志
- */
-export function logUserAction(
-  userId: string,
-  userName: string,
-  action: string,
-  message: string,
-  extra?: Partial<SystemLog>
-) {
-  logger.info('user', action, message, {
-    user_id: userId,
-    user_name: userName,
-    ...extra,
-  });
-}
+  debug(message: string, context?: Record<string, any>): void {
+    this.log('debug', message, context);
+  }
 
-/**
- * 记录订单日志
- */
-export function logOrder(
-  orderId: string,
-  action: string,
-  message: string,
-  userId?: string,
-  extra?: Partial<SystemLog>
-) {
-  logger.info('order', action, message, {
-    user_id: userId,
-    request_params: { orderId },
-    ...extra,
-  });
-}
+  info(message: string, context?: Record<string, any>): void {
+    this.log('info', message, context);
+  }
 
-/**
- * 记录支付日志
- */
-export function logPayment(
-  orderId: string,
-  action: string,
-  message: string,
-  extra?: Partial<SystemLog>
-) {
-  logger.info('payment', action, message, {
-    request_params: { orderId },
-    ...extra,
-  });
-}
+  warn(message: string, context?: Record<string, any>): void {
+    this.log('warn', message, context);
+  }
 
-/**
- * 记录错误日志
- */
-export function logError(
-  module: LogModule,
-  action: string,
-  error: Error | unknown,
-  extra?: Partial<SystemLog>
-) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  const errorStack = error instanceof Error ? error.stack : undefined;
+  error(message: string, error?: Error | Record<string, any>, context?: Record<string, any>): void {
+    const errorContext = error instanceof Error
+      ? {
+          ...context,
+          error: {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          },
+        }
+      : { ...context, error };
 
-  logger.error(module, action, errorMessage, {
-    error_stack: errorStack,
-    ...extra,
-  });
-}
+    this.log('error', message, errorContext);
+  }
 
-/**
- * 性能监控日志
- */
-export function logPerformance(
-  operation: string,
-  duration: number,
-  extra?: Record<string, unknown>
-) {
-  const level: LogLevel = duration > 1000 ? 'warn' : 'info';
-  log(level, 'system', 'performance', `${operation} took ${duration}ms`, {
-    request_params: { operation, duration, ...extra },
-  });
-}
-
-/**
- * 测量函数执行时间
- */
-export async function measureAndLog<T>(
-  operation: string,
-  fn: () => Promise<T>,
-  extra?: Record<string, unknown>
-): Promise<T> {
-  const start = performance.now();
-  try {
-    const result = await fn();
-    const duration = performance.now() - start;
-    logPerformance(operation, duration, extra);
-    return result;
-  } catch (error) {
-    const duration = performance.now() - start;
-    logError('system', operation, error, {
-      request_params: { operation, duration, ...extra },
+  // API 日志
+  apiLog(method: string, path: string, statusCode: number, duration: number, context?: Record<string, any>): void {
+    const message = `${method} ${path} - ${statusCode} (${duration}ms)`;
+    this.info(message, {
+      ...context,
+      method,
+      path,
+      statusCode,
+      duration,
+      type: 'api',
     });
-    throw error;
+  }
+
+  // 数据库日志
+  dbLog(operation: string, table: string, duration: number, context?: Record<string, any>): void {
+    const message = `DB ${operation} on ${table} (${duration}ms)`;
+    this.debug(message, {
+      ...context,
+      operation,
+      table,
+      duration,
+      type: 'database',
+    });
+  }
+
+  // 认证日志
+  authLog(action: string, userId?: string, context?: Record<string, any>): void {
+    const message = `Auth ${action}${userId ? ` - User: ${userId}` : ''}`;
+    this.info(message, {
+      ...context,
+      action,
+      userId,
+      type: 'auth',
+    });
+  }
+
+  // 性能日志
+  performanceLog(name: string, duration: number, context?: Record<string, any>): void {
+    const message = `Performance: ${name} took ${duration}ms`;
+    this.warn(duration > 1000 ? message : `Slow ${message}`, {
+      ...context,
+      name,
+      duration,
+      type: 'performance',
+      slow: duration > 1000,
+    });
+  }
+
+  // 获取日志
+  getLogs(level?: LogLevel): LogEntry[] {
+    if (level) {
+      return this.logs.filter((log) => log.level === level);
+    }
+    return [...this.logs];
+  }
+
+  // 清除日志
+  clearLogs(): void {
+    this.logs = [];
+  }
+
+  // 错误报告（生产环境可集成错误追踪服务）
+  reportError(error: Error, context?: Record<string, any>): void {
+    this.error('Error reported', error, context);
+
+    // 这里可以集成 Sentry、LogRocket 等错误追踪服务
+    if (this.isProduction) {
+      // 示例：集成 Sentry
+      // Sentry.captureException(error, { extra: context });
+    }
   }
 }
 
-// 页面卸载时刷新日志
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    flushLogs();
-  });
-}
+// 创建单例
+const logger = new Logger();
 
-// 导出便捷方法
+// 导出单例和类
+export { logger, Logger };
 export default logger;

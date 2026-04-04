@@ -6,7 +6,7 @@
 
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,6 @@ import {
   RotateCcw,
   Clock,
   MessageSquare,
-  Calendar,
   Gift,
   Flame,
 } from 'lucide-react';
@@ -88,13 +87,7 @@ export function UserLayout({ children, title, description }: UserLayoutProps) {
   }, [user, loading]);
 
   // 获取签到信息
-  useEffect(() => {
-    if (user) {
-      fetchSigninInfo();
-    }
-  }, [user]);
-
-  const fetchSigninInfo = async () => {
+  const fetchSigninInfo = useCallback(async () => {
     try {
       const res = await fetch('/api/user/signin');
       const data = await res.json();
@@ -104,7 +97,13 @@ export function UserLayout({ children, title, description }: UserLayoutProps) {
     } catch (error) {
       console.error('获取签到信息失败:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchSigninInfo();
+    }
+  }, [user, fetchSigninInfo]);
 
   /**
    * 判断菜单项是否激活
