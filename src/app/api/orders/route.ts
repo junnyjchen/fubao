@@ -143,7 +143,9 @@ export async function POST(request: Request) {
     
     const body = await request.json();
 
-    const { cartItemIds, address_id, shippingInfo, coupon_id, remark } = body;
+    // 支持两种参数命名方式
+    const cartItemIds = body.cart_item_ids || body.cartItemIds;
+    const { address_id, shippingInfo, coupon_id, remark } = body;
 
     if (!cartItemIds || cartItemIds.length === 0) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
