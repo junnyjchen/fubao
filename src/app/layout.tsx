@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import './globals.css';
+import 'react-quill/dist/quill.snow.css';
 import { Header } from '@/components/common/Header';
 import { Footer } from '@/components/common/Footer';
 import { FloatingAIButton } from '@/components/ai/FloatingAIButton';

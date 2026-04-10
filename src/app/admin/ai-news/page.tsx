@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Edit, Trash2, Save, Play, Pause, Eye, CheckCircle, XCircle, RefreshCw, Zap, Globe, Clock, Search } from 'lucide-react';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Loader2, Plus, Edit, Trash2, Save, Play, Pause, Eye, CheckCircle, XCircle, RefreshCw, Zap, Globe, Clock, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -82,9 +83,14 @@ interface AutoPublishTask {
 
 interface AIGeneratedArticle {
   id: number;
+  sourceId?: number;
   originalTitle: string;
+  originalContent?: string;
+  originalUrl?: string;
   translatedTitle?: string;
   translatedContent?: string;
+  summary?: string;
+  cover?: string;
   status: string;
   createdAt: string;
   aiModel?: string;
@@ -116,6 +122,9 @@ export default function AINewsPage() {
   const [articles, setArticles] = useState<AIGeneratedArticle[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(true);
   const [runningTask, setRunningTask] = useState<number | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<AIGeneratedArticle | null>(null);
+  const [showArticleDialog, setShowArticleDialog] = useState(false);
+  const [editingArticleContent, setEditingArticleContent] = useState({ title: '', content: '', summary: '' });
 
   // 加载AI配置
   const loadAIConfigs = useCallback(async () => {
@@ -679,7 +688,7 @@ export default function AINewsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => {/* 查看详情 */}}>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedArticle(article); setEditingArticleContent({ title: article.translatedTitle || '', content: article.translatedContent || '', summary: article.summary || '' }); setShowArticleDialog(true); }}>
                               <Eye className="w-4 h-4" />
                             </Button>
                             {article.status === 'pending' && (
@@ -899,9 +908,113 @@ export default function AINewsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 文章详情/编辑对话框 */}
+      <Dialog open={showArticleDialog} onOpenChange={setShowArticleDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>文章详情</DialogTitle>
+            <DialogDescription>查看并编辑AI生成的文章内容</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* 原文信息 */}
+            <div className="bg-muted/50 p-3 rounded-lg">
+              <p className="text-sm font-medium text-muted-foreground mb-1">原文标题</p>
+              <p className="text-sm">{selectedArticle?.originalTitle}</p>
+              {selectedArticle?.originalContent && (
+                <>
+                  <p className="text-sm font-medium text-muted-foreground mt-3 mb-1">原文内容</p>
+                  <p className="text-sm whitespace-pre-wrap">{selectedArticle.originalContent}</p>
+                </>
+              )}
+              {selectedArticle?.originalUrl && (
+                <a href={selectedArticle.originalUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline mt-2 block">
+                  查看原文链接
+                </a>
+              )}
+            </div>
+
+            {/* 编辑区域 */}
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <Label>翻译标题</Label>
+                <Input 
+                  value={editingArticleContent.title} 
+                  onChange={(e) => setEditingArticleContent({ ...editingArticleContent, title: e.target.value })} 
+                  placeholder="输入翻译后的标题"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>文章摘要</Label>
+                <Textarea 
+                  value={editingArticleContent.summary} 
+                  onChange={(e) => setEditingArticleContent({ ...editingArticleContent, summary: e.target.value })} 
+                  placeholder="输入文章摘要"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label>文章内容</Label>
+                <RichTextEditor 
+                  value={editingArticleContent.content} 
+                  onChange={(content) => setEditingArticleContent({ ...editingArticleContent, content })} 
+                  placeholder="使用富文本编辑器编辑文章内容"
+                />
+              </div>
+            </div>
+
+            {/* 状态 */}
+            <div className="flex items-center gap-4 pt-4 border-t">
+              <Badge variant={
+                selectedArticle?.status === 'published' ? 'default' :
+                selectedArticle?.status === 'approved' ? 'secondary' :
+                selectedArticle?.status === 'rejected' ? 'destructive' : 'outline'
+              }>
+                {selectedArticle?.status === 'published' ? '已发布' :
+                 selectedArticle?.status === 'approved' ? '已审核' :
+                 selectedArticle?.status === 'rejected' ? '已拒绝' : '待审核'}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                使用模型: {selectedArticle?.aiModel || '-'}
+              </span>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowArticleDialog(false)}>关闭</Button>
+            <Button variant="destructive" onClick={() => updateArticleStatus(selectedArticle!.id, 'rejected')}>拒绝</Button>
+            <Button variant="default" onClick={() => updateArticleStatus(selectedArticle!.id, 'approved')}>审核通过</Button>
+            <Button onClick={async () => {
+              // 保存编辑内容
+              try {
+                const res = await fetch(`/api/ai-news/articles/${selectedArticle!.id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    translatedTitle: editingArticleContent.title,
+                    translatedContent: editingArticleContent.content,
+                    summary: editingArticleContent.summary,
+                  }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  toast.success('文章已保存');
+                  setShowArticleDialog(false);
+                  loadArticles();
+                } else {
+                  toast.error(data.error || '保存失败');
+                }
+              } catch (error) {
+                toast.error('保存失败');
+              }
+            }}>
+              <Save className="w-4 h-4 mr-2" />
+              保存编辑
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-// 添加缺失的导入
-import { FileText } from 'lucide-react';
