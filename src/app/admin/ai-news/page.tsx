@@ -125,6 +125,12 @@ export default function AINewsPage() {
   const [selectedArticle, setSelectedArticle] = useState<AIGeneratedArticle | null>(null);
   const [showArticleDialog, setShowArticleDialog] = useState(false);
   const [editingArticleContent, setEditingArticleContent] = useState({ title: '', content: '', summary: '' });
+  const [articleFilter, setArticleFilter] = useState<string>('all');
+  const [articlePage, setArticlePage] = useState(1);
+  const [articleTotal, setArticleTotal] = useState(0);
+  const [selectedArticles, setSelectedArticles] = useState<number[]>([]);
+  const [articleStats, setArticleStats] = useState({ total: 0, pending: 0, approved: 0, published: 0, rejected: 0 });
+  const [previewMode, setPreviewMode] = useState(false);
 
   // 加载AI配置
   const loadAIConfigs = useCallback(async () => {
@@ -174,17 +180,35 @@ export default function AINewsPage() {
   // 加载生成的文章
   const loadArticles = useCallback(async () => {
     try {
-      const res = await fetch('/api/ai-news/articles');
+      const params = new URLSearchParams();
+      if (articleFilter !== 'all') {
+        params.set('status', articleFilter);
+      }
+      params.set('page', articlePage.toString());
+      params.set('limit', '10');
+      
+      const res = await fetch(`/api/ai-news/articles?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
         setArticles(data.data || []);
+        setArticleTotal(data.pagination?.total || 0);
+        
+        // 计算统计
+        const allData = data.data || [];
+        setArticleStats({
+          total: data.pagination?.total || 0,
+          pending: allData.filter((a: AIGeneratedArticle) => a.status === 'pending').length,
+          approved: allData.filter((a: AIGeneratedArticle) => a.status === 'approved').length,
+          published: allData.filter((a: AIGeneratedArticle) => a.status === 'published').length,
+          rejected: allData.filter((a: AIGeneratedArticle) => a.status === 'rejected').length,
+        });
       }
     } catch (error) {
       console.error('加载文章失败:', error);
     } finally {
       setLoadingArticles(false);
     }
-  }, []);
+  }, [articleFilter, articlePage]);
 
   useEffect(() => {
     loadAIConfigs();
@@ -630,17 +654,91 @@ export default function AINewsPage() {
 
         {/* 生成文章标签页 */}
         <TabsContent value="articles" className="space-y-4">
+          {/* 统计卡片 */}
+          <div className="grid grid-cols-5 gap-4">
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setArticleFilter('all')}>
+              <CardContent className="pt-4">
+                <p className="text-2xl font-bold">{articleStats.total}</p>
+                <p className="text-sm text-muted-foreground">全部文章</p>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setArticleFilter('pending')}>
+              <CardContent className="pt-4">
+                <p className="text-2xl font-bold text-yellow-500">{articleStats.pending}</p>
+                <p className="text-sm text-muted-foreground">待审核</p>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setArticleFilter('approved')}>
+              <CardContent className="pt-4">
+                <p className="text-2xl font-bold text-blue-500">{articleStats.approved}</p>
+                <p className="text-sm text-muted-foreground">已审核</p>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setArticleFilter('published')}>
+              <CardContent className="pt-4">
+                <p className="text-2xl font-bold text-green-500">{articleStats.published}</p>
+                <p className="text-sm text-muted-foreground">已发布</p>
+              </CardContent>
+            </Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setArticleFilter('rejected')}>
+              <CardContent className="pt-4">
+                <p className="text-2xl font-bold text-red-500">{articleStats.rejected}</p>
+                <p className="text-sm text-muted-foreground">已拒绝</p>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <CardTitle>AI 生成的文章</CardTitle>
-                  <CardDescription>查看和管理AI自动生成并翻译的新闻文章</CardDescription>
+                  <CardDescription>
+                    {articleFilter !== 'all' && `筛选: ${articleFilter === 'pending' ? '待审核' : articleFilter === 'approved' ? '已审核' : articleFilter === 'published' ? '已发布' : '已拒绝'} `}
+                    共 {articleTotal} 篇
+                  </CardDescription>
                 </div>
-                <Button variant="outline" onClick={() => loadArticles()}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  刷新
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Select value={articleFilter} onValueChange={(v) => { setArticleFilter(v); setArticlePage(1); }}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">全部</SelectItem>
+                      <SelectItem value="pending">待审核</SelectItem>
+                      <SelectItem value="approved">已审核</SelectItem>
+                      <SelectItem value="published">已发布</SelectItem>
+                      <SelectItem value="rejected">已拒绝</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={() => loadArticles()}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    刷新
+                  </Button>
+                  {selectedArticles.length > 0 && (
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="text-sm text-muted-foreground">已选 {selectedArticles.length}</span>
+                      <Button variant="destructive" size="sm" onClick={async () => {
+                        if (confirm(`确定要删除选中的 ${selectedArticles.length} 篇文章吗?`)) {
+                          try {
+                            const res = await fetch(`/api/ai-news/articles?ids=${selectedArticles.join(',')}`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (data.success) {
+                              toast.success(`已删除 ${selectedArticles.length} 篇文章`);
+                              setSelectedArticles([]);
+                              loadArticles();
+                            }
+                          } catch (error) {
+                            toast.error('删除失败');
+                          }
+                        }
+                      }}>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        批量删除
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -655,58 +753,115 @@ export default function AINewsPage() {
                   <p className="text-sm">执行定时任务后将会生成文章</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>原文标题</TableHead>
-                      <TableHead>翻译标题</TableHead>
-                      <TableHead>使用模型</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>生成时间</TableHead>
-                      <TableHead>操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {articles.map((article) => (
-                      <TableRow key={article.id}>
-                        <TableCell className="max-w-[250px] truncate">{article.originalTitle}</TableCell>
-                        <TableCell className="max-w-[250px] truncate">{article.translatedTitle || '-'}</TableCell>
-                        <TableCell className="text-sm">{article.aiModel || '-'}</TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            article.status === 'published' ? 'default' :
-                            article.status === 'approved' ? 'secondary' :
-                            article.status === 'rejected' ? 'destructive' : 'outline'
-                          }>
-                            {article.status === 'published' ? '已发布' :
-                             article.status === 'approved' ? '已审核' :
-                             article.status === 'rejected' ? '已拒绝' : '待审核'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {format(new Date(article.createdAt), 'MM-dd HH:mm')}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button variant="ghost" size="sm" onClick={() => { setSelectedArticle(article); setEditingArticleContent({ title: article.translatedTitle || '', content: article.translatedContent || '', summary: article.summary || '' }); setShowArticleDialog(true); }}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            {article.status === 'pending' && (
-                              <>
-                                <Button variant="ghost" size="sm" onClick={() => updateArticleStatus(article.id, 'approved')}>
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => updateArticleStatus(article.id, 'rejected')}>
-                                  <XCircle className="w-4 h-4 text-red-500" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]">
+                          <input
+                            type="checkbox"
+                            checked={selectedArticles.length === articles.length && articles.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedArticles(articles.map(a => a.id));
+                              } else {
+                                setSelectedArticles([]);
+                              }
+                            }}
+                            className="rounded"
+                          />
+                        </TableHead>
+                        <TableHead>原文标题</TableHead>
+                        <TableHead>翻译标题</TableHead>
+                        <TableHead>使用模型</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead>生成时间</TableHead>
+                        <TableHead>操作</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {articles.map((article) => (
+                        <TableRow key={article.id} className={selectedArticles.includes(article.id) ? 'bg-muted/50' : ''}>
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedArticles.includes(article.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedArticles([...selectedArticles, article.id]);
+                                } else {
+                                  setSelectedArticles(selectedArticles.filter(id => id !== article.id));
+                                }
+                              }}
+                              className="rounded"
+                            />
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate font-medium">{article.originalTitle}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{article.translatedTitle || '-'}</TableCell>
+                          <TableCell className="text-sm">{article.aiModel || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              article.status === 'published' ? 'default' :
+                              article.status === 'approved' ? 'secondary' :
+                              article.status === 'rejected' ? 'destructive' : 'outline'
+                            }>
+                              {article.status === 'published' ? '已发布' :
+                               article.status === 'approved' ? '已审核' :
+                               article.status === 'rejected' ? '已拒绝' : '待审核'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {format(new Date(article.createdAt), 'MM-dd HH:mm')}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedArticle(article); setEditingArticleContent({ title: article.translatedTitle || '', content: article.translatedContent || '', summary: article.summary || '' }); setShowArticleDialog(true); }}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              {article.status === 'pending' && (
+                                <>
+                                  <Button variant="ghost" size="sm" onClick={() => updateArticleStatus(article.id, 'approved')}>
+                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => updateArticleStatus(article.id, 'rejected')}>
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* 分页 */}
+                  {articleTotal > 10 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        显示 {((articlePage - 1) * 10) + 1} - {Math.min(articlePage * 10, articleTotal)} 条，共 {articleTotal} 条
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setArticlePage(p => Math.max(1, p - 1))}
+                          disabled={articlePage === 1}
+                        >
+                          上一页
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setArticlePage(p => p + 1)}
+                          disabled={articlePage * 10 >= articleTotal}
+                        >
+                          下一页
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -913,105 +1068,161 @@ export default function AINewsPage() {
       <Dialog open={showArticleDialog} onOpenChange={setShowArticleDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>文章详情</DialogTitle>
-            <DialogDescription>查看并编辑AI生成的文章内容</DialogDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle>文章详情</DialogTitle>
+                <DialogDescription>查看并编辑AI生成的文章内容</DialogDescription>
+              </div>
+              <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+                <Button
+                  variant={previewMode ? 'ghost' : 'default'}
+                  size="sm"
+                  onClick={() => setPreviewMode(false)}
+                >
+                  编辑
+                </Button>
+                <Button
+                  variant={previewMode ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewMode(true)}
+                >
+                  预览
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            {/* 原文信息 */}
-            <div className="bg-muted/50 p-3 rounded-lg">
-              <p className="text-sm font-medium text-muted-foreground mb-1">原文标题</p>
-              <p className="text-sm">{selectedArticle?.originalTitle}</p>
-              {selectedArticle?.originalContent && (
-                <>
-                  <p className="text-sm font-medium text-muted-foreground mt-3 mb-1">原文内容</p>
-                  <p className="text-sm whitespace-pre-wrap">{selectedArticle.originalContent}</p>
-                </>
-              )}
-              {selectedArticle?.originalUrl && (
-                <a href={selectedArticle.originalUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline mt-2 block">
-                  查看原文链接
-                </a>
-              )}
+          
+          {previewMode ? (
+            /* 预览模式 */
+            <div className="space-y-4 py-4">
+              <div className="bg-muted/30 p-3 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">原文标题</p>
+                <p className="text-sm">{selectedArticle?.originalTitle}</p>
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold">{editingArticleContent.title || selectedArticle?.translatedTitle}</h1>
+                {editingArticleContent.summary && (
+                  <p className="text-muted-foreground italic">{editingArticleContent.summary}</p>
+                )}
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>AI模型: {selectedArticle?.aiModel || '-'}</span>
+                  <span>|</span>
+                  <span>状态: {
+                    selectedArticle?.status === 'published' ? '已发布' :
+                    selectedArticle?.status === 'approved' ? '已审核' :
+                    selectedArticle?.status === 'rejected' ? '已拒绝' : '待审核'
+                  }</span>
+                </div>
+              </div>
+              <div 
+                className="prose prose-sm max-w-none dark:prose-invert"
+                dangerouslySetInnerHTML={{ __html: editingArticleContent.content || selectedArticle?.translatedContent || '' }}
+              />
             </div>
-
-            {/* 编辑区域 */}
-            <div className="space-y-4">
-              <div className="grid gap-2">
-                <Label>翻译标题</Label>
-                <Input 
-                  value={editingArticleContent.title} 
-                  onChange={(e) => setEditingArticleContent({ ...editingArticleContent, title: e.target.value })} 
-                  placeholder="输入翻译后的标题"
-                />
+          ) : (
+            /* 编辑模式 */
+            <div className="space-y-4 py-4">
+              {/* 原文信息 */}
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-sm font-medium text-muted-foreground mb-1">原文标题</p>
+                <p className="text-sm">{selectedArticle?.originalTitle}</p>
+                {selectedArticle?.originalContent && (
+                  <>
+                    <p className="text-sm font-medium text-muted-foreground mt-3 mb-1">原文内容</p>
+                    <p className="text-sm whitespace-pre-wrap">{selectedArticle.originalContent}</p>
+                  </>
+                )}
+                {selectedArticle?.originalUrl && (
+                  <a href={selectedArticle.originalUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline mt-2 block">
+                    查看原文链接
+                  </a>
+                )}
               </div>
 
-              <div className="grid gap-2">
-                <Label>文章摘要</Label>
-                <Textarea 
-                  value={editingArticleContent.summary} 
-                  onChange={(e) => setEditingArticleContent({ ...editingArticleContent, summary: e.target.value })} 
-                  placeholder="输入文章摘要"
-                  rows={2}
-                />
+              {/* 编辑区域 */}
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label>翻译标题</Label>
+                  <Input 
+                    value={editingArticleContent.title} 
+                    onChange={(e) => setEditingArticleContent({ ...editingArticleContent, title: e.target.value })} 
+                    placeholder="输入翻译后的标题"
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>文章摘要</Label>
+                  <Textarea 
+                    value={editingArticleContent.summary} 
+                    onChange={(e) => setEditingArticleContent({ ...editingArticleContent, summary: e.target.value })} 
+                    placeholder="输入文章摘要"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>文章内容</Label>
+                  <RichTextEditor 
+                    value={editingArticleContent.content} 
+                    onChange={(content) => setEditingArticleContent({ ...editingArticleContent, content })} 
+                    placeholder="使用富文本编辑器编辑文章内容"
+                  />
+                </div>
               </div>
 
-              <div className="grid gap-2">
-                <Label>文章内容</Label>
-                <RichTextEditor 
-                  value={editingArticleContent.content} 
-                  onChange={(content) => setEditingArticleContent({ ...editingArticleContent, content })} 
-                  placeholder="使用富文本编辑器编辑文章内容"
-                />
+              {/* 状态 */}
+              <div className="flex items-center gap-4 pt-4 border-t">
+                <Badge variant={
+                  selectedArticle?.status === 'published' ? 'default' :
+                  selectedArticle?.status === 'approved' ? 'secondary' :
+                  selectedArticle?.status === 'rejected' ? 'destructive' : 'outline'
+                }>
+                  {selectedArticle?.status === 'published' ? '已发布' :
+                   selectedArticle?.status === 'approved' ? '已审核' :
+                   selectedArticle?.status === 'rejected' ? '已拒绝' : '待审核'}
+                </Badge>
+                <span className="text-sm text-muted-foreground">
+                  使用模型: {selectedArticle?.aiModel || '-'}
+                </span>
               </div>
             </div>
-
-            {/* 状态 */}
-            <div className="flex items-center gap-4 pt-4 border-t">
-              <Badge variant={
-                selectedArticle?.status === 'published' ? 'default' :
-                selectedArticle?.status === 'approved' ? 'secondary' :
-                selectedArticle?.status === 'rejected' ? 'destructive' : 'outline'
-              }>
-                {selectedArticle?.status === 'published' ? '已发布' :
-                 selectedArticle?.status === 'approved' ? '已审核' :
-                 selectedArticle?.status === 'rejected' ? '已拒绝' : '待审核'}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                使用模型: {selectedArticle?.aiModel || '-'}
-              </span>
-            </div>
-          </div>
+          )}
+          
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowArticleDialog(false)}>关闭</Button>
-            <Button variant="destructive" onClick={() => updateArticleStatus(selectedArticle!.id, 'rejected')}>拒绝</Button>
-            <Button variant="default" onClick={() => updateArticleStatus(selectedArticle!.id, 'approved')}>审核通过</Button>
-            <Button onClick={async () => {
-              // 保存编辑内容
-              try {
-                const res = await fetch(`/api/ai-news/articles/${selectedArticle!.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    translatedTitle: editingArticleContent.title,
-                    translatedContent: editingArticleContent.content,
-                    summary: editingArticleContent.summary,
-                  }),
-                });
-                const data = await res.json();
-                if (data.success) {
-                  toast.success('文章已保存');
-                  setShowArticleDialog(false);
-                  loadArticles();
-                } else {
-                  toast.error(data.error || '保存失败');
-                }
-              } catch (error) {
-                toast.error('保存失败');
-              }
-            }}>
-              <Save className="w-4 h-4 mr-2" />
-              保存编辑
-            </Button>
+            <Button variant="outline" onClick={() => { setShowArticleDialog(false); setPreviewMode(false); }}>关闭</Button>
+            {!previewMode && (
+              <>
+                <Button variant="destructive" onClick={() => updateArticleStatus(selectedArticle!.id, 'rejected')}>拒绝</Button>
+                <Button variant="default" onClick={() => updateArticleStatus(selectedArticle!.id, 'approved')}>审核通过</Button>
+                <Button onClick={async () => {
+                  // 保存编辑内容
+                  try {
+                    const res = await fetch(`/api/ai-news/articles/${selectedArticle!.id}`, {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        translatedTitle: editingArticleContent.title,
+                        translatedContent: editingArticleContent.content,
+                        summary: editingArticleContent.summary,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      toast.success('文章已保存');
+                      setShowArticleDialog(false);
+                      loadArticles();
+                    } else {
+                      toast.error(data.error || '保存失败');
+                    }
+                  } catch (error) {
+                    toast.error('保存失败');
+                  }
+                }}>
+                  <Save className="w-4 h-4 mr-2" />
+                  保存编辑
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
