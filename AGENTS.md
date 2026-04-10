@@ -13,6 +13,7 @@
 - **商家入驻**：商家申请、商品管理、订单处理
 - **证书认证**：一物一證，产品溯源
 - **AI内容生成**：使用coze-coding-dev-sdk集成大语言模型
+- **AI新闻自动发布**：自动搜索新闻并使用AI翻译发布
 
 ## 技术栈
 
@@ -182,3 +183,57 @@ pnpm start
 ## 部署文档
 
 - [宝塔面板部署指南](./docs/baota-deployment.md) - 详细的服务器部署、环境配置、Nginx反向代理、SSL证书配置说明
+
+## AI新闻自动发布功能
+
+### 功能概述
+AI新闻自动发布功能可以自动搜索最新新闻，使用AI模型翻译和优化内容，并支持定时发布。
+
+### 后台入口
+`/admin/ai-news`
+
+### 数据库表
+
+| 表名 | 说明 |
+|------|------|
+| ai_configurations | AI模型配置（支持豆包、DeepSeek、Kimi、智谱GLM、通义千问） |
+| news_sources | 新闻源配置（关键词、语言、目标语言） |
+| auto_publish_tasks | 定时任务配置（Cron表达式） |
+| ai_generated_articles | AI生成的文章 |
+
+### AI配置说明
+
+支持的AI提供商：
+- **豆包/Coze**: `provider: 'doubao'` 或 `'coze'`
+- **DeepSeek**: `provider: 'deepseek'`
+- **Kimi**: `provider: 'kimi'`
+- **智谱GLM**: `provider: 'glm'`
+- **通义千问**: `provider: 'qwen'`
+
+### API接口
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/ai-news/configs` | GET/POST/PUT | AI配置CRUD |
+| `/api/ai-news/configs/[id]` | DELETE/PUT | 删除/更新配置 |
+| `/api/ai-news/sources` | GET/POST/PUT | 新闻源CRUD |
+| `/api/ai-news/sources/[id]` | DELETE/PUT | 删除/更新新闻源 |
+| `/api/ai-news/tasks` | GET/POST/PUT/DELETE | 定时任务CRUD |
+| `/api/ai-news/tasks/[id]/run` | POST | 手动执行任务 |
+| `/api/ai-news/articles` | GET/PUT/DELETE | 文章列表和管理 |
+| `/api/ai-news/articles/[id]` | GET/PUT/DELETE | 文章详情管理 |
+
+### Cron表达式示例
+
+| 表达式 | 说明 |
+|--------|------|
+| `0 6 * * *` | 每天早上6点 |
+| `0 */4 * * *` | 每4小时 |
+| `0 9,12,18 * * *` | 每天9点、12点、18点 |
+| `0 0 * * 0` | 每周日凌晨 |
+
+### 环境变量
+
+| 变量名 | 说明 |
+|--------|------|
+| COZE_API_TOKEN | Coze API Token（用于新闻搜索） |
