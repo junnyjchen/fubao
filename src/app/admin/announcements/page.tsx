@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Select,
   SelectContent,
@@ -465,13 +466,10 @@ export default function AdminAnnouncementsPage() {
               <label className="text-sm font-medium mb-2 block">
                 公告內容 *
               </label>
-              <Textarea
-                placeholder="請輸入公告內容"
+              <RichTextEditor
                 value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-                rows={5}
+                onChange={(content) => setFormData({ ...formData, content })}
+                placeholder="請輸入公告內容"
               />
             </div>
 

@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Table,
   TableBody,
@@ -791,11 +792,10 @@ export default function WikiPage() {
 
             <div className="space-y-2">
               <Label>正文內容</Label>
-              <Textarea
+              <RichTextEditor
                 value={articleForm.content}
-                onChange={(e) => setArticleForm((prev) => ({ ...prev, content: e.target.value }))}
-                placeholder="支持 Markdown 格式"
-                rows={10}
+                onChange={(content) => setArticleForm((prev) => ({ ...prev, content }))}
+                placeholder="支持富文本格式"
               />
             </div>
 

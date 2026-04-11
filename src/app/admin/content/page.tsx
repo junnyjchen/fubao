@@ -30,6 +30,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Plus,
   Search,
@@ -708,14 +709,10 @@ export default function ContentManagementPage() {
 
             <div className="space-y-2">
               <Label htmlFor="content">正文內容</Label>
-              <Textarea
-                id="content"
+              <RichTextEditor
                 value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-                placeholder="請輸入正文內容（支持Markdown）"
-                rows={10}
+                onChange={(content) => setFormData({ ...formData, content })}
+                placeholder="請輸入正文內容"
               />
             </div>
 

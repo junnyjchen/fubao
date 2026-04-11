@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Dialog,
   DialogContent,
@@ -505,12 +506,10 @@ export default function NewsManagePage() {
             
             <div className="space-y-2">
               <Label htmlFor="content">內容</Label>
-              <Textarea
-                id="content"
+              <RichTextEditor
                 value={form.content}
-                onChange={e => setForm(prev => ({ ...prev, content: e.target.value }))}
+                onChange={(content) => setForm(prev => ({ ...prev, content }))}
                 placeholder="請輸入新聞內容..."
-                rows={10}
               />
             </div>
             
