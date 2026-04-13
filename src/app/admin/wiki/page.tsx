@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -150,6 +150,16 @@ export default function WikiPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'articles' | 'categories'>('articles');
+
+  // 图片上传回调
+  const handleImageUpload = useCallback(async (file: File): Promise<string> => {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: formDataUpload });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || '上传失败');
+    return data.url;
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -796,6 +806,7 @@ export default function WikiPage() {
                 value={articleForm.content}
                 onChange={(content) => setArticleForm((prev) => ({ ...prev, content }))}
                 placeholder="支持富文本格式"
+                onImageUpload={handleImageUpload}
               />
             </div>
 

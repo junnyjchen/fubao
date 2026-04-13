@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -107,6 +107,16 @@ export default function AdminAnnouncementsPage() {
     start_time: '',
     end_time: '',
   });
+
+  // 图片上传回调
+  const handleImageUpload = useCallback(async (file: File): Promise<string> => {
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: formDataUpload });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || '上传失败');
+    return data.url;
+  }, []);
 
   useEffect(() => {
     loadAnnouncements();
@@ -470,6 +480,7 @@ export default function AdminAnnouncementsPage() {
                 value={formData.content}
                 onChange={(content) => setFormData({ ...formData, content })}
                 placeholder="請輸入公告內容"
+                onImageUpload={handleImageUpload}
               />
             </div>
 

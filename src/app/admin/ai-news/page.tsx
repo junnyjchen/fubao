@@ -131,6 +131,27 @@ export default function AINewsPage() {
   const [selectedArticles, setSelectedArticles] = useState<number[]>([]);
   const [articleStats, setArticleStats] = useState({ total: 0, pending: 0, approved: 0, published: 0, rejected: 0 });
   const [previewMode, setPreviewMode] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // 图片上传回调
+  const handleImageUpload = useCallback(async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (selectedArticle?.id) {
+      formData.append('articleId', selectedArticle.id.toString());
+    }
+
+    const res = await fetch('/api/ai-news/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || '上传失败');
+    }
+    return data.url;
+  }, [selectedArticle?.id]);
 
   // 加载AI配置
   const loadAIConfigs = useCallback(async () => {
@@ -1166,6 +1187,7 @@ export default function AINewsPage() {
                     value={editingArticleContent.content} 
                     onChange={(content) => setEditingArticleContent({ ...editingArticleContent, content })} 
                     placeholder="使用富文本编辑器编辑文章内容"
+                    onImageUpload={handleImageUpload}
                   />
                 </div>
               </div>

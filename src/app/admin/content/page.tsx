@@ -29,8 +29,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Switch } from '@/components/ui/switch';
 import {
   Plus,
   Search,
@@ -134,6 +134,7 @@ export default function ContentManagementPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<Article | News | null>(null);
   const [editType, setEditType] = useState<'article' | 'news'>('article');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -147,8 +148,29 @@ export default function ContentManagementPage() {
     sort: 0,
   });
 
-  /**
-   * 加载文章列表
+  // 图片上传回调
+  const handleImageUpload = useCallback(async (file: File): Promise<string> => {
+    setUploadingImage(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        return data.url;
+      }
+      throw new Error(data.error || '上传失败');
+    } finally {
+      setUploadingImage(false);
+    }
+  }, []);
+
+/** 加载文章列表
    */
   const loadArticles = useCallback(async () => {
     setLoading(true);
@@ -229,7 +251,7 @@ export default function ContentManagementPage() {
       cover: item.cover || '',
       category_id: (item as Article).category_id || 1,
       type: (item as News).type || 0,
-      status: item.status,
+      status: (item as News).status ?? (item as Article).status ?? true,
       is_featured: item.is_featured,
       sort: item.sort || 0,
     });
@@ -713,6 +735,7 @@ export default function ContentManagementPage() {
                 value={formData.content}
                 onChange={(content) => setFormData({ ...formData, content })}
                 placeholder="請輸入正文內容"
+                onImageUpload={handleImageUpload}
               />
             </div>
 

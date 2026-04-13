@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,16 @@ export default function NewsManagePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<NewsForm>(initialForm);
   const limit = 15;
+
+  // 图片上传回调
+  const handleImageUpload = useCallback(async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || '上传失败');
+    return data.url;
+  }, []);
 
   useEffect(() => {
     loadNews();
@@ -510,6 +520,7 @@ export default function NewsManagePage() {
                 value={form.content}
                 onChange={(content) => setForm(prev => ({ ...prev, content }))}
                 placeholder="請輸入新聞內容..."
+                onImageUpload={handleImageUpload}
               />
             </div>
             
