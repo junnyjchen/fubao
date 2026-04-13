@@ -25,6 +25,7 @@ import {
   Calendar,
   User,
 } from 'lucide-react';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 /** 视频详情类型 */
 interface VideoDetail {
@@ -288,11 +289,9 @@ export function VideoDetailPage({ videoId }: VideoDetailPageProps) {
 
                 {/* 视频描述 */}
                 {video.description && (
-                  <div className="prose prose-sm max-w-none">
+                  <div className="mt-4">
                     <h3 className="text-base font-semibold mb-2">視頻簡介</h3>
-                    <p className="text-muted-foreground whitespace-pre-line">
-                      {video.description}
-                    </p>
+                    <RichTextRenderer content={video.description} className="text-muted-foreground" />
                   </div>
                 )}
 

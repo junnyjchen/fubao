@@ -42,6 +42,7 @@ import { DetailRecommendations } from '@/components/shop/ProductRecommendations'
 import { GoodsDetailSkeleton } from '@/components/shop/GoodsDetailSkeleton';
 import { useI18n } from '@/lib/i18n';
 import { toast } from 'sonner';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 interface Goods {
   id: number;
@@ -563,13 +564,11 @@ export function GoodsDetailPage() {
             </CardHeader>
             <CardContent className="pt-6">
               <TabsContent value="description" className="mt-0">
-                <div className="prose prose-sm max-w-none">
-                  {goods.description ? (
-                    <p className="whitespace-pre-wrap">{goods.description}</p>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-8">{detail.noDescription}</p>
-                  )}
-                </div>
+                {goods.description ? (
+                  <RichTextRenderer content={goods.description} className="text-sm" />
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">{detail.noDescription}</p>
+                )}
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-0">

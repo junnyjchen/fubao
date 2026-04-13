@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, Calendar, ArrowLeft, ChevronRight, Heart, Share2 } from 'lucide-react';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 interface RelatedArticle {
   id: number;
@@ -147,9 +148,7 @@ export function ArticleDetailPage() {
                   )}
                   
                   {article.content ? (
-                    <div className="prose prose-sm max-w-none whitespace-pre-line">
-                      {article.content}
-                    </div>
+                    <RichTextRenderer content={article.content} className="text-base leading-relaxed" />
                   ) : (
                     <p className="text-muted-foreground text-center py-8">暫無內容</p>
                   )}
