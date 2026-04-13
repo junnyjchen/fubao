@@ -21,6 +21,7 @@ import {
   FormSelectField,
   FormSwitchField,
   FormActions,
+  FormRichTextField,
 } from '@/components/admin/AdminForm';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 
@@ -518,12 +519,12 @@ export default function ProductsPage() {
               />
             </div>
 
-            <FormTextareaField
+            <FormRichTextField
               name="description"
               label="商品描述"
               value={formData.description}
-              onChange={(e) => handleFieldChange('description', e.target.value)}
-              rows={4}
+              onChange={(value) => handleFieldChange('description', value)}
+              height={250}
             />
 
             <div className="grid md:grid-cols-2 gap-4">

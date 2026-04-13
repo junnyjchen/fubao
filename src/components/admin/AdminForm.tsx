@@ -6,7 +6,7 @@
 
 'use client';
 
-import { ReactNode, forwardRef } from 'react';
+import { ReactNode, forwardRef, useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -362,5 +362,110 @@ export function FormContainer({
     >
       {children}
     </form>
+  );
+}
+
+/** 富文本编辑器字段属性 */
+interface FormRichTextFieldProps {
+  /** 字段标签 */
+  label: string;
+  /** 字段标识 */
+  name: string;
+  /** 是否必填 */
+  required?: boolean;
+  /** 错误信息 */
+  error?: string;
+  /** 提示信息 */
+  hint?: string;
+  /** 是否水平布局 */
+  horizontal?: boolean;
+  /** 当前值 */
+  value?: string;
+  /** 值变化回调 */
+  onChange?: (value: string) => void;
+  /** 占位符 */
+  placeholder?: string;
+  /** 编辑器高度 */
+  height?: number;
+  /** 是否禁用 */
+  disabled?: boolean;
+  /** 标签宽度 */
+  labelWidth?: string;
+}
+
+/**
+ * 表单富文本编辑器字段
+ */
+export function FormRichTextField({
+  label,
+  name,
+  required,
+  error,
+  hint,
+  horizontal,
+  value,
+  onChange,
+  placeholder = '请输入内容...',
+  height = 300,
+  disabled,
+  labelWidth = '120px',
+}: FormRichTextFieldProps) {
+  // 动态导入以避免 SSR 问题
+  const [RichTextEditor, setRichTextEditor] = useState<any>(null);
+  const [editorReady, setEditorReady] = useState(false);
+
+  useEffect(() => {
+    import('@/components/ui/rich-text-editor').then((module) => {
+      setRichTextEditor(() => module.RichTextEditor);
+      setEditorReady(true);
+    });
+  }, []);
+
+  const containerClass = horizontal
+    ? 'flex items-start gap-4'
+    : 'space-y-2';
+
+  return (
+    <div className={containerClass}>
+      <Label
+        htmlFor={name}
+        className={cn(
+          'text-sm font-medium',
+          horizontal && 'flex-shrink-0 pt-2',
+          error && 'text-destructive'
+        )}
+        style={horizontal ? { width: labelWidth } : undefined}
+      >
+        {label}
+        {required && <span className="text-destructive ml-1">*</span>}
+      </Label>
+      <div className={cn('flex-1 space-y-1', !horizontal && 'pt-0')}>
+        {editorReady && RichTextEditor ? (
+          <RichTextEditor
+            value={value || ''}
+            onChange={onChange || (() => {})}
+            placeholder={placeholder}
+            height={height}
+            readOnly={disabled}
+          />
+        ) : (
+          <div
+            className={cn(
+              'border rounded-md bg-muted animate-pulse flex items-center justify-center',
+              error && 'border-destructive'
+            )}
+            style={{ height }}
+          >
+            <span className="text-muted-foreground">加载编辑器...</span>
+          </div>
+        )}
+        {hint && !error && (
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        )}
+        {error && (
+          <p className="text-xs text-destructive">{error}</p>
+        )}
+      </div>
+    </div>
   );
 }
