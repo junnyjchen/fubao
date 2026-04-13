@@ -329,6 +329,24 @@ export const reviews = pgTable("reviews", {
 	index("reviews_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
 ]);
 
+export const adminUsers = pgTable("admin_users", {
+	id: serial().primaryKey().notNull(),
+	username: varchar({ length: 50 }).notNull().unique(),
+	password: varchar({ length: 255 }).notNull(),
+	name: varchar({ length: 100 }),
+	email: varchar({ length: 255 }),
+	phone: varchar({ length: 20 }),
+	role: varchar({ length: 20 }).default('admin').notNull(),
+	status: boolean().default(true).notNull(),
+	lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: 'string' }),
+	lastLoginIp: varchar("last_login_ip", { length: 50 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("admin_users_username_idx").using("btree", table.username.asc().nullsLast().op("text_ops")),
+	index("admin_users_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+]);
+
 export const users = pgTable("users", {
 	id: varchar({ length: 36 }).default(gen_random_uuid()).primaryKey().notNull(),
 	email: varchar({ length: 255 }).notNull(),

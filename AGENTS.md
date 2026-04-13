@@ -91,6 +91,7 @@ coze-coding-ai db upgrade
 | 表名 | 说明 |
 |------|------|
 | users | 用户信息 |
+| admin_users | 管理員用戶 |
 | oauth_providers | OAuth提供商配置 |
 | user_oauth_accounts | 用户OAuth账号绑定 |
 | goods | 商品信息 |
@@ -102,10 +103,15 @@ coze-coding-ai db upgrade
 
 ## 关键API接口
 
-### 认证相关
+### 用户认证相关
 - `POST /api/auth/login` - 用户登录
 - `POST /api/auth/register` - 用户注册
 - `GET /api/auth/me` - 获取当前用户信息
+
+### 管理员认证相关
+- `POST /api/admin/login` - 管理员登录
+- `DELETE /api/admin/login` - 管理员登出
+- `GET /api/admin/me` - 获取当前管理员信息
 
 ### OAuth相关
 - `GET /api/oauth/providers` - 获取启用的OAuth提供商
@@ -123,6 +129,31 @@ coze-coding-ai db upgrade
 - `GET /api/orders` - 订单列表
 - `POST /api/orders` - 创建订单
 - `GET /api/orders/[id]` - 订单详情
+
+## 管理后台独立登录
+
+### 概述
+管理后台与会员用户完全独立：
+- **会员用户**：使用 `/login` 登录，不能访问管理后台
+- **管理员用户**：使用 `/admin/login` 登录，独立的用户体系
+
+### 管理员登录
+- **登录页面**：`/admin/login`
+- **默认账户**：
+  - 用户名：`admin`
+  - 密码：`admin123`（生产环境请立即修改）
+
+### 安全机制
+1. 中间件保护：所有 `/admin/*` 路由（除 `/admin/login`）需要管理员 Token
+2. 独立 Token：管理员使用 `admin_token` Cookie，与用户 `auth_token` 完全分离
+3. 会员限制：持有用户 Token 的会员无法访问管理后台，会被重定向到管理员登录页
+
+### 数据库表
+- `admin_users`：存储管理员账户信息
+
+### 角色说明
+- `super_admin`：超级管理员，拥有全部权限
+- `admin`：普通管理员
 
 ## OAuth登录配置
 

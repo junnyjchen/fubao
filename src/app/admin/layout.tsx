@@ -6,10 +6,11 @@
 
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
   LayoutDashboard,
   Package,
@@ -105,9 +106,43 @@ export default function AdminRootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [adminInfo, setAdminInfo] = useState<{ id: number; username: string; role: string } | null>(null);
+
+  // 获取管理员信息
+  useEffect(() => {
+    // 跳过登录页面
+    if (pathname === '/admin/login') return;
+
+    const fetchAdminInfo = async () => {
+      try {
+        const res = await fetch('/api/admin/me');
+        const data = await res.json();
+        if (data.admin) {
+          setAdminInfo(data.admin);
+        }
+      } catch (error) {
+        console.error('獲取管理員信息失敗:', error);
+      }
+    };
+
+    fetchAdminInfo();
+  }, [pathname]);
+
+  // 登出
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/login', { method: 'DELETE' });
+      toast.success('已退出登錄');
+      router.push('/admin/login');
+    } catch (error) {
+      console.error('退出登錄失敗:', error);
+      toast.error('退出失敗');
+    }
+  };
 
   // 判断菜单项是否激活
   const isActive = (href: string): boolean => {
@@ -286,7 +321,14 @@ export default function AdminRootLayout({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>管理員</DropdownMenuLabel>
+                <DropdownMenuLabel>
+                  <div className="flex flex-col gap-1">
+                    <span>{adminInfo?.username || '管理員'}</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {adminInfo?.role === 'super_admin' ? '超級管理員' : '管理員'}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/admin/settings">
@@ -299,6 +341,11 @@ export default function AdminRootLayout({
                     <LogOut className="w-4 h-4 mr-2" />
                     返回前台
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  退出登錄
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
