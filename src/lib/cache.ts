@@ -1,301 +1,181 @@
 /**
- * @fileoverview 缓存管理工具
- * @description 前端缓存管理和工具函数
+ * @fileoverview API 响应缓存工具
+ * @description 提供服务端数据缓存功能
  * @module lib/cache
  */
 
-// 缓存项接口
-interface CacheItem<T> {
-  data: T;
-  timestamp: number;
-  ttl: number; // 生存时间（毫秒）
-  tags?: string[]; // 用于批量清除
-}
+import { unstable_cache } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 
-// 缓存配置
+/**
+ * 缓存配置
+ */
 interface CacheConfig {
-  prefix: string;
-  defaultTtl: number; // 默认生存时间（毫秒）
-  maxSize: number; // 最大缓存条数
+  /** 缓存标签 */
+  tags: string[];
+  /** 缓存时间（秒） */
+  revalidate?: number;
 }
 
-// 默认配置
-const defaultConfig: CacheConfig = {
-  prefix: 'fubao_cache_',
-  defaultTtl: 5 * 60 * 1000, // 5分钟
-  maxSize: 100,
+/**
+ * 分类列表缓存配置
+ */
+const CATEGORIES_CACHE: CacheConfig = {
+  tags: ['categories'],
+  revalidate: 3600, // 1小时
 };
 
-let config: CacheConfig = defaultConfig;
+/**
+ * 商品列表缓存配置
+ */
+const GOODS_LIST_CACHE: CacheConfig = {
+  tags: ['goods', 'goods-list'],
+  revalidate: 300, // 5分钟
+};
 
 /**
- * 配置缓存
+ * 商品详情缓存配置
  */
-export function configureCache(newConfig: Partial<CacheConfig>) {
-  config = { ...config, ...newConfig };
-}
+const GOODS_DETAIL_CACHE: CacheConfig = {
+  tags: ['goods'],
+  revalidate: 600, // 10分钟
+};
 
 /**
- * 生成缓存键
+ * 文章列表缓存配置
  */
-function generateKey(key: string): string {
-  return `${config.prefix}${key}`;
-}
+const ARTICLES_CACHE: CacheConfig = {
+  tags: ['articles', 'articles-list'],
+  revalidate: 600, // 10分钟
+};
 
 /**
- * 检查缓存是否过期
+ * 文章详情缓存配置
  */
-function isExpired<T>(item: CacheItem<T>): boolean {
-  return Date.now() - item.timestamp > item.ttl;
-}
+const ARTICLE_DETAIL_CACHE: CacheConfig = {
+  tags: ['articles'],
+  revalidate: 1800, // 30分钟
+};
 
 /**
- * 获取缓存大小
+ * 视频列表缓存配置
  */
-function getCacheSize(): number {
-  let size = 0;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(config.prefix)) {
-      size++;
-    }
-  }
-  return size;
-}
+const VIDEOS_CACHE: CacheConfig = {
+  tags: ['videos', 'videos-list'],
+  revalidate: 600,
+};
 
 /**
- * 清理过期缓存
+ * 首页数据缓存配置
  */
-function cleanupExpired(): void {
-  const keysToRemove: string[] = [];
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(config.prefix)) {
-      try {
-        const item = JSON.parse(localStorage.getItem(key) || '');
-        if (isExpired(item)) {
-          keysToRemove.push(key);
-        }
-      } catch {
-        keysToRemove.push(key);
-      }
-    }
-  }
-
-  keysToRemove.forEach((key) => localStorage.removeItem(key));
-}
+const HOME_CACHE: CacheConfig = {
+  tags: ['home', 'categories', 'goods', 'articles'],
+  revalidate: 300,
+};
 
 /**
- * 清理超出大小的缓存（LRU策略）
+ * 创建缓存查询函数
  */
-function cleanupOverflow(): void {
-  const items: { key: string; timestamp: number }[] = [];
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(config.prefix)) {
-      try {
-        const item = JSON.parse(localStorage.getItem(key) || '');
-        items.push({ key, timestamp: item.timestamp });
-      } catch {
-        // 忽略解析错误
-      }
-    }
-  }
-
-  // 按时间排序，删除最旧的
-  items.sort((a, b) => a.timestamp - b.timestamp);
-  const toRemove = items.slice(0, items.length - config.maxSize);
-  toRemove.forEach(({ key }) => localStorage.removeItem(key));
-}
-
-/**
- * 设置缓存
- */
-export function setCache<T>(
-  key: string,
-  data: T,
-  options?: {
-    ttl?: number;
-    tags?: string[];
-  }
-): void {
-  // 清理过期缓存
-  cleanupExpired();
-
-  // 检查大小限制
-  if (getCacheSize() >= config.maxSize) {
-    cleanupOverflow();
-  }
-
-  const cacheKey = generateKey(key);
-  const item: CacheItem<T> = {
-    data,
-    timestamp: Date.now(),
-    ttl: options?.ttl || config.defaultTtl,
-    tags: options?.tags,
-  };
-
-  try {
-    localStorage.setItem(cacheKey, JSON.stringify(item));
-  } catch {
-    // 存储失败时清理并重试
-    cleanupExpired();
-    cleanupOverflow();
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify(item));
-    } catch {
-      console.warn('Cache storage failed:', key);
-    }
-  }
-}
-
-/**
- * 获取缓存
- */
-export function getCache<T>(key: string): T | null {
-  const cacheKey = generateKey(key);
-
-  try {
-    const raw = localStorage.getItem(cacheKey);
-    if (!raw) return null;
-
-    const item: CacheItem<T> = JSON.parse(raw);
-
-    // 检查过期
-    if (isExpired(item)) {
-      localStorage.removeItem(cacheKey);
-      return null;
-    }
-
-    return item.data;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * 删除缓存
- */
-export function removeCache(key: string): void {
-  const cacheKey = generateKey(key);
-  localStorage.removeItem(cacheKey);
-}
-
-/**
- * 清除所有缓存
- */
-export function clearCache(): void {
-  const keysToRemove: string[] = [];
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(config.prefix)) {
-      keysToRemove.push(key);
-    }
-  }
-
-  keysToRemove.forEach((key) => localStorage.removeItem(key));
-}
-
-/**
- * 按标签清除缓存
- */
-export function clearCacheByTag(tag: string): void {
-  const keysToRemove: string[] = [];
-
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(config.prefix)) {
-      try {
-        const item = JSON.parse(localStorage.getItem(key) || '');
-        if (item.tags?.includes(tag)) {
-          keysToRemove.push(key);
-        }
-      } catch {
-        // 忽略解析错误
-      }
-    }
-  }
-
-  keysToRemove.forEach((key) => localStorage.removeItem(key));
-}
-
-/**
- * 获取或设置缓存（带回调）
- */
-export async function getOrSetCache<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  options?: {
-    ttl?: number;
-    tags?: string[];
-  }
-): Promise<T> {
-  const cached = getCache<T>(key);
-  if (cached !== null) {
-    return cached;
-  }
-
-  const data = await fetcher();
-  setCache(key, data, options);
-  return data;
-}
-
-/**
- * 缓存装饰器（用于函数）
- */
-export function cached<T extends (...args: unknown[]) => Promise<unknown>>(
-  keyGenerator: (...args: Parameters<T>) => string,
-  options?: {
-    ttl?: number;
-    tags?: string[];
-  }
+export function createCachedQuery<T extends (...args: any[]) => Promise<any>>(
+  queryFn: T,
+  config: CacheConfig,
+  cacheKey: string
 ) {
-  return function (
-    _target: unknown,
-    _propertyKey: string,
-    descriptor: TypedPropertyDescriptor<T>
-  ) {
-    const originalMethod = descriptor.value;
-
-    descriptor.value = async function (this: unknown, ...args: Parameters<T>) {
-      const cacheKey = keyGenerator(...args);
-      const cached = getCache<ReturnType<T>>(cacheKey);
-
-      if (cached !== null) {
-        return cached;
+  return unstable_cache(
+    async (...args: Parameters<T>) => {
+      try {
+        return await queryFn(...args);
+      } catch (error) {
+        console.error(`Cached query error [${cacheKey}]:`, error);
+        throw error;
       }
-
-      const result = await originalMethod?.apply(this, args);
-      setCache(cacheKey, result, options);
-      return result;
-    } as T;
-
-    return descriptor;
-  };
+    },
+    [], // 参数数组，实际使用时会通过 args 生成
+    {
+      tags: config.tags,
+      revalidate: config.revalidate,
+    }
+  );
 }
 
 /**
- * 内存缓存（用于频繁访问的数据）
+ * 重新验证缓存
+ */
+export function invalidateCache(tags: string | string[]) {
+  const tagArray = Array.isArray(tags) ? tags : [tags];
+  tagArray.forEach(tag => {
+    revalidateTag(tag, 'page');
+  });
+}
+
+/**
+ * 重新验证特定路径的缓存
+ */
+export function invalidatePath(paths: string | string[]) {
+  const pathArray = Array.isArray(paths) ? paths : [paths];
+  pathArray.forEach(path => {
+    revalidatePath(path);
+  });
+}
+
+/**
+ * 重新验证商品相关缓存
+ */
+export function invalidateGoodsCache(goodsId?: number) {
+  invalidateCache(['goods', 'goods-list']);
+  if (goodsId) {
+    invalidateCache(`goods-${goodsId}`);
+  }
+  invalidatePath('/shop');
+  invalidatePath('/');
+}
+
+/**
+ * 重新验证文章相关缓存
+ */
+export function invalidateArticlesCache(articleId?: number) {
+  invalidateCache(['articles', 'articles-list']);
+  if (articleId) {
+    invalidateCache(`article-${articleId}`);
+  }
+  invalidatePath('/news');
+  invalidatePath('/wiki');
+  invalidatePath('/');
+}
+
+/**
+ * 重新验证分类缓存
+ */
+export function invalidateCategoriesCache() {
+  invalidateCache(['categories']);
+  invalidatePath('/categories');
+  invalidatePath('/');
+}
+
+/**
+ * 重新验证首页缓存
+ */
+export function invalidateHomeCache() {
+  invalidateCache(['home', 'categories', 'goods', 'articles', 'videos']);
+  invalidatePath('/');
+}
+
+/**
+ * 内存缓存存储
  */
 class MemoryCache<T> {
-  private cache = new Map<string, CacheItem<T>>();
+  private cache: Map<string, { data: T; expiry: number }> = new Map();
+  private defaultTTL: number;
 
-  set(key: string, data: T, ttl: number = config.defaultTtl): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      ttl,
-    });
+  constructor(defaultTTL: number = 5 * 60 * 1000) {
+    this.defaultTTL = defaultTTL;
   }
 
   get(key: string): T | null {
     const item = this.cache.get(key);
     if (!item) return null;
 
-    if (isExpired(item)) {
+    if (Date.now() > item.expiry) {
       this.cache.delete(key);
       return null;
     }
@@ -303,8 +183,11 @@ class MemoryCache<T> {
     return item.data;
   }
 
-  has(key: string): boolean {
-    return this.get(key) !== null;
+  set(key: string, data: T, ttl?: number): void {
+    this.cache.set(key, {
+      data,
+      expiry: Date.now() + (ttl || this.defaultTTL),
+    });
   }
 
   delete(key: string): void {
@@ -315,108 +198,81 @@ class MemoryCache<T> {
     this.cache.clear();
   }
 
-  size(): number {
-    return this.cache.size;
+  // 清理过期项
+  cleanup(): void {
+    const now = Date.now();
+    for (const [key, item] of this.cache.entries()) {
+      if (now > item.expiry) {
+        this.cache.delete(key);
+      }
+    }
   }
 }
 
-// 导出内存缓存实例
+// 创建实例
 export const memoryCache = new MemoryCache();
 
-/**
- * Session缓存（会话级别，关闭浏览器后清除）
- */
-export const sessionCache = {
-  set<T>(key: string, data: T): void {
-    const cacheKey = generateKey(key);
-    try {
-      sessionStorage.setItem(cacheKey, JSON.stringify(data));
-    } catch {
-      console.warn('Session cache set failed:', key);
-    }
-  },
-
-  get<T>(key: string): T | null {
-    const cacheKey = generateKey(key);
-    try {
-      const raw = sessionStorage.getItem(cacheKey);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  },
-
-  remove(key: string): void {
-    const cacheKey = generateKey(key);
-    sessionStorage.removeItem(cacheKey);
-  },
-
-  clear(): void {
-    const keysToRemove: string[] = [];
-
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const key = sessionStorage.key(i);
-      if (key?.startsWith(config.prefix)) {
-        keysToRemove.push(key);
-      }
-    }
-
-    keysToRemove.forEach((key) => sessionStorage.removeItem(key));
-  },
-};
-
-/**
- * 预定义缓存键
- */
-export const CacheKeys = {
-  // 商品相关
-  PRODUCTS: 'products',
-  PRODUCT: (id: string) => `product_${id}`,
-  CATEGORIES: 'categories',
-  BANNERS: 'banners',
-
-  // 用户相关
-  USER_PROFILE: (userId: string) => `user_profile_${userId}`,
-  USER_FAVORITES: (userId: string) => `user_favorites_${userId}`,
-  USER_CART: (userId: string) => `user_cart_${userId}`,
-
-  // 订单相关
-  ORDERS: (userId: string) => `orders_${userId}`,
-  ORDER: (orderId: string) => `order_${orderId}`,
-
-  // 内容相关
-  ARTICLES: 'articles',
-  ARTICLE: (slug: string) => `article_${slug}`,
-  VIDEOS: 'videos',
-
-  // 设置相关
-  SETTINGS: 'settings',
-  REGION_SETTINGS: 'region_settings',
-};
-
-/**
- * 预定义缓存标签
- */
-export const CacheTags = {
-  PRODUCTS: 'products',
-  USERS: 'users',
-  ORDERS: 'orders',
-  CONTENT: 'content',
-  SETTINGS: 'settings',
-};
-
-// 页面加载时清理过期缓存
-if (typeof window !== 'undefined') {
-  window.addEventListener('load', cleanupExpired);
+// 定期清理过期项
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    memoryCache.cleanup();
+  }, 60000); // 每分钟清理一次
 }
 
-export default {
-  set: setCache,
-  get: getCache,
-  remove: removeCache,
-  clear: clearCache,
-  clearByTag: clearCacheByTag,
-  getOrSet: getOrSetCache,
-  memory: memoryCache,
-  session: sessionCache,
+/**
+ * 带内存缓存的请求包装器
+ */
+export async function cachedFetch<T>(
+  url: string,
+  options?: {
+    ttl?: number;
+    key?: string;
+    cache?: MemoryCache<T>;
+  }
+): Promise<T> {
+  const { ttl, key = url, cache = memoryCache } = options || {};
+
+  // 尝试从内存缓存获取
+  const cached = cache.get(key);
+  if (cached !== null) {
+    return cached as T;
+  }
+
+  // 发起请求
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  // 存入内存缓存
+  cache.set(key, data, ttl);
+
+  return data;
+}
+
+/**
+ * SWR 风格的重新验证钩子
+ */
+export function useRevalidate() {
+  return {
+    revalidateGoods: invalidateGoodsCache,
+    revalidateArticles: invalidateArticlesCache,
+    revalidateCategories: invalidateCategoriesCache,
+    revalidateHome: invalidateHomeCache,
+    revalidateCache: invalidateCache,
+    revalidatePath: invalidatePath,
+  };
+}
+
+// 导出缓存配置供其他地方使用
+export const cacheConfigs = {
+  CATEGORIES_CACHE,
+  GOODS_LIST_CACHE,
+  GOODS_DETAIL_CACHE,
+  ARTICLES_CACHE,
+  ARTICLE_DETAIL_CACHE,
+  VIDEOS_CACHE,
+  HOME_CACHE,
 };
