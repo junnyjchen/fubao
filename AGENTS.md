@@ -106,6 +106,144 @@ pnpm dev                 # 开发模式
 
 4. **UI组件**：默认使用 shadcn/ui 组件
 
+### 前端工具库
+
+#### 组件 (`src/components/ui/`)
+
+| 文件 | 说明 |
+|------|------|
+| `toast.tsx` | Toast 通知组件 |
+| `modal.tsx` | Modal/Dialog/Drawer 组件 |
+| `error-boundary.tsx` | 错误边界组件 |
+| `image.tsx` | Image/Avatar/CoverImage 组件 |
+| `tabs.tsx` | Tabs 标签页组件 |
+| `empty-state.tsx` | 空状态组件 |
+| `pagination.tsx` | 分页组件 |
+| `skeleton.tsx` | 骨架屏组件 |
+
+#### Toast 通知
+
+```typescript
+import { ToastProvider, useToast } from '@/components/ui/toast'
+
+// 在根组件中使用
+function App() {
+  return (
+    <ToastProvider>
+      <YourApp />
+    </ToastProvider>
+  )
+}
+
+// 在子组件中使用
+function MyComponent() {
+  const { success, error, info, loading, dismiss } = useToast()
+  
+  const handleClick = async () => {
+    const id = loading('加载中...')
+    await apiCall()
+    dismiss(id)
+    success('操作成功')
+  }
+}
+```
+
+#### Modal 对话框
+
+```typescript
+import { Modal, ConfirmDialog, Drawer } from '@/components/ui/modal'
+
+// 普通对话框
+<Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="标题">
+  内容
+</Modal>
+
+// 确认对话框
+<ConfirmDialog
+  isOpen={isOpen}
+  onClose={() => setIsOpen(false)}
+  onConfirm={handleConfirm}
+  message="确定要删除吗？"
+  type="danger"
+/>
+
+// 底部抽屉
+<Drawer isOpen={isOpen} onClose={() => setIsOpen(false)} title="标题">
+  内容
+</Drawer>
+```
+
+#### Image 图片组件
+
+```typescript
+import { Image, Avatar, CoverImage } from '@/components/ui/image'
+
+// 普通图片（带懒加载和错误处理）
+<Image src="/image.jpg" alt="图片" className="w-40 h-40" />
+
+// 头像
+<Avatar src="/avatar.jpg" alt="用户名" size="lg" />
+
+// 封面图
+<CoverImage src="/cover.jpg" alt="标题" ratio="16/9" />
+```
+
+#### Tabs 标签页
+
+```typescript
+import { Tabs, TabPanel } from '@/components/ui/tabs'
+
+<Tabs
+  tabs={[
+    { id: 'tab1', label: '标签1', badge: 10 },
+    { id: 'tab2', label: '标签2', icon: <Icon /> },
+    { id: 'tab3', label: '标签3', disabled: true },
+  ]}
+  variant="line"
+>
+  <TabPanel id="tab1">内容1</TabPanel>
+  <TabPanel id="tab2">内容2</TabPanel>
+</Tabs>
+```
+
+#### 工具函数 (`src/lib/`)
+
+| 文件 | 说明 |
+|------|------|
+| `types.ts` | TypeScript 类型定义 |
+| `format.ts` | 格式化工具函数 |
+| `utils.ts` | 通用工具函数 |
+| `seo.ts` | SEO 工具 |
+| `hooks/use-api.ts` | API 相关 Hooks |
+
+#### 格式化工具 (`format.ts`)
+
+```typescript
+import { 
+  formatPrice,        // 金额格式化 ¥100.00
+  formatDate,         // 日期格式化
+  formatRelativeTime, // 相对时间
+  formatCount,        // 数量格式化（1.2k, 10w）
+  formatFileSize,     // 文件大小
+  maskPhone,          // 手机号脱敏
+  truncate,           // 文本截断
+  getOrderStatusText, // 订单状态文本
+} from '@/lib/format'
+```
+
+#### 类型定义 (`types.ts`)
+
+```typescript
+import type { 
+  ApiResponse,        // API 响应格式
+  PaginatedResponse,  // 分页响应
+  User,              // 用户类型
+  Goods,             // 商品类型
+  Order,             // 订单类型
+  Category,          // 分类类型
+} from '@/lib/types'
+```
+
 ### API 调用
 
 ```typescript
