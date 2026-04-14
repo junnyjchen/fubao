@@ -1,40 +1,19 @@
 /**
  * @fileoverview Supabase 服务端客户端
- * @description 用于API路由中的服务端Supabase客户端
+ * @description 用于API路由中的服务端Supabase客户端（MySQL实现）
  * @module lib/supabase/server
  */
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
+import type { DatabaseClient } from '@/storage/database/supabase-client';
 
 /**
  * 创建服务端Supabase客户端
  * 用于API路由中获取用户认证信息
+ * 注意：MySQL实现不支持真实的auth，使用本地存储的user_id
  */
-export async function createClient() {
-  const cookieStore = await cookies();
-  const { url, anonKey } = getSupabaseCredentials();
-
-  return createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: CookieOptions }>) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch {
-          // 在Server Component中无法设置cookie
-          // 这个错误可以忽略
-        }
-      },
-    },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+export async function createClient(): Promise<DatabaseClient> {
+  // 返回 MySQL 数据库客户端
+  // auth相关操作会返回mock数据
+  return getSupabaseClient();
 }
