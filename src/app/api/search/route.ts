@@ -1,291 +1,159 @@
 /**
- * @fileoverview 全站搜索API
- * @description 综合搜索商品、百科、视频、商户
- * @module app/api/search/route
+ * 搜索 API
+ * GET /api/search?q=keyword&type=goods|articles
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { createClient } from '@/lib/supabase/server';
 
-interface GoodsSearchResult {
-  id: number;
-  name: string;
-  price: string;
-  original_price: string | null;
-  images: string[] | null;
-  sales: number;
-  has_cert: boolean;
-  merchant_id: number | null;
-}
-
-interface WikiSearchResult {
-  id: number;
-  title: string;
-  slug: string;
-  summary: string | null;
-  cover_image: string | null;
-  views: number;
-  category_id: number | null;
-}
-
-interface VideoSearchResult {
-  id: number;
-  title: string;
-  cover_image: string | null;
-  duration: number;
-  author: string;
-  views: number;
-  is_free: boolean;
-}
-
-interface MerchantSearchResult {
-  id: number;
-  name: string;
-  logo: string | null;
-  type: string;
-  rating: number;
-  total_sales: number;
-  verified: boolean;
-}
-
-/**
- * GET - 综合搜索
- */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const keyword = searchParams.get('keyword') || '';
-    const type = searchParams.get('type') || 'all'; // all, goods, wiki, videos, merchants
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const page = parseInt(searchParams.get('page') || '1');
+    const q = searchParams.get('q');
+    const type = searchParams.get('type') || 'goods';
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '20', 10);
     const offset = (page - 1) * limit;
 
-    if (!keyword.trim()) {
-      return NextResponse.json({
-        data: {
-          goods: [],
-          wiki: [],
-          videos: [],
-          merchants: [],
-        },
-        pagination: { page, limit, total: 0, total_pages: 0 },
-      });
+    if (!q || q.trim().length < 2) {
+      return NextResponse.json(
+        { error: 'Search query must be at least 2 characters' },
+        { status: 400 }
+      );
     }
 
-    const client = getSupabaseClient();
-    const keywordPattern = `%${keyword}%`;
-
-    // 并行搜索各类型数据
-    const [goodsResult, wikiResult, videosResult, merchantsResult] = await Promise.all([
-      // 搜索商品 - 不使用嵌入查询
-      (type === 'all' || type === 'goods')
-        ? client
-            .from('goods')
-            .select(`
-              id,
-              name,
-              price,
-              original_price,
-              images,
-              sales,
-              has_cert,
-              merchant_id
-            `, { count: 'exact' })
-            .eq('status', 'active')
-            .or(`name.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
-            .order('sales', { ascending: false })
-            .range(offset, offset + limit - 1)
-        : Promise.resolve({ data: [], error: null, count: 0 }),
-
-      // 搜索百科 - 不使用嵌入查询
-      (type === 'all' || type === 'wiki')
-        ? client
-            .from('wiki_articles')
-            .select(`
-              id,
-              title,
-              slug,
-              summary,
-              cover_image,
-              views,
-              category_id
-            `, { count: 'exact' })
-            .eq('status', 'published')
-            .or(`title.ilike.${keywordPattern},content.ilike.${keywordPattern}`)
-            .order('views', { ascending: false })
-            .range(offset, offset + limit - 1)
-        : Promise.resolve({ data: [], error: null, count: 0 }),
-
-      // 搜索视频
-      (type === 'all' || type === 'videos')
-        ? client
-            .from('videos')
-            .select(`
-              id,
-              title,
-              cover_image,
-              duration,
-              author,
-              views,
-              is_free
-            `, { count: 'exact' })
-            .eq('status', 'published')
-            .or(`title.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
-            .order('views', { ascending: false })
-            .range(offset, offset + limit - 1)
-        : Promise.resolve({ data: [], error: null, count: 0 }),
-
-      // 搜索商户
-      (type === 'all' || type === 'merchants')
-        ? client
-            .from('merchants')
-            .select(`
-              id,
-              name,
-              logo,
-              type,
-              rating,
-              total_sales,
-              verified
-            `, { count: 'exact' })
-            .eq('status', 'active')
-            .or(`name.ilike.${keywordPattern},description.ilike.${keywordPattern}`)
-            .order('rating', { ascending: false })
-            .range(offset, offset + limit - 1)
-        : Promise.resolve({ data: [], error: null, count: 0 }),
-    ]);
-
-    // 记录搜索关键词
-    await recordSearchKeyword(client, keyword);
-
-    // 分开查询商户和分类信息
-    const merchantIds = [...new Set((goodsResult.data || []).map((g: GoodsSearchResult) => g.merchant_id).filter(Boolean))];
-    const categoryIds = [...new Set((wikiResult.data || []).map((w: WikiSearchResult) => w.category_id).filter(Boolean))];
+    const supabase = await createClient();
     
-    const [merchantsData, categoriesData] = await Promise.all([
-      merchantIds.length > 0
-        ? client.from('merchants').select('id, name').in('id', merchantIds)
-        : { data: [] },
-      categoryIds.length > 0
-        ? client.from('wiki_categories').select('id, name').in('id', categoryIds)
-        : { data: [] }
-    ]);
-
-    const merchantsMap = new Map((merchantsData.data || []).map(m => [m.id, m]));
-    const categoriesMap = new Map((categoriesData.data || []).map(c => [c.id, c]));
-
-    // 格式化商品数据
-    const goods = (goodsResult.data || []).map((item: GoodsSearchResult) => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      original_price: item.original_price,
-      image: item.images?.[0] || '/images/placeholder.png',
-      merchant_name: item.merchant_id ? (merchantsMap.get(item.merchant_id)?.name || '未知商戶') : '未知商戶',
-      sales: item.sales || 0,
-      has_cert: item.has_cert || false,
-    }));
-
-    // 格式化百科数据
-    const wiki = (wikiResult.data || []).map((item: WikiSearchResult) => ({
-      id: item.id,
-      title: item.title,
-      slug: item.slug,
-      summary: item.summary,
-      cover_image: item.cover_image,
-      category_name: item.category_id ? (categoriesMap.get(item.category_id)?.name || '未分類') : '未分類',
-      views: item.views || 0,
-    }));
-
-    // 格式化视频数据
-    const videos = (videosResult.data || []).map((item: VideoSearchResult) => ({
-      id: item.id,
-      title: item.title,
-      cover_image: item.cover_image || '/images/placeholder.png',
-      duration: item.duration || 0,
-      author: item.author,
-      views: item.views || 0,
-      is_free: item.is_free || false,
-    }));
-
-    // 格式化商户数据
-    const merchants = (merchantsResult.data || []).map((item: MerchantSearchResult) => ({
-      id: item.id,
-      name: item.name,
-      logo: item.logo,
-      type: item.type,
-      rating: item.rating || 5.0,
-      total_sales: item.total_sales || 0,
-      verified: item.verified || false,
-    }));
-
-    // 计算分页信息
-    const goodsTotal = goodsResult.count || 0;
-    const wikiTotal = wikiResult.count || 0;
-    const videosTotal = videosResult.count || 0;
-    const merchantsTotal = merchantsResult.count || 0;
-
-    // 根据当前类型计算分页信息
-    let paginationTotal = 0;
-    if (type === 'all') {
-      // 全部模式下，使用商品总数作为分页参考（或可以根据当前展示的主要内容）
-      paginationTotal = goodsTotal + wikiTotal + videosTotal + merchantsTotal;
-    } else if (type === 'goods') {
-      paginationTotal = goodsTotal;
-    } else if (type === 'wiki') {
-      paginationTotal = wikiTotal;
-    } else if (type === 'videos') {
-      paginationTotal = videosTotal;
-    } else if (type === 'merchants') {
-      paginationTotal = merchantsTotal;
-    }
-
-    return NextResponse.json({
-      data: { goods, wiki, videos, merchants },
-      keyword,
-      pagination: {
-        page,
-        limit,
-        total: paginationTotal,
-        total_pages: Math.ceil(paginationTotal / limit),
-      },
-      counts: {
-        goods: goodsTotal,
-        wiki: wikiTotal,
-        videos: videosTotal,
-        merchants: merchantsTotal,
-      },
-    });
-  } catch (error) {
-    console.error('搜索失败:', error);
-    return NextResponse.json({ error: '搜索失敗' }, { status: 500 });
-  }
-}
-
-/**
- * 记录搜索关键词
- */
-async function recordSearchKeyword(client: ReturnType<typeof getSupabaseClient>, keyword: string) {
-  try {
-    // 尝试更新已有记录
-    const { data: existing } = await client
-      .from('search_keywords')
-      .select('id, count')
-      .eq('keyword', keyword)
-      .single();
-
-    if (existing) {
-      await client
-        .from('search_keywords')
-        .update({ count: existing.count + 1, updated_at: new Date().toISOString() })
-        .eq('id', existing.id);
-    } else {
-      await client.from('search_keywords').insert({
-        keyword,
-        count: 1,
+    // 检查 supabase 是否有效
+    if (!supabase || typeof supabase.from !== 'function') {
+      return NextResponse.json({
+        data: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+        message: 'Database unavailable',
       });
     }
-  } catch {
-    // 忽略记录失败
+
+    const keyword = q.trim();
+
+    if (type === 'goods') {
+      // 搜索商品
+      const { data, error } = await supabase
+        .from('goods')
+        .select(`
+          id,
+          name,
+          subtitle,
+          main_image,
+          price,
+          original_price,
+          is_certified,
+          sales,
+          stock,
+          merchant_id
+        `, { count: 'exact' })
+        .eq('status', 1)
+        .ilike('name', `%${keyword}%`)
+        .order('sales', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      // 获取商户信息
+      let merchantNames: Record<number, string> = {};
+      if (data && data.length > 0) {
+        const merchantIds = [...new Set(data.map((item: any) => item.merchant_id).filter(Boolean))];
+        if (merchantIds.length > 0) {
+          const { data: merchants } = await supabase
+            .from('merchants')
+            .select('id, name')
+            .in('id', merchantIds);
+          
+          if (merchants) {
+            merchantNames = merchants.reduce((acc: Record<number, string>, m: any) => {
+              acc[m.id] = m.name;
+              return acc;
+            }, {});
+          }
+        }
+      }
+
+      const enrichedData = data?.map((item: any) => ({
+        ...item,
+        merchant_name: merchantNames[item.merchant_id] || '未知商家',
+      })) || [];
+
+      return NextResponse.json({
+        data: enrichedData,
+        pagination: {
+          page,
+          limit,
+          total: data?.length || 0,
+          totalPages: Math.ceil((data?.length || 0) / limit),
+        },
+      });
+    } else if (type === 'articles') {
+      // 搜索文章
+      const { data, error } = await supabase
+        .from('articles')
+        .select(`
+          id,
+          title,
+          summary,
+          cover_image,
+          author,
+          views,
+          likes,
+          published_at,
+          category_id
+        `, { count: 'exact' })
+        .eq('status', 1)
+        .ilike('title', `%${keyword}%`)
+        .order('views', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      return NextResponse.json({
+        data: data || [],
+        pagination: {
+          page,
+          limit,
+          total: data?.length || 0,
+          totalPages: Math.ceil((data?.length || 0) / limit),
+        },
+      });
+    } else {
+      // 搜索全部
+      const goodsPromise = supabase
+        .from('goods')
+        .select('id, name, main_image, price, type', { count: 'exact' })
+        .eq('status', 1)
+        .ilike('name', `%${keyword}%`)
+        .limit(5);
+
+      const articlesPromise = supabase
+        .from('articles')
+        .select('id, title, cover_image, type', { count: 'exact' })
+        .eq('status', 1)
+        .ilike('title', `%${keyword}%`)
+        .limit(5);
+
+      const [goodsResult, articlesResult] = await Promise.all([goodsPromise, articlesPromise]);
+
+      return NextResponse.json({
+        goods: goodsResult.data || [],
+        articles: articlesResult.data || [],
+        pagination: {
+          goods_total: goodsResult.data?.length || 0,
+          articles_total: articlesResult.data?.length || 0,
+        },
+      });
+    }
+  } catch (error: any) {
+    console.error('Search error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Search failed' },
+      { status: 500 }
+    );
   }
 }

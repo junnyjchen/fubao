@@ -42,6 +42,55 @@ function getPool(): mysql.Pool {
 }
 
 /**
+ * 查询构建器接口
+ */
+interface QueryInterface {
+  // Select methods
+  select(fields: string): QueryInterface;
+  eq(field: string, value: any): QueryInterface;
+  neq(field: string, value: any): QueryInterface;
+  gt(field: string, value: any): QueryInterface;
+  gte(field: string, value: any): QueryInterface;
+  lt(field: string, value: any): QueryInterface;
+  lte(field: string, value: any): QueryInterface;
+  in(field: string, values: any[]): QueryInterface;
+  is(field: string, value: boolean | null): QueryInterface;
+  like(field: string, value: string): QueryInterface;
+  ilike(field: string, value: string): QueryInterface;
+  or(conditions: string): QueryInterface;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): QueryInterface;
+  limit(count: number): QueryInterface;
+  offset(count: number): QueryInterface;
+  range(from: number, to: number): QueryInterface;
+  single(): Promise<{ data: any; error: any }>;
+  then<TResult1 = { data: any[]; error: any }, TResult2 = never>(
+    onfulfilled?: ((value: { data: any[]; error: any }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+  ): Promise<TResult1 | TResult2>;
+  
+  // Insert methods
+  insert(data: any): Promise<{ data: any[]; error: any }>;
+  
+  // Update methods
+  update(data: any): Promise<{ data: any[]; error: any }>;
+  
+  // Delete methods
+  delete(): Promise<{ data: any[]; error: any }>;
+  
+  // Upsert methods
+  upsert(data: any, options?: { onConflict?: string }): Promise<{ data: any[]; error: any }>;
+  
+  // Count methods
+  count(): Promise<{ count: number; error: any }>;
+  
+  // Execute raw SQL
+  execute(): Promise<{ data: any; error: any }>;
+}
+
+// Alias for backward compatibility
+type SelectQuery = QueryInterface;
+
+/**
  * 数据库客户端类（兼容 Supabase API）
  */
 class DatabaseClient {
@@ -53,7 +102,7 @@ class DatabaseClient {
   private _orderColumn?: string;
   private _orderAscending = true;
 
-  from(table: string): this {
+  from(table: string): SelectQuery {
     this._table = table;
     this._selectFields = '*';
     this._filters = [];
@@ -61,15 +110,15 @@ class DatabaseClient {
     this._offsetValue = undefined;
     this._orderColumn = undefined;
     this._orderAscending = true;
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  select(fields: string): this {
+  select(fields: string): SelectQuery {
     this._selectFields = fields;
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  eq(field: string, value: any): this {
+  eq(field: string, value: any): SelectQuery {
     if (value === null) {
       this._filters.push(`\`${field}\` IS NULL`);
     } else if (typeof value === 'object' && value !== null) {
@@ -77,46 +126,46 @@ class DatabaseClient {
     } else {
       this._filters.push(`\`${field}\` = '${value}'`);
     }
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  neq(field: string, value: any): this {
+  neq(field: string, value: any): SelectQuery {
     if (value === null) {
       this._filters.push(`\`${field}\` IS NOT NULL`);
     } else {
       this._filters.push(`\`${field}\` <> '${value}'`);
     }
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  gt(field: string, value: any): this {
+  gt(field: string, value: any): SelectQuery {
     this._filters.push(`\`${field}\` > '${value}'`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  gte(field: string, value: any): this {
+  gte(field: string, value: any): SelectQuery {
     this._filters.push(`\`${field}\` >= '${value}'`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  lt(field: string, value: any): this {
+  lt(field: string, value: any): SelectQuery {
     this._filters.push(`\`${field}\` < '${value}'`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  lte(field: string, value: any): this {
+  lte(field: string, value: any): SelectQuery {
     this._filters.push(`\`${field}\` <= '${value}'`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  in(field: string, values: any[]): this {
-    if (values.length === 0) return this;
+  in(field: string, values: any[]): SelectQuery {
+    if (values.length === 0) return this as unknown as SelectQuery;
     const valuesStr = values.map(v => `'${v}'`).join(', ');
     this._filters.push(`\`${field}\` IN (${valuesStr})`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  is(field: string, value: boolean | null): this {
+  is(field: string, value: boolean | null): SelectQuery {
     if (value === null) {
       this._filters.push(`\`${field}\` IS NULL`);
     } else if (value === true) {
@@ -124,25 +173,25 @@ class DatabaseClient {
     } else {
       this._filters.push(`\`${field}\` = 0`);
     }
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  like(field: string, value: string): this {
+  like(field: string, value: string): SelectQuery {
     this._filters.push(`\`${field}\` LIKE '${value}'`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  ilike(field: string, value: string): this {
+  ilike(field: string, value: string): SelectQuery {
     this._filters.push(`LOWER(\`${field}\`) LIKE LOWER('${value}')`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  or(conditions: string): this {
+  or(conditions: string): SelectQuery {
     this._filters.push(`(${conditions})`);
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): this {
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): SelectQuery {
     this._orderColumn = column;
     this._orderAscending = options?.ascending !== false;
 
@@ -152,29 +201,28 @@ class DatabaseClient {
         this._filters.push(`\`${column}\` IS NULL ${this._orderAscending ? 'DESC' : 'ASC'}`);
       }
     }
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  limit(count: number): this {
+  limit(count: number): SelectQuery {
     this._limitValue = count;
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  offset(count: number): this {
+  offset(count: number): SelectQuery {
     this._offsetValue = count;
-    return this;
+    return this as unknown as SelectQuery;
   }
 
-  range(from: number, to: number): this {
+  single(): Promise<{ data: any; error: any }> {
+    return this.then(result => ({ data: result.data?.[0] || null, error: result.error }));
+  }
+
+  range(from: number, to: number): SelectQuery {
     this._offsetValue = from;
     this._limitValue = to - from + 1;
-    return this;
+    return this as unknown as SelectQuery;
   }
-
-  single = (): DatabaseClient => {
-    this._limitValue = 1;
-    return this;
-  };
 
   /**
    * 执行查询 - 使其可以直接 await
@@ -183,7 +231,7 @@ class DatabaseClient {
     onfulfilled?: ((value: { data: TResult1; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
-    return this.execute().then(
+    return this._execute().then(
       (result) => {
         const data = result.data as TResult1;
         return onfulfilled ? onfulfilled({ data, error: null }) : data as unknown as TResult1;
@@ -195,9 +243,9 @@ class DatabaseClient {
   }
 
   /**
-   * 执行查询
+   * 内部执行查询
    */
-  async execute() {
+  private async _execute() {
     let sql = `SELECT ${this._selectFields} FROM \`${this._table}\``;
 
     if (this._filters.length > 0) {
@@ -365,3 +413,6 @@ export function getSupabaseClient(): DatabaseClient {
 }
 
 export { db as supabase };
+
+// 导出类型
+export type { SelectQuery };

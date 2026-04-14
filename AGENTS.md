@@ -308,6 +308,17 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | `GET /api/oauth/authorize` | GET | 获取授权URL |
 | `GET /api/oauth/callback` | GET | OAuth回调 |
 
+### SEO 与工具
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `GET /api/search` | GET | 全局搜索（商品/文章） |
+| `GET /api/stats` | GET | 网站统计数据 |
+| `GET /api/verify/{code}` | GET | 商品真伪验证 |
+| `GET /api/sitemap.xml` | GET | 网站地图 |
+| `GET /api/rss.xml` | GET | RSS订阅源 |
+| `GET /api/robots.txt` | GET | robots.txt |
+
 ---
 
 ## 数据库表
@@ -330,6 +341,70 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | banners | Banner |
 | ai_configurations | AI 配置 |
 | ai_generated_articles | AI 生成文章 |
+| certificates | 商品认证证书 |
+| notifications | 通知消息 |
+
+---
+
+## 前端工具库
+
+### React Hooks (`src/lib/hooks/`)
+
+| 文件 | 说明 |
+|------|------|
+| `use-api.ts` | API 相关 Hooks |
+
+#### 可用 Hooks
+
+```typescript
+// 搜索 Hook
+import { useSearch } from '@/lib/hooks/use-api';
+const { data, loading, error, search, clear } = useSearch('/api/search');
+
+// 数据获取 Hook
+import { useFetch } from '@/lib/hooks/use-api';
+const { data, loading, error, refresh } = useFetch('/api/goods');
+
+// 分页 Hook
+import { usePagination } from '@/lib/hooks/use-api';
+const { data, loading, page, totalPages, setPage } = usePagination('/api/goods');
+
+// 表单提交 Hook
+import { useSubmit } from '@/lib/hooks/use-api';
+const { data, loading, error, submit } = useSubmit('/api/orders/create');
+```
+
+### SEO 工具 (`src/lib/seo.ts`)
+
+```typescript
+import { generateMetadata, generateJsonLd, generateProductListJsonLd } from '@/lib/seo';
+
+// 生成页面 meta 标签
+export const metadata = generateMetadata({
+  title: '商品名称',
+  description: '商品描述',
+  type: 'product',
+  image: '/product.jpg',
+});
+
+// 生成 JSON-LD 结构化数据
+const jsonLd = generateProductListJsonLd(products);
+```
+
+### Skeleton 组件 (`src/components/ui/skeleton.tsx`)
+
+```typescript
+import { GoodsListSkeleton, ArticleListSkeleton, TableSkeleton } from '@/components/ui/skeleton';
+
+// 商品列表骨架屏
+<GoodsListSkeleton count={8} />
+
+// 文章列表骨架屏
+<ArticleListSkeleton count={3} />
+
+// 表格骨架屏
+<TableSkeleton rows={10} columns={5} />
+```
 
 ---
 
