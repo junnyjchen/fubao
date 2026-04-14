@@ -157,6 +157,11 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
+    // 检查 supabase 是否有效
+    if (!supabase || typeof supabase.from !== 'function') {
+      return NextResponse.json([]);
+    }
+
     // 尝试从数据库获取商品 - 不使用嵌入查询
     let query = supabase
       .from('goods')

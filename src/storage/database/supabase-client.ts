@@ -338,8 +338,11 @@ class DatabaseClient {
   }
 }
 
-// Auth 模拟对象（开发环境使用）
-const authMock = {
+// 导出单例数据库客户端
+const db = new DatabaseClient();
+
+// 添加 auth 属性到原型（使用普通赋值）
+(db as any).auth = {
   getUser: async () => {
     return { data: { user: null }, error: { message: 'Auth not available in local mode' } };
   },
@@ -356,21 +359,6 @@ const authMock = {
     return { error: null };
   },
 };
-
-// Auth mock getter
-function getAuth() {
-  return authMock;
-}
-
-// 导出单例数据库客户端
-const db = new DatabaseClient();
-
-// 添加 auth 属性
-Object.defineProperty(db, 'auth', {
-  get: getAuth,
-  enumerable: true,
-  configurable: false,
-});
 
 export function getSupabaseClient(): DatabaseClient {
   return db;

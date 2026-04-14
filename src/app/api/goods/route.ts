@@ -44,6 +44,21 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
     
+    // 检查 supabase 是否有效
+    if (!supabase || typeof supabase.from !== 'function') {
+      // 返回空数据（数据库不可用时）
+      return NextResponse.json({
+        data: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+        message: 'Database unavailable - returning empty data',
+      });
+    }
+    
     // 构建查询 - 不使用嵌入查询，改为分开查询后合并
     let query = supabase
       .from('goods')
