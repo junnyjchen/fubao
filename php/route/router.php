@@ -74,6 +74,30 @@ $routers = [
     'api/admin/admins/update' => ['app\controller\Admin::update', ['POST']],
     'api/admin/admins/delete' => ['app\controller\Admin::delete', ['POST']],
     
+    // ========== 管理员 - 文章管理 ==========
+    'api/admin/articles' => ['app\controller\admin\Article::index', ['GET']],
+    'api/admin/articles/create' => ['app\controller\admin\Article::create', ['POST']],
+    'api/admin/articles/update' => ['app\controller\admin\Article::update', ['POST']],
+    'api/admin/articles/delete' => ['app\controller\admin\Article::delete', ['POST']],
+    'api/admin/articles/detail' => ['app\controller\admin\Article::detail', ['GET']],
+    'api/admin/articles/batch' => ['app\controller\admin\Article::batch', ['POST']],
+    
+    // ========== 管理员 - 优惠券管理 ==========
+    'api/admin/coupons' => ['app\controller\admin\Coupon::index', ['GET']],
+    'api/admin/coupons/create' => ['app\controller\admin\Coupon::create', ['POST']],
+    'api/admin/coupons/update' => ['app\controller\admin\Coupon::update', ['POST']],
+    'api/admin/coupons/delete' => ['app\controller\admin\Coupon::delete', ['POST']],
+    'api/admin/coupons/detail' => ['app\controller\admin\Coupon::detail', ['GET']],
+    'api/admin/coupons/claims' => ['app\controller\admin\Coupon::claims', ['GET']],
+    
+    // ========== 管理员 - 商家管理 ==========
+    'api/admin/merchants' => ['app\controller\admin\Merchant::index', ['GET']],
+    'api/admin/merchants/detail' => ['app\controller\admin\Merchant::detail', ['GET']],
+    'api/admin/merchants/review' => ['app\controller\admin\Merchant::review', ['POST']],
+    'api/admin/merchants/updateStatus' => ['app\controller\admin\Merchant::updateStatus', ['POST']],
+    'api/admin/merchants/verify' => ['app\controller\admin\Merchant::verify', ['POST']],
+    'api/admin/merchants/pending' => ['app\controller\admin\Merchant::pending', ['GET']],
+    
     // ========== 商家 ==========
     'api/merchants' => ['app\controller\Merchant::index', ['GET']],
     'api/merchants/apply' => ['app\controller\Merchant::apply', ['POST']],
