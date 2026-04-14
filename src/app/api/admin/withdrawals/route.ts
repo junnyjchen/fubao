@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', parseInt(status));
     }
 
-    const { data: withdrawals, error, count } = await query.range(
+    const { data: withdrawals, error, count } = await query.execute().then(r => ({ data: r.data, error: r.error }));range(
       (page - 1) * pageSize,
       page * pageSize - 1
     );

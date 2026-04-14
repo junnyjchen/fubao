@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${search}%,code.ilike.%${search}%`);
     }
 
-    const { data, error, count } = await query.range(
+    const { data, error, count } = await query.execute().then(r => ({ data: r.data, error: r.error }));range(
       (page - 1) * pageSize,
       page * pageSize - 1
     );

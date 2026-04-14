@@ -36,7 +36,7 @@ export async function GET(
       query = query.eq('slug', slug);
     }
 
-    const { data: article, error } = await query.single();
+    const { data: article, error } = await query.execute().then(r => ({ data: r.data, error: r.error }));single();
 
     if (error || !article) {
       return NextResponse.json({ error: '文章不存在' }, { status: 404 });

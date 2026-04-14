@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         query = query.eq('status', status);
       }
 
-      const { data: userCoupons, error } = await query.order('received_at', { ascending: false });
+      const { data: userCoupons, error } = await query.execute().then(r => ({ data: r.data, error: r.error }));order('received_at', { ascending: false });
 
       if (error) {
         console.error('查询用户优惠券失败:', error);

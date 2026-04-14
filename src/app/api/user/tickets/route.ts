@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    const { data, error, count } = await query.range(offset, offset + limit - 1);
+    const { data, error, count } = await query.execute().then(r => ({ data: r.data, error: r.error }));range(offset, offset + limit - 1);
 
     if (error) {
       console.error('查询工单失败:', error);

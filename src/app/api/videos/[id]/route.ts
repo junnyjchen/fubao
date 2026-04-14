@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       query = query.eq('slug', id);
     }
 
-    const { data, error } = await query.single();
+    const { data, error } = await query.execute().then(r => ({ data: r.data, error: r.error }));single();
 
     if (error || !data) {
       return NextResponse.json(

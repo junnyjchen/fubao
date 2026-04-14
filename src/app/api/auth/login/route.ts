@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: users, error: fetchError } = await query.limit(1);
+    const { data: users, error: fetchError } = await query.execute().then(r => ({ data: r.data, error: r.error }));limit(1);
 
     if (fetchError || !users || users.length === 0) {
       return NextResponse.json(

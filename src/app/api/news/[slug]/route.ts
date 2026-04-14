@@ -34,7 +34,7 @@ export async function GET(
       query = query.eq('slug', slug);
     }
 
-    const { data: newsItem, error } = await query.single();
+    const { data: newsItem, error } = await query.execute().then(r => ({ data: r.data, error: r.error }));single();
 
     if (error || !newsItem) {
       return NextResponse.json({ error: '新聞不存在' }, { status: 404 });
