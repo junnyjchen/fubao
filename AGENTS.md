@@ -204,6 +204,7 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | `POST /api/auth/login` | POST | 用户登录 |
 | `POST /api/auth/register` | POST | 用户注册 |
 | `GET /api/auth/me` | GET | 获取当前用户 |
+| `POST /api/auth/logout` | POST | 用户登出 |
 | `POST /api/auth/sendCode` | POST | 发送验证码 |
 | `POST /api/auth/loginByPhone` | POST | 手机号登录 |
 
@@ -215,11 +216,6 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | `GET /api/admin/me` | GET | 获取管理员信息 |
 | `POST /api/admin/changePassword` | POST | 修改密码 |
 | `GET /api/admin/dashboard` | GET | 统计概览 |
-
-### 管理后台 API
-
-| 接口 | 方法 | 说明 |
-|------|------|------|
 | `GET /api/admin/users` | GET | 用户列表 |
 | `GET /api/admin/goods` | GET | 商品列表 |
 | `POST /api/admin/goods/create` | POST | 创建商品 |
@@ -229,6 +225,10 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | `POST /api/admin/orders/updateStatus` | POST | 更新订单状态 |
 | `GET /api/admin/categories` | GET | 分类列表 |
 | `GET /api/admin/banners` | GET | Banner列表 |
+| `GET /api/admin/articles` | GET | 文章列表 |
+| `POST /api/admin/articles/create` | POST | 创建文章 |
+| `POST /api/admin/articles/update` | POST | 更新文章 |
+| `POST /api/admin/articles/delete` | POST | 删除文章 |
 
 ### 业务 API
 
@@ -240,15 +240,73 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | `GET /api/goods/recommended` | GET | 推荐商品 |
 | `GET /api/goods/hot` | GET | 热销商品 |
 | `GET /api/categories` | GET | 分类列表 |
+| `GET /api/categories/all` | GET | 所有分类 |
 | `GET /api/cart` | GET | 购物车列表 |
 | `POST /api/cart/add` | POST | 添加购物车 |
+| `POST /api/cart/update` | POST | 更新购物车 |
+| `POST /api/cart/remove` | POST | 删除购物车商品 |
 | `GET /api/favorites` | GET | 收藏列表 |
 | `POST /api/favorites/add` | POST | 添加收藏 |
+| `POST /api/favorites/remove` | POST | 取消收藏 |
 | `GET /api/orders` | GET | 订单列表 |
 | `POST /api/orders/create` | POST | 创建订单 |
+| `GET /api/orders/{id}` | GET | 订单详情 |
+| `POST /api/orders/cancel` | POST | 取消订单 |
+| `POST /api/orders/confirm` | POST | 确认收货 |
 | `GET /api/addresses` | GET | 地址列表 |
 | `POST /api/addresses/create` | POST | 创建地址 |
 | `GET /api/home` | GET | 首页数据 |
+| `GET /api/home/banners` | GET | Banner列表 |
+| `GET /api/articles` | GET | 文章列表 |
+| `GET /api/articles/{id}` | GET | 文章详情 |
+| `POST /api/articles/like/{id}` | POST | 点赞文章 |
+
+### 优惠券
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `GET /api/coupons/available` | GET | 可领取优惠券 |
+| `GET /api/coupons/my` | GET | 我的优惠券 |
+| `POST /api/coupons/claim` | POST | 领取优惠券 |
+| `POST /api/coupons/check` | POST | 检查优惠券 |
+
+### 通知
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `GET /api/notifications` | GET | 通知列表 |
+| `POST /api/notifications/markRead` | POST | 标记已读 |
+| `POST /api/notifications/markAllRead` | POST | 全部标记已读 |
+| `GET /api/notifications/unreadCount` | GET | 未读数量 |
+
+### 商家
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `GET /api/merchants` | GET | 商家列表 |
+| `GET /api/merchants/{id}` | GET | 商家详情 |
+| `POST /api/merchants/apply` | POST | 商家申请 |
+| `GET /api/merchants/mine` | GET | 我的商家 |
+| `POST /api/merchants/update` | POST | 更新商家信息 |
+| `POST /api/merchants/review` | POST | 审核商家（管理员） |
+
+### 上传
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `POST /api/upload/image` | POST | 上传单张图片 |
+| `POST /api/upload/images` | POST | 上传多张图片 |
+| `POST /api/upload/goodsImage` | POST | 上传商品图片 |
+| `POST /api/upload/bannerImage` | POST | 上传Banner图片 |
+| `POST /api/upload/delete` | POST | 删除文件 |
+
+### OAuth
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `GET /api/oauth/providers` | GET | 获取OAuth提供商 |
+| `GET /api/oauth/authorize` | GET | 获取授权URL |
+| `GET /api/oauth/callback` | GET | OAuth回调 |
 
 ---
 

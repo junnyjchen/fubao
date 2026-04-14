@@ -74,6 +74,34 @@ $routers = [
     'api/admin/admins/update' => ['app\controller\Admin::update', ['POST']],
     'api/admin/admins/delete' => ['app\controller\Admin::delete', ['POST']],
     
+    // ========== 商家 ==========
+    'api/merchants' => ['app\controller\Merchant::index', ['GET']],
+    'api/merchants/apply' => ['app\controller\Merchant::apply', ['POST']],
+    'api/merchants/mine' => ['app\controller\Merchant::mine', ['GET']],
+    'api/merchants/update' => ['app\controller\Merchant::update', ['POST']],
+    'api/merchants/review' => ['app\controller\Merchant::review', ['POST']],
+    
+    // ========== 通知 ==========
+    'api/notifications' => ['app\controller\Notification::index', ['GET']],
+    'api/notifications/markRead' => ['app\controller\Notification::markRead', ['POST']],
+    'api/notifications/markAllRead' => ['app\controller\Notification::markAllRead', ['POST']],
+    'api/notifications/delete' => ['app\controller\Notification::delete', ['POST']],
+    'api/notifications/unreadCount' => ['app\controller\Notification::unreadCount', ['GET']],
+    'api/notifications/send' => ['app\controller\Notification::send', ['POST']],
+    
+    // ========== 上传 ==========
+    'api/upload/image' => ['app\controller\Upload::image', ['POST']],
+    'api/upload/images' => ['app\controller\Upload::images', ['POST']],
+    'api/upload/goodsImage' => ['app\controller\Upload::goodsImage', ['POST']],
+    'api/upload/bannerImage' => ['app\controller\Upload::bannerImage', ['POST']],
+    'api/upload/delete' => ['app\controller\Upload::delete', ['POST']],
+    
+    // ========== 优惠券 ==========
+    'api/coupons/available' => ['app\controller\Coupon::available', ['GET']],
+    'api/coupons/my' => ['app\controller\Coupon::my', ['GET']],
+    'api/coupons/claim' => ['app\controller\Coupon::claim', ['POST']],
+    'api/coupons/check' => ['app\controller\Coupon::check', ['POST']],
+    
     // ========== OAuth ==========
     'api/oauth/providers' => ['app\controller\OAuth::providers', ['GET']],
     'api/oauth/authorize' => ['app\controller\OAuth::authorize', ['GET']],
@@ -118,6 +146,12 @@ $routers = [
     'api/addresses/delete' => ['app\controller\Address::delete', ['POST']],
     'api/addresses/setDefault' => ['app\controller\Address::setDefault', ['POST']],
     
+    // ========== 管理员 - 文章管理 ==========
+    'api/admin/articles' => ['app\controller\Article::index', ['GET']],
+    'api/admin/articles/create' => ['app\controller\Article::create', ['POST']],
+    'api/admin/articles/update' => ['app\controller\Article::update', ['POST']],
+    'api/admin/articles/delete' => ['app\controller\Article::delete', ['POST']],
+    
     // ========== 首页 ==========
     'api/home' => ['app\controller\Home::index', ['GET']],
     'api/home/banners' => ['app\controller\Home::banners', ['GET']],
@@ -154,6 +188,11 @@ if (!isset($routers[$path])) {
     // 文章详情: api/articles/123
     if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'articles' && is_numeric($parts[2])) {
         $routers[$path] = ['app\controller\Home::article', ['GET']];
+    }
+    
+    // 商家详情: api/merchants/123
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'merchants' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\Merchant::detail', ['GET']];
     }
     
     // 分类子分类: api/categories/1/children

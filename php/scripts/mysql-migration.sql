@@ -508,6 +508,26 @@ CREATE TABLE `ai_generated_articles` (
   KEY `idx_published_at` (`published_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI生成文章表';
 
+-- ----------------------------
+-- 24. 通知表
+-- ----------------------------
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE `notifications` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) UNSIGNED NOT NULL COMMENT '用户ID',
+  `title` varchar(200) NOT NULL COMMENT '标题',
+  `content` text NOT NULL COMMENT '内容',
+  `type` enum('system','order','promotion','activity') NOT NULL DEFAULT 'system' COMMENT '类型',
+  `data` json DEFAULT NULL COMMENT '附加数据',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读',
+  `read_at` datetime DEFAULT NULL COMMENT '阅读时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_is_read` (`is_read`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='通知表';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================
