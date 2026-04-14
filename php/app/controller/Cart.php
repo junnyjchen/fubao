@@ -6,7 +6,6 @@
 namespace app\controller;
 
 use app\Controller;
-use app\common\Jwt;
 
 class Cart extends Controller
 {
@@ -15,11 +14,7 @@ class Cart extends Controller
      */
     public function index()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $items = $this->db->select(
             "SELECT 
@@ -62,11 +57,7 @@ class Cart extends Controller
      */
     public function add()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $goodsId = (int) $this->post('goods_id');
         $quantity = (int) ($this->post('quantity') ?: 1);
@@ -131,11 +122,7 @@ class Cart extends Controller
      */
     public function update()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $cartId = (int) $this->post('cart_id');
         $quantity = (int) $this->post('quantity');
@@ -180,11 +167,7 @@ class Cart extends Controller
      */
     public function delete()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $cartId = (int) $this->post('cart_id');
         
@@ -211,11 +194,7 @@ class Cart extends Controller
      */
     public function clear()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $this->db->delete('cart_items', '`user_id` = ?', [$userId]);
         

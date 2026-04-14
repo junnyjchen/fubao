@@ -99,17 +99,8 @@ class Admin extends Controller
      */
     public function changePassword()
     {
-        $token = \think\Request::header('Authorization', '');
-        
-        if (!preg_match('/Bearer\s+(.+)/i', $token, $matches)) {
-            $this->error('未登錄', 401);
-        }
-        
-        $payload = Jwt::decode($matches[1]);
-        
-        if (!$payload || !isset($payload['adminId'])) {
-            $this->error('登錄已過期', 401);
-        }
+        $payload = $this->verifyAdmin();
+        $adminId = $payload['adminId'];
         
         $oldPassword = $this->post('old_password');
         $newPassword = $this->post('new_password');
@@ -125,7 +116,7 @@ class Admin extends Controller
         // 获取当前管理员
         $admin = $this->db->find(
             "SELECT password FROM `admin_users` WHERE id = ?",
-            [$payload['adminId']]
+            [$adminId]
         );
         
         if (!$admin) {
@@ -141,7 +132,7 @@ class Admin extends Controller
         $this->db->update('admin_users', [
             'password' => password_hash($newPassword, PASSWORD_DEFAULT),
             'updated_at' => date('Y-m-d H:i:s'),
-        ], '`id` = ?', [$payload['adminId']]);
+        ], '`id` = ?', [$adminId]);
         
         $this->json([], '密碼修改成功');
     }

@@ -15,6 +15,9 @@ $path = trim($path, '/');
 
 // 路由映射
 $routers = [
+    // ========== 健康检查 ==========
+    'api/health' => ['app\controller\Health::index', ['GET']],
+    
     // ========== 会员认证 ==========
     'api/auth/login' => ['app\controller\Auth::login', ['POST']],
     'api/auth/register' => ['app\controller\Auth::register', ['POST']],

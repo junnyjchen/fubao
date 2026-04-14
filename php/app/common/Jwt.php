@@ -114,6 +114,45 @@ class Jwt
         
         $payload = self::decode($token);
         
-        return $payload ? ($payload['userId'] ?? null) : null;
+        if (!$payload) {
+            return null;
+        }
+        
+        // 支持 userId 和 adminId
+        return $payload['userId'] ?? $payload['adminId'] ?? null;
+    }
+    
+    /**
+     * 验证是否为管理员Token
+     */
+    public static function verifyAdmin($token = null)
+    {
+        $token = $token ?: self::getTokenFromHeader();
+        
+        if (!$token) {
+            return null;
+        }
+        
+        $payload = self::decode($token);
+        
+        if (!$payload || !isset($payload['adminId'])) {
+            return null;
+        }
+        
+        return $payload;
+    }
+    
+    /**
+     * 获取完整Payload
+     */
+    public static function getPayload($token = null)
+    {
+        $token = $token ?: self::getTokenFromHeader();
+        
+        if (!$token) {
+            return null;
+        }
+        
+        return self::decode($token);
     }
 }

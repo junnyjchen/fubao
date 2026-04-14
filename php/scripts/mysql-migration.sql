@@ -40,9 +40,11 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
   `password` varchar(255) DEFAULT NULL COMMENT '密码',
   `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
+  `name` varchar(50) DEFAULT NULL COMMENT '真实姓名',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像',
   `gender` enum('unknown','male','female') NOT NULL DEFAULT 'unknown' COMMENT '性别',
   `birthday` date DEFAULT NULL COMMENT '生日',
+  `language` varchar(10) DEFAULT 'zh-TW' COMMENT '语言',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态',
   `last_login_at` datetime DEFAULT NULL COMMENT '最后登录时间',
   `last_login_ip` varchar(50) DEFAULT NULL COMMENT '最后登录IP',
@@ -50,7 +52,8 @@ CREATE TABLE `users` (
   `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_phone` (`phone`),
-  KEY `idx_email` (`email`)
+  UNIQUE KEY `idx_email` (`email`),
+  KEY `idx_username` (`username`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- ----------------------------

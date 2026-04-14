@@ -91,4 +91,32 @@ class Controller
     {
         return Request::get($key, $default);
     }
+    
+    /**
+     * 验证用户登录
+     */
+    protected function verifyUser()
+    {
+        $userId = Jwt::verify();
+        
+        if (!$userId) {
+            $this->error('請先登錄', 401);
+        }
+        
+        return $userId;
+    }
+    
+    /**
+     * 验证管理员登录
+     */
+    protected function verifyAdmin()
+    {
+        $payload = Jwt::verifyAdmin();
+        
+        if (!$payload) {
+            $this->error('請先登錄', 401);
+        }
+        
+        return $payload;
+    }
 }

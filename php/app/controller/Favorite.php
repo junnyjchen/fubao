@@ -6,7 +6,6 @@
 namespace app\controller;
 
 use app\Controller;
-use app\common\Jwt;
 
 class Favorite extends Controller
 {
@@ -15,11 +14,7 @@ class Favorite extends Controller
      */
     public function index()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $page = (int) $this->get('page', 1);
         $limit = (int) $this->get('limit', 20);
@@ -57,11 +52,7 @@ class Favorite extends Controller
      */
     public function add()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $goodsId = (int) $this->post('goods_id');
         
@@ -103,11 +94,7 @@ class Favorite extends Controller
      */
     public function remove()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $goodsId = (int) $this->post('goods_id');
         

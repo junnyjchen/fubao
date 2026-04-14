@@ -6,7 +6,6 @@
 namespace app\controller;
 
 use app\Controller;
-use app\common\Jwt;
 
 class Address extends Controller
 {
@@ -15,11 +14,7 @@ class Address extends Controller
      */
     public function index()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $list = $this->db->select(
             "SELECT * FROM `addresses` WHERE `user_id` = ? ORDER BY `is_default` DESC, `created_at` DESC",
@@ -34,11 +29,7 @@ class Address extends Controller
      */
     public function detail($id)
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $address = $this->db->find(
             "SELECT * FROM `addresses` WHERE `id` = ? AND `user_id` = ?",
@@ -57,11 +48,7 @@ class Address extends Controller
      */
     public function create()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $name = $this->post('name');
         $phone = $this->post('phone');
@@ -103,11 +90,7 @@ class Address extends Controller
      */
     public function update()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $id = (int) $this->post('id');
         
@@ -155,11 +138,7 @@ class Address extends Controller
      */
     public function delete()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $id = (int) $this->post('id');
         
@@ -201,11 +180,7 @@ class Address extends Controller
      */
     public function setDefault()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $id = (int) $this->post('id');
         

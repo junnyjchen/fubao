@@ -67,7 +67,8 @@ class Auth extends Controller
         $email = $this->post('email');
         $password = $this->post('password');
         $phone = $this->post('phone');
-        $name = $this->post('name');
+        $nickname = $this->post('nickname');
+        $username = $this->post('username');
         
         if (empty($email)) {
             $this->error('請輸入郵箱');
@@ -103,12 +104,28 @@ class Auth extends Controller
             }
         }
         
+        // 生成用户名（如果未提供）
+        if (empty($username)) {
+            $username = 'user_' . substr(md5(uniqid()), 0, 8);
+        }
+        
+        // 检查用户名是否已存在
+        $usernameExists = $this->db->find(
+            "SELECT id FROM `users` WHERE `username` = ?",
+            [$username]
+        );
+        
+        if ($usernameExists) {
+            $username = 'user_' . substr(md5(uniqid()), 0, 8);
+        }
+        
         // 创建用户
         $userId = $this->db->insert('users', [
+            'username' => $username,
             'email' => $email,
             'password' => password_hash($password, PASSWORD_DEFAULT),
             'phone' => $phone ?: null,
-            'name' => $name ?: null,
+            'nickname' => $nickname ?: null,
             'status' => 1,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
@@ -123,9 +140,10 @@ class Auth extends Controller
         $this->json([
             'user' => [
                 'id' => $userId,
+                'username' => $username,
                 'email' => $email,
                 'phone' => $phone,
-                'name' => $name,
+                'nickname' => $nickname,
             ],
             'token' => $token,
         ], '註冊成功');
@@ -136,14 +154,10 @@ class Auth extends Controller
      */
     public function me()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $user = $this->db->find(
-            "SELECT id, email, phone, name, avatar, language, status, created_at FROM `users` WHERE id = ?",
+            "SELECT id, username, email, phone, nickname, avatar, language, status, created_at FROM `users` WHERE id = ?",
             [$userId]
         );
         

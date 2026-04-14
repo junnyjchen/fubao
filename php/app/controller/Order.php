@@ -6,7 +6,6 @@
 namespace app\controller;
 
 use app\Controller;
-use app\common\Jwt;
 
 class Order extends Controller
 {
@@ -15,11 +14,7 @@ class Order extends Controller
      */
     public function index()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $page = (int) $this->get('page', 1);
         $limit = (int) $this->get('limit', 20);
@@ -63,11 +58,7 @@ class Order extends Controller
      */
     public function create()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $items = $this->post('items');
         $addressId = $this->post('address_id');
@@ -212,11 +203,7 @@ class Order extends Controller
      */
     public function detail($id)
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $order = $this->db->find(
             "SELECT * FROM `orders` WHERE `id` = ? AND `user_id` = ?",
@@ -247,11 +234,7 @@ class Order extends Controller
      */
     public function cancel()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $orderId = (int) $this->post('order_id');
         
@@ -282,11 +265,7 @@ class Order extends Controller
      */
     public function confirm()
     {
-        $userId = Jwt::verify();
-        
-        if (!$userId) {
-            $this->error('請先登錄', 401);
-        }
+        $userId = $this->verifyUser();
         
         $orderId = (int) $this->post('order_id');
         
