@@ -338,8 +338,39 @@ class DatabaseClient {
   }
 }
 
+// Auth 模拟对象（开发环境使用）
+const authMock = {
+  getUser: async () => {
+    return { data: { user: null }, error: { message: 'Auth not available in local mode' } };
+  },
+  signInWithPassword: async (credentials: { email: string; password: string }) => {
+    return { data: { session: null, user: null }, error: { message: 'Auth not available in local mode' } };
+  },
+  signUp: async (credentials: { email: string; password: string; options?: any }) => {
+    return { data: { session: null, user: null }, error: { message: 'Auth not available in local mode' } };
+  },
+  signOut: async () => {
+    return { error: null };
+  },
+  setSession: async (session: any) => {
+    return { error: null };
+  },
+};
+
+// Auth mock getter
+function getAuth() {
+  return authMock;
+}
+
 // 导出单例数据库客户端
 const db = new DatabaseClient();
+
+// 添加 auth 属性
+Object.defineProperty(db, 'auth', {
+  get: getAuth,
+  enumerable: true,
+  configurable: false,
+});
 
 export function getSupabaseClient(): DatabaseClient {
   return db;
