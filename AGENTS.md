@@ -416,6 +416,42 @@ import { GoodsListSkeleton, ArticleListSkeleton, TableSkeleton } from '@/compone
 
 ---
 
+## 宝塔部署（前后端分离）
+
+### 目录结构
+
+| 组件 | 目录 | 端口 | 说明 |
+|------|------|------|------|
+| 前端 | `/www/wwwroot/fubao-web` | 5000 | Next.js |
+| 后端 | `/www/wwwroot/fubao-api` | 8080 | PHP |
+
+### 一键部署命令
+
+在宝塔终端执行：
+
+```bash
+# 一键部署
+curl -sL https://raw.githubusercontent.com/junnyjchen/fubao/main/scripts/deploy-separate.sh | bash
+
+# 或手动执行
+cd /www/wwwroot/fubao-web && git pull && npm install && npm run build && chown -R www:www /www/wwwroot/fubao-web
+cd /www/wwwroot/fubao-api && git pull && chown -R www:www /www/wwwroot/fubao-api
+pm2 restart fubao-web
+systemctl reload nginx
+```
+
+### 前端 Nginx 配置
+
+在宝塔站点设置中添加反向代理：
+
+```
+代理名称: fubao-nextjs
+目标URL: http://127.0.0.1:5000
+发送域名: $host
+```
+
+---
+
 ## 环境变量
 
 ### 前端 (.env)
