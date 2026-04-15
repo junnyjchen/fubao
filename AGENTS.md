@@ -121,6 +121,18 @@ pnpm dev                 # 开发模式
 | `pagination.tsx` | 分页组件 |
 | `skeleton.tsx` | 骨架屏组件 |
 
+#### 业务组件 (`src/components/`)
+
+| 目录 | 说明 |
+|------|------|
+| `favorite/FavoriteList.tsx` | 收藏列表组件 |
+| `coupon/CouponCard.tsx` | 优惠券组件 |
+| `logistics/OrderTracker.tsx` | 订单追踪组件 |
+| `product/ProductCompare.tsx` | 商品比较组件 |
+| `share/ShareButton.tsx` | 分享组件 |
+| `media/ImagePreview.tsx` | 图片预览组件 |
+| `search/SearchBar.tsx` | 搜索组件 |
+
 #### Toast 通知
 
 ```typescript

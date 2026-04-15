@@ -1,280 +1,340 @@
-/**
- * @fileoverview 搜索栏组件
- * @description 提供商品搜索功能
- * @module components/search/SearchBar
- */
-
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, Clock, TrendingUp } from 'lucide-react';
+import { Image } from '@/components/ui/image';
 import { cn } from '@/lib/utils';
+import { 
+  Search, 
+  X, 
+  Clock, 
+  TrendingUp,
+  Loader2,
+  History,
+} from 'lucide-react';
 
-interface SearchBarProps {
-  /** 占位符文本 */
-  placeholder?: string;
-  /** 自定义类名 */
-  className?: string;
-  /** 是否显示热门搜索 */
-  showHotSearch?: boolean;
-  /** 是否显示搜索历史 */
-  showHistory?: boolean;
-  /** 是否在输入时自动搜索 */
-  autoSearch?: boolean;
-  /** 搜索回调 */
-  onSearch?: (keyword: string) => void;
+interface SearchSuggestion {
+  id: string | number;
+  type: 'goods' | 'article' | 'keyword';
+  text: string;
+  image?: string;
+  url?: string;
 }
 
-/** 热门搜索词 */
-const HOT_KEYWORDS = [
-  '平安符',
-  '招財符',
-  '太歲符',
-  '開光手串',
-  '桃木劍',
-  '八卦鏡',
-  '道教書籍',
-  '香燭',
-];
+interface SearchHistory {
+  keyword: string;
+  timestamp: number;
+}
 
-/** 搜索历史存储键 */
-const SEARCH_HISTORY_KEY = 'fubao_search_history';
-const MAX_HISTORY = 10;
+interface SearchBarProps {
+  defaultValue?: string;
+  placeholder?: string;
+  size?: 'sm' | 'md' | 'lg';
+  showButton?: boolean;
+  autoFocus?: boolean;
+  onSearch?: (keyword: string) => void;
+  className?: string;
+}
 
 export function SearchBar({
-  placeholder = '搜索商品、符箓、法器...',
-  className,
-  showHotSearch = true,
-  showHistory = true,
-  autoSearch = false,
+  defaultValue = '',
+  placeholder = '搜索商品、文章...',
+  size = 'md',
+  showButton = true,
+  autoFocus = false,
   onSearch,
+  className,
 }: SearchBarProps) {
+  const [keyword, setKeyword] = useState(defaultValue);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const [keyword, setKeyword] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 加载搜索历史
-  useEffect(() => {
-    if (showHistory) {
-      const history = localStorage.getItem(SEARCH_HISTORY_KEY);
-      if (history) {
-        try {
-          setSearchHistory(JSON.parse(history));
-        } catch {
-          setSearchHistory([]);
-        }
-      }
+  const handleSearch = useCallback(() => {
+    const trimmed = keyword.trim();
+    if (!trimmed) return;
+    
+    setIsLoading(true);
+    onSearch?.(trimmed);
+    
+    // Save to history
+    const history = getSearchHistory();
+    const newHistory = [
+      { keyword: trimmed, timestamp: Date.now() },
+      ...history.filter((h) => h.keyword !== trimmed),
+    ].slice(0, 10);
+    localStorage.setItem('search_history', JSON.stringify(newHistory));
+    
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    setIsLoading(false);
+  }, [keyword, onSearch, router]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
-  }, [showHistory]);
-
-  // 点击外部关闭下拉框
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        !inputRef.current?.contains(event.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // 保存搜索历史
-  const saveSearchHistory = useCallback((term: string) => {
-    if (!term.trim()) return;
-
-    setSearchHistory(prev => {
-      const newHistory = [term, ...prev.filter(h => h !== term)].slice(0, MAX_HISTORY);
-      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory));
-      return newHistory;
-    });
-  }, []);
-
-  // 执行搜索
-  const handleSearch = useCallback((searchTerm: string) => {
-    const term = searchTerm.trim();
-    if (!term) return;
-
-    saveSearchHistory(term);
-    setShowDropdown(false);
-
-    if (onSearch) {
-      onSearch(term);
-    } else {
-      router.push(`/search?keyword=${encodeURIComponent(term)}`);
-    }
-  }, [saveSearchHistory, onSearch, router]);
-
-  // 提交搜索
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSearch(keyword);
   };
 
-  // 清除搜索词
-  const handleClear = () => {
-    setKeyword('');
-    inputRef.current?.focus();
-  };
-
-  // 清除搜索历史
-  const clearHistory = () => {
-    localStorage.removeItem(SEARCH_HISTORY_KEY);
-    setSearchHistory([]);
-  };
-
-  // 点击搜索项
-  const handleClickItem = (term: string) => {
-    setKeyword(term);
-    handleSearch(term);
+  const sizeClasses = {
+    sm: 'h-8 text-sm',
+    md: 'h-10 text-sm',
+    lg: 'h-12 text-base',
   };
 
   return (
-    <div className={cn('relative', className)}>
-      <form onSubmit={handleSubmit} className="relative">
+    <div className={cn('relative flex gap-2', className)}>
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          ref={inputRef}
-          type="text"
+          type="search"
           value={keyword}
-          onChange={(e) => {
-            setKeyword(e.target.value);
-            if (autoSearch && e.target.value.trim()) {
-              handleSearch(e.target.value);
-            }
-          }}
-          onFocus={() => setShowDropdown(true)}
+          onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="pr-20"
+          autoFocus={autoFocus}
+          className={cn('pl-10 pr-4', sizeClasses[size])}
         />
         {keyword && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-10 top-1/2 -translate-y-1/2 h-7 w-7"
-            onClick={handleClear}
+          <button
+            onClick={() => setKeyword('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-muted rounded-full"
           >
-            <X className="h-4 w-4" />
-          </Button>
+            <X className="w-3 h-3 text-muted-foreground" />
+          </button>
         )}
-        <Button
-          type="submit"
-          size="icon"
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-        >
-          <Search className="h-4 w-4" />
+      </div>
+      {showButton && (
+        <Button onClick={handleSearch} disabled={isLoading} size={size}>
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '搜索'}
         </Button>
-      </form>
+      )}
+    </div>
+  );
+}
 
-      {/* 搜索下拉框 */}
-      {showDropdown && (showHistory || showHotSearch) && (
-        <div
-          ref={dropdownRef}
-          className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg z-50 overflow-hidden"
-        >
-          {/* 搜索历史 */}
-          {showHistory && searchHistory.length > 0 && (
-            <div className="p-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  搜索歷史
+// Search History & Suggestions Dropdown
+interface SearchDropdownProps {
+  suggestions: SearchSuggestion[];
+  history: SearchHistory[];
+  trending: string[];
+  onSelect: (keyword: string) => void;
+  onClearHistory: () => void;
+  isLoading?: boolean;
+}
+
+export function SearchDropdown({
+  suggestions,
+  history,
+  trending,
+  onSelect,
+  onClearHistory,
+  isLoading = false,
+}: SearchDropdownProps) {
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center">
+        <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (suggestions.length === 0 && history.length === 0 && trending.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg overflow-hidden z-50">
+      {/* History */}
+      {history.length > 0 && (
+        <div className="p-3 border-b">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-muted-foreground">搜索历史</span>
+            <button
+              onClick={onClearHistory}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              清空
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {history.map((h, i) => (
+              <button
+                key={i}
+                onClick={() => onSelect(h.keyword)}
+                className="flex items-center gap-1 px-2 py-1 text-sm bg-muted rounded-full hover:bg-muted/80 transition-colors"
+              >
+                <Clock className="w-3 h-3" />
+                {h.keyword}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions */}
+      {suggestions.length > 0 && (
+        <div className="p-3">
+          <span className="text-sm font-medium text-muted-foreground mb-2 block">搜索建议</span>
+          <div className="space-y-1">
+            {suggestions.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => onSelect(s.text)}
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors text-left"
+              >
+                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                {s.image && (
+                  <Image
+                    src={s.image}
+                    alt=""
+                    className="w-8 h-8 rounded object-cover"
+                  />
+                )}
+                <span className="flex-1 truncate">{s.text}</span>
+                <span className="text-xs text-muted-foreground capitalize">
+                  {s.type === 'goods' ? '商品' : s.type === 'article' ? '文章' : ''}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 text-xs text-muted-foreground"
-                  onClick={clearHistory}
-                >
-                  清除
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {searchHistory.map((term, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleClickItem(term)}
-                  >
-                    {term}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-          {/* 热门搜索 */}
-          {showHotSearch && (
-            <div className="p-3 border-t">
-              <span className="text-sm font-medium text-muted-foreground flex items-center gap-1 mb-2">
-                <TrendingUp className="w-3 h-3" />
-                熱門搜索
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {HOT_KEYWORDS.map((term, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleClickItem(term)}
-                  >
-                    {term}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+      {/* Trending */}
+      {trending.length > 0 && suggestions.length === 0 && (
+        <div className="p-3 border-t">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-orange-500" />
+            <span className="text-sm font-medium text-muted-foreground">热门搜索</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {trending.map((t, i) => (
+              <button
+                key={i}
+                onClick={() => onSelect(t)}
+                className="px-2 py-1 text-sm bg-muted rounded-full hover:bg-muted/80 transition-colors"
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-/**
- * 紧凑型搜索栏
- */
-export function CompactSearchBar({ className }: { className?: string }) {
-  const router = useRouter();
-  const [keyword, setKeyword] = useState('');
+// Search with Dropdown
+interface SearchWithDropdownProps {
+  onSearch: (keyword: string) => void;
+}
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (keyword.trim()) {
-      router.push(`/search?keyword=${encodeURIComponent(keyword.trim())}`);
+export function SearchWithDropdown({ onSearch }: SearchWithDropdownProps) {
+  const [keyword, setKeyword] = useState('');
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [history, setHistory] = useState<SearchHistory[]>([]);
+  const [trending] = useState(['开光符咒', '道家法器', '平安符', '招财转运']);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    const stored = localStorage.getItem('search_history');
+    if (stored) {
+      try {
+        setHistory(JSON.parse(stored));
+      } catch (e) {
+        // Ignore
+      }
     }
+  }, []);
+
+  const handleSearch = useCallback((kw: string) => {
+    if (!kw.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    // In real app, fetch from API
+    // Simulate suggestions
+    setSuggestions([
+      { id: 1, type: 'goods', text: `${kw} 开光符咒`, image: '/placeholder.png' },
+      { id: 2, type: 'goods', text: `${kw} 道家法器` },
+      { id: 3, type: 'article', text: `${kw} 文化解读` },
+    ]);
+  }, []);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setKeyword(value);
+    setShowDropdown(true);
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    debounceRef.current = setTimeout(() => {
+      handleSearch(value);
+    }, 300);
+  };
+
+  const handleSelect = (kw: string) => {
+    setKeyword(kw);
+    setShowDropdown(false);
+
+    // Save to history
+    const newHistory = [
+      { keyword: kw, timestamp: Date.now() },
+      ...history.filter((h) => h.keyword !== kw),
+    ].slice(0, 10);
+    setHistory(newHistory);
+    localStorage.setItem('search_history', JSON.stringify(newHistory));
+
+    onSearch(kw);
+  };
+
+  const handleClearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('search_history');
   };
 
   return (
-    <form onSubmit={handleSearch} className={cn('relative', className)}>
-      <Input
-        type="search"
+    <div className="relative">
+      <SearchBar
         value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        placeholder="搜索..."
-        className="pr-9"
+        onChange={handleInputChange}
+        onSearch={handleSelect}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            setShowDropdown(false);
+          }
+        }}
+        onFocus={() => setShowDropdown(true)}
+        placeholder="搜索符咒、法器、文化..."
       />
-      <Button
-        type="submit"
-        size="icon"
-        variant="ghost"
-        className="absolute right-0 top-0 h-full w-9"
-      >
-        <Search className="h-4 w-4" />
-      </Button>
-    </form>
+
+      {showDropdown && (keyword || history.length > 0 || trending.length > 0) && (
+        <SearchDropdown
+          suggestions={keyword ? suggestions : []}
+          history={keyword ? [] : history}
+          trending={keyword ? [] : trending}
+          onSelect={handleSelect}
+          onClearHistory={handleClearHistory}
+        />
+      )}
+    </div>
   );
+}
+
+// Helper function
+function getSearchHistory(): SearchHistory[] {
+  try {
+    const stored = localStorage.getItem('search_history');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
 }
