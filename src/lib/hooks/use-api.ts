@@ -1,317 +1,479 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { api } from '@/lib/api';
 
-interface UseSearchOptions<T> {
-  debounceMs?: number;
-  onSuccess?: (data: T) => void;
-  onError?: (error: Error) => void;
-}
-
-interface SearchResult<T> {
-  data: T | null;
-  loading: boolean;
-  error: Error | null;
-  search: (query: string) => void;
-  clear: () => void;
-}
-
-/**
- * 搜索 Hook
- * 支持防抖和自动清理
- */
-export function useSearch<T>(
-  url: string,
-  options: UseSearchOptions<T> = {}
-): SearchResult<T> {
-  const { debounceMs = 300, onSuccess, onError } = options;
-  
-  const [query, setQuery] = useState('');
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-  const search = useCallback((q: string) => {
-    setQuery(q);
-    
-    if (!q || q.trim().length < 2) {
-      setData(null);
-      setError(null);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams({ q: q.trim() });
-        const response = await fetch(`${url}?${params}`);
-        
-        if (!response.ok) {
-          throw new Error(`搜索失败: ${response.status}`);
-        }
-
-        const result = await response.json();
-        setData(result);
-        onSuccess?.(result);
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error('搜索出错');
-        setError(error);
-        onError?.(error);
-      } finally {
-        setLoading(false);
-      }
-    }, debounceMs);
-
-    return () => clearTimeout(timer);
-  }, [url, debounceMs, onSuccess, onError]);
-
-  const clear = useCallback(() => {
-    setQuery('');
-    setData(null);
-    setError(null);
-  }, []);
-
-  return { data, loading, error, search, clear };
-}
+// ==================== 数据获取 Hooks ====================
 
 /**
  * 通用数据获取 Hook
  */
-interface UseFetchOptions<T> {
-  immediate?: boolean;
-  params?: Record<string, string>;
-  onSuccess?: (data: T) => void;
-  onError?: (error: Error) => void;
-}
-
-interface FetchResult<T> {
-  data: T | null;
-  loading: boolean;
-  error: Error | null;
-  refresh: () => Promise<void>;
-}
-
-export function useFetch<T>(
-  url: string,
-  options: UseFetchOptions<T> = {}
-): FetchResult<T> {
-  const { immediate = true, params, onSuccess, onError } = options;
-  
+export function useFetch<T>(url: string, options?: RequestInit) {
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(immediate);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
     try {
-      let fetchUrl = url;
-      if (params && Object.keys(params).length > 0) {
-        const searchParams = new URLSearchParams(params);
-        fetchUrl = `${url}?${searchParams}`;
-      }
-
-      const response = await fetch(fetchUrl);
-      
-      if (!response.ok) {
-        throw new Error(`请求失败: ${response.status}`);
-      }
-
-      const result = await response.json();
-      setData(result);
-      onSuccess?.(result);
+      setLoading(true);
+      const response = await api.get<T>(url);
+      setData(response);
+      setError(null);
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('请求出错');
-      setError(error);
-      onError?.(error);
+      setError(err as Error);
     } finally {
       setLoading(false);
     }
-  }, [url, params, onSuccess, onError]);
+  }, [url]);
 
   useEffect(() => {
-    if (immediate) {
-      fetchData();
-    }
-  }, [immediate, fetchData]);
+    fetchData();
+  }, [fetchData]);
 
   return { data, loading, error, refresh: fetchData };
 }
 
 /**
- * 分页 Hook
+ * 带依赖的数据获取 Hook
  */
-interface UsePaginationOptions<T> {
-  pageSize?: number;
-  onPageChange?: (page: number) => void;
+export function useFetchDeps<T>(url: string, deps: unknown[]) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get<T>(url);
+        if (!cancelled) {
+          setData(response);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err as Error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url, ...deps]);
+
+  return { data, loading, error };
 }
 
-interface PaginationResult<T> {
-  data: T[];
-  loading: boolean;
-  page: number;
-  pageSize: number;
+// ==================== 分页 Hooks ====================
+
+/**
+ * 分页数据获取 Hook
+ */
+interface PaginationParams {
+  page?: number;
+  page_size?: number;
+}
+
+interface PaginatedResult<T> {
+  list: T[];
   total: number;
-  totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
-  setPage: (page: number) => void;
-  next: () => void;
-  prev: () => void;
+  page: number;
+  page_size: number;
+  total_pages: number;
 }
 
 export function usePagination<T>(
   url: string,
-  options: UsePaginationOptions<T> = {}
-): PaginationResult<T> & { fetch: (params?: Record<string, string>) => Promise<void> } {
-  const { pageSize = 20, onPageChange } = options;
-  
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [page, setPageState] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [params, setParams] = useState<Record<string, string>>({});
+  initialParams?: PaginationParams
+) {
+  const [params, setParams] = useState<PaginationParams>({
+    page: 1,
+    page_size: 10,
+    ...initialParams,
+  });
+  const [data, setData] = useState<PaginatedResult<T> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const totalPages = Math.ceil(total / pageSize);
-  const hasNext = page < totalPages;
-  const hasPrev = page > 1;
-
-  const fetch = useCallback(async (additionalParams?: Record<string, string>) => {
-    setLoading(true);
-    
+  const fetchData = useCallback(async () => {
     try {
-      const allParams = {
-        ...params,
-        ...additionalParams,
-        page: String(page),
-        limit: String(pageSize),
-      };
-      
-      const searchParams = new URLSearchParams(allParams);
-      const response = await fetch(`${url}?${searchParams}`);
-      
-      if (!response.ok) {
-        throw new Error(`请求失败: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      if (result.data) {
-        setData(result.data);
-      }
-      if (result.pagination) {
-        setTotal(result.pagination.total || 0);
-      }
+      setLoading(true);
+      const queryParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+      const response = await api.get<PaginatedResult<T>>(`${url}?${queryParams}`);
+      setData(response);
+      setError(null);
     } catch (err) {
-      console.error('Pagination fetch error:', err);
+      setError(err as Error);
     } finally {
       setLoading(false);
     }
-  }, [url, page, pageSize, params]);
+  }, [url, params]);
 
   useEffect(() => {
-    fetch();
-  }, [page]);
+    fetchData();
+  }, [fetchData]);
 
-  const setPage = useCallback((newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setPageState(newPage);
-      onPageChange?.(newPage);
-    }
-  }, [totalPages, onPageChange]);
+  const setPage = useCallback((page: number) => {
+    setParams((prev) => ({ ...prev, page }));
+  }, []);
 
-  const next = useCallback(() => {
-    if (hasNext) setPage(page + 1);
-  }, [hasNext, page, setPage]);
-
-  const prev = useCallback(() => {
-    if (hasPrev) setPage(page - 1);
-  }, [hasPrev, page, setPage]);
+  const setPageSize = useCallback((page_size: number) => {
+    setParams({ page: 1, page_size });
+  }, []);
 
   return {
-    data,
+    data: data?.list || [],
+    total: data?.total || 0,
+    page: data?.page || 1,
+    page_size: data?.page_size || 10,
+    totalPages: data?.total_pages || 1,
     loading,
-    page,
-    pageSize,
-    total,
-    totalPages,
-    hasNext,
-    hasPrev,
+    error,
+    refresh: fetchData,
     setPage,
-    next,
-    prev,
-    fetch,
+    setPageSize,
   };
 }
+
+// ==================== 表单提交 Hooks ====================
 
 /**
  * 表单提交 Hook
  */
-interface UseSubmitOptions<T> {
-  onSuccess?: (data: T) => void;
-  onError?: (error: Error) => void;
-  onFinally?: () => void;
-}
-
-interface SubmitResult<T> {
-  data: T | null;
-  loading: boolean;
-  error: Error | null;
-  submit: (body: any) => Promise<T | null>;
-  reset: () => void;
-}
-
-export function useSubmit<T>(
+export function useSubmit<T = unknown>(
   url: string,
-  method: 'POST' | 'PUT' | 'DELETE' = 'POST',
-  options: UseSubmitOptions<T> = {}
-): SubmitResult<T> {
-  const { onSuccess, onError, onFinally } = options;
-  
-  const [data, setData] = useState<T | null>(null);
+  options?: {
+    method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+    onSuccess?: (data: T) => void;
+    onError?: (error: Error) => void;
+  }
+) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [data, setData] = useState<T | null>(null);
 
-  const submit = useCallback(async (body: any): Promise<T | null> => {
-    setLoading(true);
-    setError(null);
+  const submit = useCallback(
+    async (body: unknown) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const method = options?.method || 'POST';
+        const response = await api.request<T>(url, {
+          method,
+          body: method !== 'DELETE' ? body : undefined,
+        });
+        setData(response);
+        options?.onSuccess?.(response);
+        return response;
+      } catch (err) {
+        const error = err as Error;
+        setError(error);
+        options?.onError?.(error);
+        throw error;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [url, options]
+  );
 
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
+  return { loading, error, data, submit };
+}
 
-      const result = await response.json();
+// ==================== 搜索 Hooks ====================
 
-      if (!response.ok) {
-        throw new Error(result.error || result.message || '提交失败');
+/**
+ * 搜索 Hook（带防抖）
+ */
+export function useSearch<T>(
+  url: string,
+  debounceMs = 300
+) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<T[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout>();
+
+  const search = useCallback(
+    async (q: string) => {
+      setQuery(q);
+
+      if (!q.trim()) {
+        setResults([]);
+        return;
       }
 
-      setData(result);
-      onSuccess?.(result);
-      return result;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error('提交出错');
-      setError(error);
-      onError?.(error);
-      return null;
-    } finally {
-      setLoading(false);
-      onFinally?.();
-    }
-  }, [url, method, onSuccess, onError, onFinally]);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
 
-  const reset = useCallback(() => {
-    setData(null);
-    setError(null);
+      debounceRef.current = setTimeout(async () => {
+        try {
+          setLoading(true);
+          const response = await api.get<T[]>(`${url}?q=${encodeURIComponent(q)}`);
+          setResults(response);
+          setError(null);
+        } catch (err) {
+          setError(err as Error);
+        } finally {
+          setLoading(false);
+        }
+      }, debounceMs);
+    },
+    [url, debounceMs]
+  );
+
+  const clear = useCallback(() => {
+    setQuery('');
+    setResults([]);
   }, []);
 
-  return { data, loading, error, submit, reset };
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return { query, results, loading, error, search, clear };
+}
+
+// ==================== 轮询 Hooks ====================
+
+/**
+ * 轮询 Hook
+ */
+export function usePolling<T>(
+  url: string,
+  intervalMs = 5000,
+  enabled = true
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [timestamp, setTimestamp] = useState(0);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    let cancelled = false;
+
+    const fetchData = async () => {
+      try {
+        const response = await api.get<T>(url);
+        if (!cancelled) {
+          setData(response);
+          setError(null);
+          setTimestamp(Date.now());
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err as Error);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, intervalMs);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [url, intervalMs, enabled]);
+
+  return { data, loading, error, timestamp, refresh: () => setTimestamp(Date.now()) };
+}
+
+// ==================== 离线缓存 Hooks ====================
+
+/**
+ * 带本地缓存的数据获取 Hook
+ */
+export function useLocalFetch<T>(
+  url: string,
+  storageKey: string,
+  cacheTime = 5 * 60 * 1000 // 5 minutes
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [fromCache, setFromCache] = useState(false);
+
+  useEffect(() => {
+    const cached = localStorage.getItem(storageKey);
+    const now = Date.now();
+
+    if (cached) {
+      try {
+        const { data: cachedData, timestamp } = JSON.parse(cached);
+        if (now - timestamp < cacheTime) {
+          setData(cachedData);
+          setFromCache(true);
+          setLoading(false);
+        }
+      } catch {
+        localStorage.removeItem(storageKey);
+      }
+    }
+
+    const fetchData = async () => {
+      try {
+        if (!fromCache) {
+          setLoading(true);
+        }
+        const response = await api.get<T>(url);
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ data: response, timestamp: now })
+        );
+        setData(response);
+        setFromCache(false);
+        setError(null);
+      } catch (err) {
+        if (!fromCache) {
+          setError(err as Error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!fromCache) {
+      fetchData();
+    }
+  }, [url, storageKey, cacheTime, fromCache]);
+
+  return { data, loading, error, fromCache, refresh: () => {
+    localStorage.removeItem(storageKey);
+    setFromCache(false);
+  }};
+}
+
+// ==================== 数组操作 Hooks ====================
+
+/**
+ * 分页 Hook（用于前端分页）
+ */
+export function useArrayPagination<T>(items: T[], pageSize = 10) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(items.length / pageSize);
+  const paginatedItems = items.slice((page - 1) * pageSize, page * pageSize);
+
+  const goToPage = useCallback((p: number) => {
+    setPage(Math.max(1, Math.min(p, totalPages)));
+  }, [totalPages]);
+
+  const nextPage = useCallback(() => {
+    setPage((p) => Math.min(p + 1, totalPages));
+  }, [totalPages]);
+
+  const prevPage = useCallback(() => {
+    setPage((p) => Math.max(p - 1, 1));
+  }, []);
+
+  return {
+    items: paginatedItems,
+    page,
+    totalPages,
+    total: items.length,
+    pageSize,
+    goToPage,
+    nextPage,
+    prevPage,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  };
+}
+
+/**
+ * 过滤 Hook
+ */
+export function useFilter<T>(
+  items: T[],
+  filterFn: (item: T) => boolean
+) {
+  const [filters, setFilters] = useState<Record<string, unknown>>({});
+  const filteredItems = items.filter(filterFn);
+
+  const updateFilter = useCallback((key: string, value: unknown) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setFilters({});
+  }, []);
+
+  return {
+    filteredItems,
+    filters,
+    updateFilter,
+    resetFilters,
+  };
+}
+
+// ==================== 列表操作 Hooks ====================
+
+/**
+ * 可选中的列表 Hook
+ */
+export function useSelectableList<T extends { id: number }>(items: T[] = []) {
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const toggle = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(items.map((item) => item.id)));
+  }, [items]);
+
+  const deselectAll = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const isSelected = useCallback((id: number) => {
+    return selectedIds.has(id);
+  }, [selectedIds]);
+
+  const selectedItems = items.filter((item) => selectedIds.has(item.id));
+
+  return {
+    selectedIds: Array.from(selectedIds),
+    selectedItems,
+    isSelected,
+    toggle,
+    selectAll,
+    deselectAll,
+    isAllSelected: items.length > 0 && selectedIds.size === items.length,
+    isSomeSelected: selectedIds.size > 0 && selectedIds.size < items.length,
+  };
 }
