@@ -16,7 +16,7 @@ interface TabsContextType {
   setActiveTab: (id: string) => void;
 }
 
-const TabsContext = createContext<TabsContextType | null>(null);
+const TabsContext = createContext<TabsContextType | undefined>(undefined);
 
 interface TabsProps {
   tabs?: Tab[];
@@ -39,7 +39,9 @@ export function Tabs({
   variant = 'line',
   children,
 }: TabsProps) {
-  const [internalActiveTab, setInternalActiveTab] = useState(defaultValue || (tabs && tabs[0]?.id) || '');
+  const [internalActiveTab, setInternalActiveTab] = useState(
+    defaultValue || (tabs && tabs[0]?.id) || ''
+  );
   const activeTab = value ?? internalActiveTab;
 
   const handleTabChange = (id: string) => {
@@ -120,25 +122,52 @@ interface TabPanelProps {
 
 export function TabPanel({ id, children, className }: TabPanelProps) {
   const context = useContext(TabsContext);
-  if (!context) return null;
+  if (!context) return <>{children}</>;
   if (context.activeTab !== id) return null;
   return <div className={className}>{children}</div>;
 }
 
-export const TabsContent = ({ children, value, className }: { children: ReactNode; value: string; className?: string }) => {
+export function TabsContent({ 
+  children, 
+  value, 
+  className 
+}: { 
+  children: ReactNode; 
+  value: string; 
+  className?: string 
+}) {
   const context = useContext(TabsContext);
   if (!context) return null;
   if (context.activeTab !== value) return null;
   return <div className={className}>{children}</div>;
-};
+}
 
-export const TabsList = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <div className={cn('flex border-b border-border', className)}>{children}</div>
-);
+export function TabsList({ 
+  children, 
+  className 
+}: { 
+  children: ReactNode; 
+  className?: string 
+}) {
+  return (
+    <div className={cn('flex border-b border-border', className)}>{children}</div>
+  );
+}
 
-export const TabsTrigger = ({ children, value, disabled, className }: { children: ReactNode; value: string; disabled?: boolean; className?: string }) => {
+export function TabsTrigger({ 
+  children, 
+  value, 
+  disabled, 
+  className 
+}: { 
+  children: ReactNode; 
+  value: string; 
+  disabled?: boolean; 
+  className?: string 
+}) {
   const context = useContext(TabsContext);
   if (!context) return null;
+  
   return (
     <button
       onClick={() => !disabled && context.setActiveTab(value)}
@@ -154,7 +183,7 @@ export const TabsTrigger = ({ children, value, disabled, className }: { children
       {children}
     </button>
   );
-};
+}
 
 export function useTabState(defaultTab?: string) {
   const [activeTab, setActiveTab] = useState(defaultTab || '');
@@ -171,7 +200,7 @@ interface SimpleTabsProps {
 export function SimpleTabs({ tabs, activeTab, onChange, className }: SimpleTabsProps) {
   return (
     <div className={cn('flex border-b border-border', className)}>
-      {tabs.map((tab) => (
+      {tabs?.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onChange(tab.id)}

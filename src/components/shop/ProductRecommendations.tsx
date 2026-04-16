@@ -99,17 +99,19 @@ export function ProductRecommendations({
     }
   };
 
+  const defaultTabs = [
+    { value: 'hot', label: '熱門推薦', icon: TrendingUp },
+    { value: 'new', label: '新品上架', icon: Sparkles },
+    { value: 'personal', label: '猜你喜歡', icon: Heart },
+  ];
+
   const tabs = type === 'detail' 
     ? [
         { value: 'similar', label: '相似商品', icon: Package },
         { value: 'hot', label: '熱門推薦', icon: TrendingUp },
         { value: 'viewed', label: '看過的人還看', icon: Eye },
       ]
-    : [
-        { value: 'hot', label: '熱門推薦', icon: TrendingUp },
-        { value: 'new', label: '新品上架', icon: Sparkles },
-        { value: 'personal', label: '猜你喜歡', icon: Heart },
-      ];
+    : defaultTabs;
 
   return (
     <div className="space-y-4">
