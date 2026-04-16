@@ -612,21 +612,72 @@ class AITraining extends Controller
             []
         );
 
+        // 训练任务统计
+        $taskByStatus = $this->db->select(
+            "SELECT status, COUNT(*) as count FROM ai_training_tasks GROUP BY status",
+            []
+        );
+
+        // 最近7天的训练活动
+        $weekAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
+        $recentActivity = $this->db->select(
+            "SELECT DATE(created_at) as date, COUNT(*) as count FROM ai_training_tasks WHERE created_at >= ? GROUP BY DATE(created_at)",
+            [$weekAgo]
+        );
+
+        // 使用统计
+        $totalKnowledgeUsage = (int) $this->db->find(
+            "SELECT SUM(usage_count) as total FROM ai_training_knowledge",
+            []
+        )['total'] ?: 0;
+
+        $totalQAUsage = (int) $this->db->find(
+            "SELECT SUM(usage_count) as total FROM ai_qa_pairs",
+            []
+        )['total'] ?: 0;
+
+        // 高使用量知识
+        $topKnowledge = $this->db->select(
+            "SELECT id, title, category, usage_count FROM ai_training_knowledge ORDER BY usage_count DESC LIMIT 5",
+            []
+        );
+
+        // 高使用量问答
+        $topQA = $this->db->select(
+            "SELECT id, question, category, usage_count FROM ai_qa_pairs ORDER BY usage_count DESC LIMIT 5",
+            []
+        );
+
+        // 准确率统计（如果有）
+        $avgAccuracy = $this->db->find(
+            "SELECT AVG(accuracy_score) as avg FROM ai_qa_pairs WHERE accuracy_score IS NOT NULL",
+            []
+        )['avg'] ?: 0;
+
         $this->json([
             'knowledge' => [
                 'total' => $knowledgeTotal,
                 'ready' => $knowledgeReady,
                 'pending' => $knowledgePending,
+                'usage_total' => $totalKnowledgeUsage,
             ],
             'qa' => [
                 'total' => $qaTotal,
                 'active' => $qaActive,
+                'usage_total' => $totalQAUsage,
+                'avg_accuracy' => round($avgAccuracy, 2),
             ],
             'task' => [
                 'total' => $taskTotal,
                 'completed' => $taskCompleted,
+                'by_status' => $taskByStatus,
+                'recent_activity' => $recentActivity,
             ],
             'categories' => $categoryStats,
+            'top' => [
+                'knowledge' => $topKnowledge,
+                'qa' => $topQA,
+            ],
         ]);
     }
 

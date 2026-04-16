@@ -159,6 +159,7 @@ function StatsCards({ stats }: { stats: any }) {
     {
       label: '知识库总数',
       value: stats.knowledge?.total || 0,
+      subtext: `使用 ${stats.knowledge?.usage_total || 0} 次`,
       icon: BookOpen,
       color: 'text-amber-600',
       bg: 'bg-amber-500/10',
@@ -166,6 +167,7 @@ function StatsCards({ stats }: { stats: any }) {
     {
       label: '已就绪',
       value: stats.knowledge?.ready || 0,
+      subtext: `待处理 ${stats.knowledge?.pending || 0}`,
       icon: CheckCircle2,
       color: 'text-green-600',
       bg: 'bg-green-500/10',
@@ -173,6 +175,7 @@ function StatsCards({ stats }: { stats: any }) {
     {
       label: '问答对',
       value: stats.qa?.active || 0,
+      subtext: `准确率 ${stats.qa?.avg_accuracy || 0}%`,
       icon: MessageSquare,
       color: 'text-blue-600',
       bg: 'bg-blue-500/10',
@@ -180,6 +183,7 @@ function StatsCards({ stats }: { stats: any }) {
     {
       label: '训练任务',
       value: stats.task?.completed || 0,
+      subtext: `总计 ${stats.task?.total || 0} 个`,
       icon: Brain,
       color: 'text-purple-600',
       bg: 'bg-purple-500/10',
@@ -187,22 +191,78 @@ function StatsCards({ stats }: { stats: any }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {items.map((item, index) => (
-        <Card key={index}>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', item.bg)}>
-                <item.icon className={cn('w-5 h-5', item.color)} />
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {items.map((item, index) => (
+          <Card key={index}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center', item.bg)}>
+                  <item.icon className={cn('w-5 h-5', item.color)} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{item.value}</p>
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{item.value}</p>
-                <p className="text-xs text-muted-foreground">{item.label}</p>
-              </div>
+              <p className="text-xs text-muted-foreground mt-2">{item.subtext}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* 热门知识排行 */}
+      {stats.top?.knowledge?.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              热门知识
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {stats.top.knowledge.slice(0, 5).map((item: any, index: number) => (
+                <div key={index} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-muted-foreground w-4">{index + 1}.</span>
+                    <span className="truncate">{item.title}</span>
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {item.category}
+                    </Badge>
+                  </div>
+                  <span className="text-muted-foreground shrink-0 ml-2">
+                    {item.usage_count} 次
+                  </span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-      ))}
+      )}
+
+      {/* 分类分布 */}
+      {stats.categories?.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {CATEGORIES.filter((c) => c.value !== 'general').map((cat) => {
+            const stat = stats.categories.find((c: any) => c.category === cat.value);
+            const count = stat?.count || 0;
+            const percentage = stats.knowledge?.total > 0 
+              ? Math.round((count / stats.knowledge.total) * 100) 
+              : 0;
+            return (
+              <div
+                key={cat.value}
+                className={cn('p-3 rounded-lg border', cat.color.replace('text-', 'border-'))}
+              >
+                <p className="text-lg font-bold">{count}</p>
+                <p className="text-xs">{cat.label}</p>
+                <p className="text-xs text-muted-foreground">{percentage}%</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1042,11 +1102,44 @@ function TaskForm({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('incremental');
+  const [selectedKnowledge, setSelectedKnowledge] = useState<any[]>([]);
+  const [showKnowledgeSelect, setShowKnowledgeSelect] = useState(false);
+  const [availableKnowledge, setAvailableKnowledge] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // 加载可用知识库
+  const loadKnowledge = async () => {
+    setLoading(true);
+    try {
+      const res = await getKnowledgeList({ page: 1, page_size: 50, status: 'ready' });
+      setAvailableKnowledge(res.data.list || []);
+      setShowKnowledgeSelect(true);
+    } catch (err) {
+      console.error('加载知识库失败:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleKnowledge = (item: any) => {
+    setSelectedKnowledge((prev) => {
+      const exists = prev.find((k) => k.id === item.id);
+      if (exists) {
+        return prev.filter((k) => k.id !== item.id);
+      }
+      return [...prev, item];
+    });
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({ name, description, type });
+    onSubmit({
+      name,
+      description,
+      type,
+      knowledge_ids: selectedKnowledge.map((k) => k.id),
+    });
   };
 
   return (
@@ -1066,7 +1159,7 @@ function TaskForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="可选描述"
-          rows={3}
+          rows={2}
         />
       </div>
       <div>
@@ -1082,6 +1175,75 @@ function TaskForm({
           </SelectContent>
         </Select>
       </div>
+
+      {/* 知识库选择 */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium">选择知识库</label>
+          {!showKnowledgeSelect && (
+            <Button type="button" variant="outline" size="sm" onClick={loadKnowledge} disabled={loading}>
+              {loading ? '加载中...' : '选择知识'}
+            </Button>
+          )}
+        </div>
+
+        {showKnowledgeSelect && (
+          <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+            {availableKnowledge.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">暂无可用知识库</p>
+            ) : (
+              availableKnowledge.map((item) => {
+                const isSelected = selectedKnowledge.some((k) => k.id === item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleKnowledge(item)}
+                    className={cn(
+                      'flex items-center gap-2 p-2 rounded cursor-pointer transition-colors',
+                      isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted'
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}}
+                      className="rounded"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="text-xs text-muted-foreground">{item.category}</p>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {item.usage_count} 使用
+                    </Badge>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {selectedKnowledge.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {selectedKnowledge.map((k) => (
+              <Badge key={k.id} variant="secondary" className="gap-1">
+                {k.title.substring(0, 15)}
+                <X
+                  className="w-3 h-3 cursor-pointer"
+                  onClick={() => toggleKnowledge(k)}
+                />
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {selectedKnowledge.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            已选择 {selectedKnowledge.length} 个知识库，预计 {selectedKnowledge.reduce((sum, k) => sum + (k.usage_count || 0), 0) + selectedKnowledge.length} 条数据
+          </p>
+        )}
+      </div>
+
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
         <Button type="submit">创建</Button>
