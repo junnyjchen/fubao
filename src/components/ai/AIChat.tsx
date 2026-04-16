@@ -822,13 +822,39 @@ export function AIChat() {
 }
 
 // 欢迎界面
+// 增强的建议问题
+const ENHANCED_SUGGESTIONS = {
+  culture: [
+    { q: '什麼是符籙？', followUp: ['符籙有哪些種類？', '符籙的歷史'] },
+    { q: '道教的起源與發展', followUp: ['道教有哪些派別？', '道教的主要經典'] },
+    { q: '風水命理的基礎概念', followUp: ['如何看風水？', '五行與命運'] },
+  ],
+  product: [
+    { q: '如何選擇適合自己的符？', followUp: ['符的有效期限', '符可以疊加使用嗎？'] },
+    { q: '一物一證是什麼意思？', followUp: ['如何驗證商品真偽？', '證書丢了怎麼辦？'] },
+    { q: '符寶網的商品如何保證真實性？', followUp: ['退換貨政策', '售後服務'] },
+  ],
+  usage: [
+    { q: '如何正確佩戴護身符？', followUp: ['符可以佩戴多久？', '符沾水了怎麼辦？'] },
+    { q: '符籙使用時有哪些禁忌？', followUp: ['符可以借給別人嗎？', '符损坏後如何處理？'] },
+    { q: '符水如何使用？', followUp: ['符水的製作過程', '符水可以保存多久？'] },
+  ],
+  fortune: [
+    { q: '八字命盤怎麼看？', followUp: ['如何計算五行？', '八字準確嗎？'] },
+    { q: '五行缺什麼如何補？', followUp: ['如何選擇吉祥物？', '風水調整建議'] },
+    { q: '流年運勢如何計算？', followUp: ['今年運勢如何？', '如何提升運勢？'] },
+  ],
+};
+
 function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => void }) {
   const [activeCategory, setActiveCategory] = useState(PRESET_CATEGORIES[0].id);
+  const [hoveredSuggestion, setHoveredSuggestion] = useState<string | null>(null);
   const currentCategory = PRESET_CATEGORIES.find((c) => c.id === activeCategory)!;
+  const suggestions = ENHANCED_SUGGESTIONS[activeCategory as keyof typeof ENHANCED_SUGGESTIONS] || [];
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center py-8">
-      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
+    <div className="flex flex-col items-center justify-center h-full text-center py-8 px-4">
+      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 animate-pulse">
         <Sparkles className="w-10 h-10 text-primary" />
       </div>
       <h3 className="text-xl font-medium mb-2">歡迎使用符寶AI助手</h3>
@@ -852,19 +878,62 @@ function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => 
         ))}
       </div>
 
-      {/* 问题列表 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
-        {currentCategory.questions.map((question, index) => (
-          <Button
-            key={index}
-            variant="outline"
-            className="justify-start h-auto py-3 px-4 text-left"
-            onClick={() => onSelectQuestion(question)}
-          >
-            <MessageSquare className="w-4 h-4 mr-2 shrink-0 text-muted-foreground" />
-            <span className="truncate text-sm">{question}</span>
-          </Button>
+      {/* 增强的问题列表 - 带跟进问题 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-xl">
+        {suggestions.map((suggestion, index) => (
+          <div key={index} className="relative">
+            <Button
+              variant="outline"
+              className="justify-start h-auto py-3 px-4 text-left w-full"
+              onClick={() => onSelectQuestion(suggestion.q)}
+              onMouseEnter={() => setHoveredSuggestion(suggestion.q)}
+              onMouseLeave={() => setHoveredSuggestion(null)}
+            >
+              <MessageSquare className="w-4 h-4 mr-2 shrink-0 text-primary" />
+              <span className="truncate text-sm">{suggestion.q}</span>
+            </Button>
+            
+            {/* 跟进问题 */}
+            {hoveredSuggestion === suggestion.q && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg p-2 z-10 animate-in fade-in-0 zoom-in-95">
+                <p className="text-xs text-muted-foreground mb-2">相關問題：</p>
+                <div className="flex flex-wrap gap-1">
+                  {suggestion.followUp.map((followQ, i) => (
+                    <Button
+                      key={i}
+                      variant="secondary"
+                      size="sm"
+                      className="text-xs h-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectQuestion(followQ);
+                      }}
+                    >
+                      {followQ}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         ))}
+      </div>
+
+      {/* 热门话题快捷入口 */}
+      <div className="mt-6 w-full max-w-xl">
+        <p className="text-xs text-muted-foreground mb-3">熱門話題</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {['符籙入門', '風水基礎', '命理查詢', '商品諮詢', '使用指南'].map((topic) => (
+            <Badge
+              key={topic}
+              variant="secondary"
+              className="cursor-pointer hover:bg-primary/10"
+              onClick={() => onSelectQuestion(`關於${topic}我想了解`)}
+            >
+              {topic}
+            </Badge>
+          ))}
+        </div>
       </div>
 
       {/* 快捷提示 */}

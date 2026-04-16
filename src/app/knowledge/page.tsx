@@ -451,6 +451,32 @@ export default function KnowledgePage() {
                 })}
               </CardContent>
             </Card>
+
+            {/* FAQ常见问答 */}
+            <Card className="bg-gradient-to-br from-primary/5 to-transparent">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  常見問題
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { q: '符籙多久需要更換？', a: '一般建議1-2年更換一次，視使用情況而定' },
+                  { q: '符可以沾水嗎？', a: '建議避免沾水，保持乾燥以維持效力' },
+                  { q: '一物一證如何驗證？', a: '掃描商品上的二維碼或輸入認證編號查詢' },
+                  { q: '符可以送人嗎？', a: '一般不建議，符籙最好由本人請領' },
+                ].map((faq, index) => (
+                  <div key={index} className="p-3 rounded-lg bg-background/50">
+                    <p className="text-sm font-medium mb-1">{faq.q}</p>
+                    <p className="text-xs text-muted-foreground">{faq.a}</p>
+                  </div>
+                ))}
+                <Button variant="link" asChild className="w-full mt-2">
+                  <a href="/ai-assistant">查看更多答案 →</a>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

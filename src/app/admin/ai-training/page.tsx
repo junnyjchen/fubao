@@ -48,6 +48,14 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Download,
+  Wand2,
+  Eye,
+  Copy,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  ExternalLink,
 } from 'lucide-react';
 import {
   getKnowledgeList,
@@ -55,10 +63,12 @@ import {
   updateKnowledge,
   deleteKnowledge,
   batchImportKnowledge,
+  getKnowledgeDetail,
   getQAList,
   createQA,
   updateQA,
   deleteQA,
+  generateQA,
   getTrainingTasks,
   createTrainingTask,
   startTrainingTask,
@@ -67,11 +77,11 @@ import {
 
 // 分类选项
 const CATEGORIES = [
-  { value: 'culture', label: '文化科普', color: 'bg-amber-500/10 text-amber-600' },
-  { value: 'product', label: '商品咨询', color: 'bg-blue-500/10 text-blue-600' },
-  { value: 'usage', label: '使用指导', color: 'bg-green-500/10 text-green-600' },
-  { value: 'fortune', label: '命理咨询', color: 'bg-purple-500/10 text-purple-600' },
-  { value: 'general', label: '通用', color: 'bg-gray-500/10 text-gray-600' },
+  { value: 'culture', label: '文化科普', color: 'bg-amber-500/10 text-amber-600', border: 'border-amber-500/20' },
+  { value: 'product', label: '商品咨询', color: 'bg-blue-500/10 text-blue-600', border: 'border-blue-500/20' },
+  { value: 'usage', label: '使用指导', color: 'bg-green-500/10 text-green-600', border: 'border-green-500/20' },
+  { value: 'fortune', label: '命理咨询', color: 'bg-purple-500/10 text-purple-600', border: 'border-purple-500/20' },
+  { value: 'general', label: '通用', color: 'bg-gray-500/10 text-gray-600', border: 'border-gray-500/20' },
 ];
 
 // 状态选项
@@ -105,6 +115,7 @@ export default function AITrainingPage() {
     { id: 'knowledge', label: '知识库', icon: <BookOpen className="w-4 h-4" /> },
     { id: 'qa', label: '问答对', icon: <MessageSquare className="w-4 h-4" /> },
     { id: 'training', label: '训练任务', icon: <Brain className="w-4 h-4" /> },
+    { id: 'tools', label: '工具', icon: <Wand2 className="w-4 h-4" /> },
   ];
 
   return (
@@ -119,6 +130,12 @@ export default function AITrainingPage() {
           <p className="text-muted-foreground mt-1">
             管理AI助手知识库、问答对和训练任务
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={loadStats}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            刷新统计
+          </Button>
         </div>
       </div>
 
@@ -146,6 +163,9 @@ export default function AITrainingPage() {
           </TabPanel>
           <TabPanel id="training">
             <TrainingTab onRefresh={loadStats} />
+          </TabPanel>
+          <TabPanel id="tools">
+            <ToolsTab onRefresh={loadStats} />
           </TabPanel>
         </CardContent>
       </Card>
@@ -253,7 +273,7 @@ function StatsCards({ stats }: { stats: any }) {
             return (
               <div
                 key={cat.value}
-                className={cn('p-3 rounded-lg border', cat.color.replace('text-', 'border-'))}
+                className={cn('p-3 rounded-lg border', cat.border)}
               >
                 <p className="text-lg font-bold">{count}</p>
                 <p className="text-xs">{cat.label}</p>
@@ -275,9 +295,11 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [status, setStatus] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [showImport, setShowImport] = useState(false);
+  const [showPreview, setShowPreview] = useState<any>(null);
   const { success, error } = useToast();
   const { confirm } = useConfirm();
 
@@ -289,6 +311,7 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
         page_size: 10,
         keyword: search,
         category,
+        status,
       });
       setList(res.data.list || []);
       setTotal(res.data.total || 0);
@@ -301,12 +324,12 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
 
   useEffect(() => {
     loadData();
-  }, [page, category]);
+  }, [page, category, status]);
 
   const handleDelete = async (id: number) => {
     const ok = await confirm({
       title: '确认删除',
-      message: '确定要删除这条知识库记录吗？',
+      message: '确定要删除这条知识库记录吗？删除后关联的问答对也会被删除。',
       type: 'danger',
     });
     if (!ok) return;
@@ -338,6 +361,9 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
+  const getCategoryInfo = (cat: string) => CATEGORIES.find((c) => c.value === cat) || CATEGORIES[4];
+  const getStatusInfo = (s: string) => STATUS_OPTIONS.find((st) => st.value === s) || STATUS_OPTIONS[0];
+
   return (
     <div className="space-y-4">
       {/* 工具栏 */}
@@ -351,16 +377,25 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
             className="pl-9"
           />
         </div>
-        <Select value={category} onValueChange={setCategory}>
+        <Select value={category} onValueChange={(v) => { setCategory(v); setPage(1); }}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="选择分类" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">全部分类</SelectItem>
             {CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={status} onValueChange={(v) => { setStatus(v); setPage(1); }}>
+          <SelectTrigger className="w-[120px]">
+            <SelectValue placeholder="状态" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">全部状态</SelectItem>
+            {STATUS_OPTIONS.map((s) => (
+              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -392,9 +427,7 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   {Array.from({ length: 6 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))
@@ -405,43 +438,41 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
                 </TableCell>
               </TableRow>
             ) : (
-              list.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="max-w-[200px] truncate">{item.title}</TableCell>
-                  <TableCell>
-                    <Badge className={CATEGORIES.find((c) => c.value === item.category)?.color}>
-                      {CATEGORIES.find((c) => c.value === item.category)?.label || item.category}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{item.source_type}</TableCell>
-                  <TableCell>
-                    <Badge className={STATUS_OPTIONS.find((s) => s.value === item.status)?.color}>
-                      {STATUS_OPTIONS.find((s) => s.value === item.status)?.label || item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{item.usage_count}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => { setEditItem(item); setShowModal(true); }}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="w-3 h-3 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+              list.map((item) => {
+                const catInfo = getCategoryInfo(item.category);
+                const statusInfo = getStatusInfo(item.status);
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="max-w-[200px]">
+                      <p className="truncate font-medium">{item.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.content?.substring(0, 50)}...
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={catInfo.color}>{catInfo.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{item.source_type}</TableCell>
+                    <TableCell>
+                      <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{item.usage_count}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowPreview(item)} title="预览">
+                          <Eye className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditItem(item); setShowModal(true); }} title="编辑">
+                          <Edit2 className="w-3 h-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)} title="删除">
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
@@ -450,62 +481,79 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
       {/* 分页 */}
       {total > 10 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            共 {total} 条
-          </p>
+          <p className="text-sm text-muted-foreground">共 {total} 条</p>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
               上一页
             </Button>
-            <span className="px-3 py-2 text-sm">
-              第 {page} / {Math.ceil(total / 10)} 页
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= Math.ceil(total / 10)}
-              onClick={() => setPage((p) => p + 1)}
-            >
+            <span className="px-3 py-2 text-sm">第 {page} / {Math.ceil(total / 10)} 页</span>
+            <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 10)} onClick={() => setPage((p) => p + 1)}>
               下一页
             </Button>
           </div>
         </div>
       )}
 
+      {/* 预览弹窗 */}
+      <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title="知识预览">
+        {showPreview && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge className={getCategoryInfo(showPreview.category).color}>
+                {getCategoryInfo(showPreview.category).label}
+              </Badge>
+              <Badge className={getStatusInfo(showPreview.status).color}>
+                {getStatusInfo(showPreview.status).label}
+              </Badge>
+            </div>
+            <h3 className="font-semibold text-lg">{showPreview.title}</h3>
+            <div className="bg-muted/50 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+              <p className="whitespace-pre-wrap text-sm">{showPreview.content}</p>
+            </div>
+            {showPreview.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {showPreview.tags.map((tag: string) => (
+                  <Badge key={tag} variant="outline">#{tag}</Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>使用次数: {showPreview.usage_count}</span>
+              <span>创建时间: {new Date(showPreview.created_at).toLocaleDateString()}</span>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowPreview(null)}>关闭</Button>
+              <Button onClick={() => {
+                setEditItem(showPreview);
+                setShowPreview(null);
+                setShowModal(true);
+              }}>
+                <Edit2 className="w-4 h-4 mr-2" />
+                编辑
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* 添加/编辑弹窗 */}
-      <Modal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        title={editItem ? '编辑知识' : '添加知识'}
-      >
-        <KnowledgeForm
-          initialData={editItem}
-          onSubmit={handleSubmit}
-          onCancel={() => setShowModal(false)}
-        />
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editItem ? '编辑知识' : '添加知识'}>
+        <KnowledgeForm initialData={editItem} onSubmit={handleSubmit} onCancel={() => setShowModal(false)} />
       </Modal>
 
       {/* 批量导入弹窗 */}
       <Modal isOpen={showImport} onClose={() => setShowImport(false)} title="批量导入">
-        <BatchImportForm
-          onSubmit={async (data) => {
-            try {
-              await batchImportKnowledge(data);
-              success('导入成功');
-              setShowImport(false);
-              loadData();
-              onRefresh?.();
-            } catch (err) {
-              error('导入失败');
-            }
-          }}
-          onCancel={() => setShowImport(false)}
-        />
+        <BatchImportForm onSubmit={async (data) => {
+          try {
+            const res = await batchImportKnowledge(data);
+            success(`导入完成：成功 ${res.data.imported} 条，失败 ${res.data.failed} 条`);
+            setShowImport(false);
+            loadData();
+            onRefresh?.();
+          } catch (err) {
+            error('导入失败');
+          }
+        }} onCancel={() => setShowImport(false)} />
       </Modal>
     </div>
   );
@@ -525,7 +573,10 @@ function KnowledgeForm({
   const [content, setContent] = useState(initialData?.content || '');
   const [category, setCategory] = useState(initialData?.category || 'general');
   const [status, setStatus] = useState(initialData?.status || 'draft');
+  const [sourceType, setSourceType] = useState(initialData?.source_type || 'text');
+  const [sourceUrl, setSourceUrl] = useState(initialData?.source_url || '');
   const [tags, setTags] = useState(initialData?.tags?.join(', ') || '');
+  const [showPreview, setShowPreview] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -534,6 +585,8 @@ function KnowledgeForm({
       content,
       category,
       status,
+      source_type: sourceType,
+      source_url: sourceUrl,
       tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
     });
   };
@@ -541,36 +594,32 @@ function KnowledgeForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="text-sm font-medium mb-1 block">标题</label>
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="请输入标题"
-          required
-        />
+        <label className="text-sm font-medium mb-1 block">标题 <span className="text-destructive">*</span></label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="请输入标题" required />
       </div>
       <div>
-        <label className="text-sm font-medium mb-1 block">内容</label>
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="请输入内容"
-          rows={6}
-          required
-        />
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium">内容 <span className="text-destructive">*</span></label>
+          <Button type="button" variant="ghost" size="sm" onClick={() => setShowPreview(!showPreview)}>
+            {showPreview ? '编辑' : '预览'}
+          </Button>
+        </div>
+        {showPreview ? (
+          <div className="bg-muted/50 rounded-lg p-4 min-h-[150px]">
+            <p className="whitespace-pre-wrap text-sm">{content || '暂无内容'}</p>
+          </div>
+        ) : (
+          <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="请输入内容" rows={6} required />
+        )}
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-sm font-medium mb-1 block">分类</label>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {CATEGORIES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
+                <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -578,34 +627,40 @@ function KnowledgeForm({
         <div>
           <label className="text-sm font-medium mb-1 block">状态</label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {STATUS_OPTIONS.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium mb-1 block">来源类型</label>
+          <Select value={sourceType} onValueChange={setSourceType}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="text">文本</SelectItem>
+              <SelectItem value="url">URL</SelectItem>
+              <SelectItem value="document">文档</SelectItem>
+              <SelectItem value="qa">问答</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-1 block">来源URL</label>
+          <Input value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} placeholder="可选" />
+        </div>
+      </div>
       <div>
         <label className="text-sm font-medium mb-1 block">标签（逗号分隔）</label>
-        <Input
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          placeholder="例如：符籙, 道教, 文化"
-        />
+        <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="例如：符籙, 道教, 文化" />
       </div>
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          取消
-        </Button>
-        <Button type="submit">
-          {initialData ? '更新' : '创建'}
-        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
+        <Button type="submit">{initialData ? '更新' : '创建'}</Button>
       </div>
     </form>
   );
@@ -621,74 +676,57 @@ function BatchImportForm({
 }) {
   const [data, setData] = useState('');
   const [category, setCategory] = useState('general');
-  const { success, error } = useToast();
+  const [format, setFormat] = useState<'json' | 'text'>('json');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      // 尝试解析JSON
-      let parsed = JSON.parse(data);
-      if (!Array.isArray(parsed)) {
-        parsed = [parsed];
+      let items: any[];
+      if (format === 'json') {
+        items = JSON.parse(data);
+        if (!Array.isArray(items)) items = [items];
+      } else {
+        // 制表符分隔格式
+        items = data.split('\n').filter((l) => l.trim()).map((line) => {
+          const parts = line.split('\t');
+          return { title: parts[0] || '', content: parts.slice(1).join('\t') || parts[0] || '' };
+        }).filter((i) => i.title);
       }
-      onSubmit({ data: parsed, category });
-    } catch {
-      // 尝试按行解析
-      const lines = data.split('\n').filter((l) => l.trim());
-      const items = lines.map((line) => {
-        const parts = line.split('\t');
-        return {
-          title: parts[0] || '',
-          content: parts.slice(1).join('\t') || parts[0] || '',
-        };
-      }).filter((i) => i.title);
-
-      if (items.length === 0) {
-        error('请输入有效数据');
-        return;
-      }
-
+      if (items.length === 0) return;
       onSubmit({ data: items, category });
+    } catch {
+      onSubmit({ data: [{ title: '解析失败', content: data }], category });
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex gap-2 mb-2">
+        <Button type="button" variant={format === 'json' ? 'default' : 'outline'} size="sm" onClick={() => setFormat('json')}>JSON</Button>
+        <Button type="button" variant={format === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setFormat('text')}>制表符</Button>
+      </div>
       <div>
         <label className="text-sm font-medium mb-1 block">导入数据</label>
-        <Textarea
-          value={data}
-          onChange={(e) => setData(e.target.value)}
-          placeholder={'支持JSON数组或制表符分隔格式：\n每行一条，标题和内容用Tab分隔\n\n示例JSON:\n[{"title":"标题","content":"内容"}]'}
-          rows={8}
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          支持JSON数组格式或每行一条，标题和内容用Tab分隔
-        </p>
+        <Textarea value={data} onChange={(e) => setData(e.target.value)} placeholder={
+          format === 'json'
+            ? '[{"title":"标题","content":"内容","tags":["标签"]}]'
+            : '标题\t内容\n符籙介绍\t符籙是...'
+        } rows={8} />
       </div>
       <div>
         <label className="text-sm font-medium mb-1 block">默认分类</label>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
+              <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          取消
-        </Button>
-        <Button type="submit">
-          导入
-        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
+        <Button type="submit">导入</Button>
       </div>
     </form>
   );
@@ -723,13 +761,8 @@ function QATab() {
   }, [page]);
 
   const handleDelete = async (id: number) => {
-    const ok = await confirm({
-      title: '确认删除',
-      message: '确定要删除这条问答吗？',
-      type: 'danger',
-    });
+    const ok = await confirm({ title: '确认删除', message: '确定要删除这条问答吗？', type: 'danger' });
     if (!ok) return;
-
     try {
       await deleteQA(id);
       success('删除成功');
@@ -760,8 +793,7 @@ function QATab() {
       <div className="flex justify-between items-center">
         <h3 className="font-medium">问答对列表</h3>
         <Button onClick={() => { setEditItem(null); setShowModal(true); }}>
-          <Plus className="w-4 h-4 mr-1" />
-          添加问答
+          <Plus className="w-4 h-4 mr-1" />添加问答
         </Button>
       </div>
 
@@ -781,44 +813,26 @@ function QATab() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   {Array.from({ length: 5 }).map((_, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                   ))}
                 </TableRow>
               ))
             ) : list.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                  暂无数据
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">暂无数据</TableCell></TableRow>
             ) : (
               list.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="max-w-[200px] truncate">{item.question}</TableCell>
-                  <TableCell className="max-w-[250px] truncate">{item.answer}</TableCell>
-                  <TableCell>
-                    <Badge>{CATEGORIES.find((c) => c.value === item.category)?.label || item.category}</Badge>
-                  </TableCell>
-                  <TableCell>{item.usage_count}</TableCell>
+                  <TableCell className="max-w-[200px]"><p className="truncate">{item.question}</p></TableCell>
+                  <TableCell className="max-w-[250px]"><p className="truncate text-sm">{item.answer}</p></TableCell>
+                  <TableCell><Badge>{CATEGORIES.find((c) => c.value === item.category)?.label || item.category}</Badge></TableCell>
+                  <TableCell className="text-sm">{item.usage_count}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => { setEditItem(item); setShowModal(true); }}
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditItem(item); setShowModal(true); }}>
                         <Edit2 className="w-3 h-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="w-3 h-3 text-destructive" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(item.id)}>
+                        <Trash2 className="w-3 h-3" />
                       </Button>
                     </div>
                   </TableCell>
@@ -831,15 +845,9 @@ function QATab() {
 
       {total > 10 && (
         <div className="flex justify-end gap-2">
-          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
-            上一页
-          </Button>
-          <span className="px-3 py-2 text-sm">
-            第 {page} / {Math.ceil(total / 10)} 页
-          </span>
-          <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 10)} onClick={() => setPage((p) => p + 1)}>
-            下一页
-          </Button>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>上一页</Button>
+          <span className="px-3 py-2 text-sm">第 {page} / {Math.ceil(total / 10)} 页</span>
+          <Button variant="outline" size="sm" disabled={page >= Math.ceil(total / 10)} onClick={() => setPage((p) => p + 1)}>下一页</Button>
         </div>
       )}
 
@@ -851,15 +859,7 @@ function QATab() {
 }
 
 // 问答表单
-function QAForm({
-  initialData,
-  onSubmit,
-  onCancel,
-}: {
-  initialData?: any;
-  onSubmit: (data: any) => void;
-  onCancel: () => void;
-}) {
+function QAForm({ initialData, onSubmit, onCancel }: { initialData?: any; onSubmit: (data: any) => void; onCancel: () => void }) {
   const [question, setQuestion] = useState(initialData?.question || '');
   const [answer, setAnswer] = useState(initialData?.answer || '');
   const [category, setCategory] = useState(initialData?.category || 'general');
@@ -877,50 +877,11 @@ function QAForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="text-sm font-medium mb-1 block">问题</label>
-        <Textarea
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="请输入问题"
-          rows={2}
-          required
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">回答</label>
-        <Textarea
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          placeholder="请输入回答"
-          rows={4}
-          required
-        />
-      </div>
+      <div><label className="text-sm font-medium mb-1 block">问题</label><Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="请输入问题" rows={2} required /></div>
+      <div><label className="text-sm font-medium mb-1 block">回答</label><Textarea value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="请输入回答" rows={4} required /></div>
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="text-sm font-medium mb-1 block">分类</label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label className="text-sm font-medium mb-1 block">关键词</label>
-          <Input
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            placeholder="逗号分隔"
-          />
-        </div>
+        <div><label className="text-sm font-medium mb-1 block">分类</label><Select value={category} onValueChange={setCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>))}</SelectContent></Select></div>
+        <div><label className="text-sm font-medium mb-1 block">关键词</label><Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="逗号分隔" /></div>
       </div>
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
@@ -981,18 +942,12 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
-      case 'running':
-        return <RefreshCw className="w-4 h-4 text-blue-600 animate-spin" />;
-      case 'failed':
-        return <AlertCircle className="w-4 h-4 text-red-600" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-gray-600" />;
-      case 'cancelled':
-        return <X className="w-4 h-4 text-gray-600" />;
-      default:
-        return <Clock className="w-4 h-4" />;
+      case 'completed': return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+      case 'running': return <RefreshCw className="w-4 h-4 text-blue-600 animate-spin" />;
+      case 'failed': return <AlertCircle className="w-4 h-4 text-red-600" />;
+      case 'pending': return <Clock className="w-4 h-4 text-gray-600" />;
+      case 'cancelled': return <X className="w-4 h-4 text-gray-600" />;
+      default: return <Clock className="w-4 h-4" />;
     }
   };
 
@@ -1000,49 +955,29 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="font-medium">训练任务列表</h3>
-        <Button onClick={() => setShowModal(true)}>
-          <Plus className="w-4 h-4 mr-1" />
-          创建任务
-        </Button>
+        <Button onClick={() => setShowModal(true)}><Plus className="w-4 h-4 mr-1" />创建任务</Button>
       </div>
 
       <div className="grid gap-4">
         {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))
+          Array.from({ length: 3 }).map((_, i) => (<Card key={i}><CardContent className="p-4"><Skeleton className="h-20 w-full" /></CardContent></Card>))
         ) : list.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              暂无训练任务
-            </CardContent>
-          </Card>
+          <Card><CardContent className="p-8 text-center text-muted-foreground">暂无训练任务</CardContent></Card>
         ) : (
           list.map((task) => (
             <Card key={task.id}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      {getStatusIcon(task.status)}
-                    </div>
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">{getStatusIcon(task.status)}</div>
                     <div>
                       <h4 className="font-medium">{task.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {task.description || '无描述'}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{task.description || '无描述'}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {task.status === 'pending' || task.status === 'failed' ? (
-                      <Button size="sm" onClick={() => handleStart(task.id)}>
-                        <Play className="w-4 h-4 mr-1" />
-                        启动
-                      </Button>
+                      <Button size="sm" onClick={() => handleStart(task.id)}><Play className="w-4 h-4 mr-1" />启动</Button>
                     ) : task.status === 'running' ? (
                       <Badge className="bg-blue-500/10 text-blue-600">训练中</Badge>
                     ) : task.status === 'completed' ? (
@@ -1050,28 +985,14 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
                     ) : null}
                   </div>
                 </div>
-
-                {/* 进度条 */}
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>进度</span>
-                    <span>{task.progress}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${task.progress}%` }}
-                    />
-                  </div>
+                  <div className="flex justify-between text-sm"><span>进度</span><span>{task.progress}%</span></div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${task.progress}%` }} /></div>
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>处理: {task.processed_records} / {task.total_records}</span>
-                    {task.failed_records > 0 && (
-                      <span className="text-red-600">失败: {task.failed_records}</span>
-                    )}
+                    {task.failed_records > 0 && <span className="text-red-600">失败: {task.failed_records}</span>}
                   </div>
                 </div>
-
-                {/* 时间信息 */}
                 <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
                   <span>类型: {task.type}</span>
                   {task.started_at && <span>开始: {new Date(task.started_at).toLocaleString()}</span>}
@@ -1083,7 +1004,6 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
         )}
       </div>
 
-      {/* 创建任务弹窗 */}
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="创建训练任务">
         <TaskForm onSubmit={handleCreate} onCancel={() => setShowModal(false)} />
       </Modal>
@@ -1092,13 +1012,7 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
 }
 
 // 任务表单
-function TaskForm({
-  onSubmit,
-  onCancel,
-}: {
-  onSubmit: (data: any) => void;
-  onCancel: () => void;
-}) {
+function TaskForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('incremental');
@@ -1107,7 +1021,6 @@ function TaskForm({
   const [availableKnowledge, setAvailableKnowledge] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 加载可用知识库
   const loadKnowledge = async () => {
     setLoading(true);
     try {
@@ -1124,9 +1037,7 @@ function TaskForm({
   const toggleKnowledge = (item: any) => {
     setSelectedKnowledge((prev) => {
       const exists = prev.find((k) => k.id === item.id);
-      if (exists) {
-        return prev.filter((k) => k.id !== item.id);
-      }
+      if (exists) return prev.filter((k) => k.id !== item.id);
       return [...prev, item];
     });
   };
@@ -1134,120 +1045,150 @@ function TaskForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSubmit({
-      name,
-      description,
-      type,
-      knowledge_ids: selectedKnowledge.map((k) => k.id),
-    });
+    onSubmit({ name, description, type, knowledge_ids: selectedKnowledge.map((k) => k.id) });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="text-sm font-medium mb-1 block">任务名称</label>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="请输入任务名称"
-          required
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">描述</label>
-        <Textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="可选描述"
-          rows={2}
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">训练类型</label>
-        <Select value={type} onValueChange={setType}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="full">全量训练</SelectItem>
-            <SelectItem value="incremental">增量训练</SelectItem>
-            <SelectItem value="fine_tune">微调训练</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 知识库选择 */}
+      <div><label className="text-sm font-medium mb-1 block">任务名称</label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="请输入任务名称" required /></div>
+      <div><label className="text-sm font-medium mb-1 block">描述</label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="可选描述" rows={2} /></div>
+      <div><label className="text-sm font-medium mb-1 block">训练类型</label><Select value={type} onValueChange={setType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="full">全量训练</SelectItem><SelectItem value="incremental">增量训练</SelectItem><SelectItem value="fine_tune">微调训练</SelectItem></SelectContent></Select></div>
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium">选择知识库</label>
-          {!showKnowledgeSelect && (
-            <Button type="button" variant="outline" size="sm" onClick={loadKnowledge} disabled={loading}>
-              {loading ? '加载中...' : '选择知识'}
-            </Button>
-          )}
+          {!showKnowledgeSelect && <Button type="button" variant="outline" size="sm" onClick={loadKnowledge} disabled={loading}>{loading ? '加载中...' : '选择知识'}</Button>}
         </div>
-
         {showKnowledgeSelect && (
           <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
-            {availableKnowledge.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">暂无可用知识库</p>
-            ) : (
+            {availableKnowledge.length === 0 ? (<p className="text-sm text-muted-foreground text-center py-4">暂无可用知识库</p>) : (
               availableKnowledge.map((item) => {
                 const isSelected = selectedKnowledge.some((k) => k.id === item.id);
                 return (
-                  <div
-                    key={item.id}
-                    onClick={() => toggleKnowledge(item)}
-                    className={cn(
-                      'flex items-center gap-2 p-2 rounded cursor-pointer transition-colors',
-                      isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted'
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {}}
-                      className="rounded"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.category}</p>
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {item.usage_count} 使用
-                    </Badge>
+                  <div key={item.id} onClick={() => toggleKnowledge(item)} className={cn('flex items-center gap-2 p-2 rounded cursor-pointer transition-colors', isSelected ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted')}>
+                    <input type="checkbox" checked={isSelected} onChange={() => {}} className="rounded" />
+                    <div className="flex-1 min-w-0"><p className="text-sm font-medium truncate">{item.title}</p><p className="text-xs text-muted-foreground">{item.category}</p></div>
+                    <Badge variant="outline" className="text-xs">{item.usage_count} 使用</Badge>
                   </div>
                 );
               })
             )}
           </div>
         )}
-
         {selectedKnowledge.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {selectedKnowledge.map((k) => (
-              <Badge key={k.id} variant="secondary" className="gap-1">
-                {k.title.substring(0, 15)}
-                <X
-                  className="w-3 h-3 cursor-pointer"
-                  onClick={() => toggleKnowledge(k)}
-                />
-              </Badge>
-            ))}
-          </div>
+          <div className="flex flex-wrap gap-2 mt-2">{selectedKnowledge.map((k) => (<Badge key={k.id} variant="secondary" className="gap-1">{k.title.substring(0, 15)}<X className="w-3 h-3 cursor-pointer" onClick={() => toggleKnowledge(k)} /></Badge>))}</div>
         )}
-
-        {selectedKnowledge.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-1">
-            已选择 {selectedKnowledge.length} 个知识库，预计 {selectedKnowledge.reduce((sum, k) => sum + (k.usage_count || 0), 0) + selectedKnowledge.length} 条数据
-          </p>
-        )}
+        {selectedKnowledge.length > 0 && <p className="text-xs text-muted-foreground mt-1">已选择 {selectedKnowledge.length} 个知识库</p>}
       </div>
-
-      <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>取消</Button>
-        <Button type="submit">创建</Button>
-      </div>
+      <div className="flex justify-end gap-2 pt-4"><Button type="button" variant="outline" onClick={onCancel}>取消</Button><Button type="submit">创建</Button></div>
     </form>
+  );
+}
+
+// 工具Tab
+function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
+  const [generating, setGenerating] = useState(false);
+  const [selectedKnowledge, setSelectedKnowledge] = useState<any[]>([]);
+  const [showKnowledgeSelect, setShowKnowledgeSelect] = useState(false);
+  const [availableKnowledge, setAvailableKnowledge] = useState<any[]>([]);
+  const [generatedCount, setGeneratedCount] = useState(0);
+  const { success, error } = useToast();
+
+  const loadKnowledge = async () => {
+    try {
+      const res = await getKnowledgeList({ page: 1, page_size: 50, status: 'ready' });
+      setAvailableKnowledge(res.data.list || []);
+      setShowKnowledgeSelect(true);
+    } catch (err) {
+      console.error('加载失败:', err);
+    }
+  };
+
+  const toggleKnowledge = (item: any) => {
+    setSelectedKnowledge((prev) => {
+      const exists = prev.find((k) => k.id === item.id);
+      if (exists) return prev.filter((k) => k.id !== item.id);
+      return [...prev, item];
+    });
+  };
+
+  const handleGenerateQA = async () => {
+    if (selectedKnowledge.length === 0) {
+      error('请先选择知识库');
+      return;
+    }
+    setGenerating(true);
+    let total = 0;
+    try {
+      for (const k of selectedKnowledge) {
+        const res = await generateQA(k.id);
+        total += res.data.count || 0;
+      }
+      setGeneratedCount(total);
+      success(`成功生成 ${total} 个问答对`);
+      onRefresh?.();
+    } catch (err) {
+      error('生成失败');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Zap className="w-4 h-4" />AI生成问答</CardTitle>
+          <CardDescription>从选定的知识库自动生成问答对</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">选择知识库</label>
+              {!showKnowledgeSelect && <Button type="button" variant="outline" size="sm" onClick={loadKnowledge}>选择</Button>}
+            </div>
+            {showKnowledgeSelect && (
+              <div className="border rounded-lg p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                {availableKnowledge.map((item) => {
+                  const isSelected = selectedKnowledge.some((k) => k.id === item.id);
+                  return (
+                    <div key={item.id} onClick={() => toggleKnowledge(item)} className={cn('flex items-center gap-2 p-2 rounded cursor-pointer', isSelected ? 'bg-primary/10' : 'hover:bg-muted')}>
+                      <input type="checkbox" checked={isSelected} onChange={() => {}} className="rounded" />
+                      <span className="flex-1 text-sm truncate">{item.title}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {selectedKnowledge.length > 0 && <p className="text-xs text-muted-foreground mt-2">已选择 {selectedKnowledge.length} 个知识库</p>}
+          </div>
+          <Button onClick={handleGenerateQA} disabled={generating || selectedKnowledge.length === 0}>
+            {generating ? (<><RefreshCw className="w-4 h-4 mr-2 animate-spin" />生成中...</>) : (<><Zap className="w-4 h-4 mr-2" />生成问答</>)}
+          </Button>
+          {generatedCount > 0 && <p className="text-sm text-green-600">本次生成 {generatedCount} 个问答对</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4" />快速操作</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+              <a href="/knowledge" target="_blank"><ExternalLink className="w-5 h-5" /><span className="text-xs">查看知识库</span></a>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2" asChild>
+              <a href="/ai-assistant" target="_blank"><Sparkles className="w-5 h-5" /><span className="text-xs">AI助手</span></a>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => {}}>
+              <Download className="w-5 h-5" /><span className="text-xs">导出数据</span>
+            </Button>
+            <Button variant="outline" className="h-20 flex-col gap-2" onClick={onRefresh}>
+              <RefreshCw className="w-5 h-5" /><span className="text-xs">刷新统计</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
