@@ -183,6 +183,29 @@ $routers = [
     
     // ========== 文章 ==========
     'api/articles' => ['app\controller\Home::articles', ['GET']],
+    
+    // ========== 评价 ==========
+    'api/reviews' => ['app\controller\Review::index', ['GET']],
+    'api/reviews/stats' => ['app\controller\Review::stats', ['GET']],
+    'api/reviews/create' => ['app\controller\Review::create', ['POST']],
+    'api/reviews/reply' => ['app\controller\Review::reply', ['POST']],
+    'api/reviews/like' => ['app\controller\Review::like', ['POST']],
+    'api/reviews/myList' => ['app\controller\Review::myList', ['GET']],
+    
+    // ========== 积分 ==========
+    'api/points/info' => ['app\controller\Points::info', ['GET']],
+    'api/points/logs' => ['app\controller\Points::logs', ['GET']],
+    'api/points/rules' => ['app\controller\Points::rules', ['GET']],
+    'api/points/sign' => ['app\controller\Points::sign', ['POST']],
+    'api/points/exchange' => ['app\controller\Points::exchange', ['POST']],
+    
+    // ========== 统计 ==========
+    'api/stats' => ['app\controller\Stats::index', ['GET']],
+    'api/stats/sales' => ['app\controller\Stats::sales', ['GET']],
+    'api/stats/goodsRanking' => ['app\controller\Stats::goodsRanking', ['GET']],
+    'api/stats/users' => ['app\controller\Stats::users', ['GET']],
+    'api/stats/categories' => ['app\controller\Stats::categories', ['GET']],
+    'api/stats/realtime' => ['app\controller\Stats::realtime', ['GET']],
 ];
 
 // 支持 RESTful 风格
