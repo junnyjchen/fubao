@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -25,14 +26,25 @@ import {
   RefreshCw,
   Settings,
   History,
-  ChevronDown,
   MessageSquare,
+  Search,
   MoreHorizontal,
+  Download,
+  ChevronDown,
+  Volume2,
+  VolumeX,
+  Sun,
+  Moon,
   Pin,
   X,
   AlertCircle,
   BookOpen,
   ShoppingBag,
+  Sparkle,
+  CopyPlus,
+  MessageCircle,
+  FileText,
+  Wand2,
 } from 'lucide-react';
 
 // 消息类型
@@ -43,6 +55,7 @@ export interface AIMessage {
   timestamp: Date;
   status?: 'sending' | 'streaming' | 'done' | 'error';
   feedback?: 'like' | 'dislike' | null;
+  attachments?: { type: string; url: string }[];
 }
 
 // 会话类型
@@ -61,40 +74,66 @@ const PRESET_CATEGORIES = [
     id: 'culture',
     name: '文化科普',
     icon: <BookOpen className="w-4 h-4" />,
+    color: 'bg-amber-500/10 text-amber-500',
     questions: [
       '什麼是符籙？',
       '道教的起源與發展',
       '風水命理的基礎概念',
       '常見的護身符有哪些？',
+      '符籙的歷史演變',
     ],
   },
   {
     id: 'product',
     name: '商品諮詢',
     icon: <ShoppingBag className="w-4 h-4" />,
+    color: 'bg-blue-500/10 text-blue-500',
     questions: [
       '如何選擇適合自己的符？',
       '一物一證是什麼意思？',
       '符寶網的商品如何保證真實性？',
       '符籙的有效期限是多久？',
+      '哪些符可以放在車上？',
     ],
   },
   {
     id: 'usage',
     name: '使用指導',
-    icon: <Sparkles className="w-4 h-4" />,
+    icon: <Wand2 className="w-4 h-4" />,
+    color: 'bg-green-500/10 text-green-500',
     questions: [
       '如何正確佩戴護身符？',
       '符籙使用時有哪些禁忌？',
       '符水如何使用？',
       '符籙需要開光嗎？',
+      '多個符可以一起佩戴嗎？',
     ],
   },
+  {
+    id: 'fortune',
+    name: '命理諮詢',
+    icon: <Sparkle className="w-4 h-4" />,
+    color: 'bg-purple-500/10 text-purple-500',
+    questions: [
+      '八字命盤怎麼看？',
+      '五行缺什麼如何補？',
+      '流年運勢如何計算？',
+      '如何選擇吉日？',
+    ],
+  },
+];
+
+// 快速动作
+const QUICK_ACTIONS = [
+  { id: 'explain', label: '解釋這個概念', icon: <FileText className="w-4 h-4" /> },
+  { id: 'compare', label: '比較一下', icon: <MessageCircle className="w-4 h-4" /> },
+  { id: 'recommend', label: '推薦合適的', icon: <Sparkle className="w-4 h-4" /> },
 ];
 
 // 本地存储键名
 const STORAGE_KEY_CONVERSATIONS = 'fubao_ai_conversations';
 const STORAGE_KEY_CURRENT_ID = 'fubao_ai_current_conversation_id';
+const STORAGE_KEY_THEME = 'fubao_ai_theme';
 
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -112,34 +151,36 @@ const formatMessageTime = (date: Date) => {
   return date.toLocaleDateString('zh-TW');
 };
 
-// Markdown简化渲染（处理粗体、斜体、列表等）
+// Markdown简化渲染
 const renderMarkdown = (text: string): string => {
-  const html = text
-    // 转义HTML
+  let html = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    // 粗体
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/__(.*?)__/g, '<strong>$1</strong>')
-    // 斜体
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
     .replace(/_(.*?)_/g, '<em>$1</em>')
-    // 标题
     .replace(/^### (.*$)/gim, '<h3 class="text-base font-semibold mt-3 mb-1">$1</h3>')
     .replace(/^## (.*$)/gim, '<h2 class="text-lg font-semibold mt-4 mb-2">$1</h2>')
     .replace(/^# (.*$)/gim, '<h1 class="text-xl font-bold mt-4 mb-2">$1</h1>')
-    // 列表
     .replace(/^\- (.*$)/gim, '<li class="ml-4">$1</li>')
     .replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal">$1</li>')
-    // 代码块
     .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-muted p-3 rounded-lg overflow-x-auto my-2 text-sm"><code>$2</code></pre>')
     .replace(/`([^`]+)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>')
-    // 换行
     .replace(/\n/g, '<br />');
 
   return html;
 };
+
+// 打字动画
+const TypingIndicator = () => (
+  <div className="flex items-center gap-1">
+    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+    <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+  </div>
+);
 
 export function AIChat() {
   // 状态
@@ -150,10 +191,18 @@ export function AIChat() {
   const [showHistory, setShowHistory] = useState(false);
   const [showPresets, setShowPresets] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; messageId: string } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const { success } = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { success, error } = useToast();
 
   // 获取当前会话
   const currentConversation = useMemo(() => {
@@ -165,6 +214,7 @@ export function AIChat() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_CONVERSATIONS);
       const currentId = localStorage.getItem(STORAGE_KEY_CURRENT_ID);
+      const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
 
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -186,6 +236,10 @@ export function AIChat() {
           setCurrentConversationId(parsed[0].id);
         }
       }
+
+      if (savedTheme) {
+        setTheme(savedTheme as 'light' | 'dark');
+      }
     } catch (e) {
       console.error('加载会话历史失败:', e);
     }
@@ -199,14 +253,22 @@ export function AIChat() {
 
   // 滚动到底部
   const scrollToBottom = useCallback(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [currentConversation?.messages, scrollToBottom]);
+    if (currentConversation?.messages.length) {
+      scrollToBottom();
+    }
+  }, [currentConversation?.messages.length, scrollToBottom]);
+
+  // 检测滚动位置
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      setShowScrollButton(scrollHeight - scrollTop - clientHeight > 100);
+    }
+  }, []);
 
   // 创建新会话
   const createNewConversation = useCallback(() => {
@@ -223,6 +285,7 @@ export function AIChat() {
     localStorage.setItem(STORAGE_KEY_CURRENT_ID, newConversation.id);
     setShowHistory(false);
     setShowPresets(true);
+    setShowSearch(false);
   }, [conversations, saveConversations]);
 
   // 切换会话
@@ -231,6 +294,7 @@ export function AIChat() {
     localStorage.setItem(STORAGE_KEY_CURRENT_ID, id);
     setShowHistory(false);
     setShowPresets(currentConversation?.messages.length === 0);
+    setShowSearch(false);
   }, [currentConversation]);
 
   // 删除会话
@@ -248,7 +312,8 @@ export function AIChat() {
         localStorage.removeItem(STORAGE_KEY_CURRENT_ID);
       }
     }
-  }, [conversations, currentConversationId, saveConversations]);
+    success('已刪除對話');
+  }, [conversations, currentConversationId, saveConversations, success]);
 
   // 发送消息
   const sendMessage = async (messageText?: string) => {
@@ -257,7 +322,6 @@ export function AIChat() {
 
     let conversation = currentConversation;
 
-    // 如果没有当前会话，创建新会话
     if (!conversation) {
       conversation = {
         id: generateId(),
@@ -279,7 +343,6 @@ export function AIChat() {
       status: 'done',
     };
 
-    // 更新消息
     const updatedMessages = [...conversation.messages, userMessage];
     const updatedConversation = {
       ...conversation,
@@ -298,7 +361,6 @@ export function AIChat() {
     setIsLoading(true);
     setShowPresets(false);
 
-    // 创建AI消息占位符
     const aiMessageId = generateId();
     const aiMessage: AIMessage = {
       id: aiMessageId,
@@ -384,7 +446,6 @@ export function AIChat() {
         }
       }
 
-      // 完成消息
       const doneConversations = finalConversations.map((c) =>
         c.id === finalConversation.id
           ? {
@@ -398,6 +459,13 @@ export function AIChat() {
           : c
       );
       saveConversations(doneConversations);
+
+      if (!isMuted) {
+        // 播放提示音
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleUMhWYiuz9J3WjA1jLz06qJwOTmVwPL5yXxwZoGtz+jPtGVyYoq42+y2nYpbWbK43+u5qJdYV7K74Oy6qZlXWbC64uy7qZpZVrG74uy7qZpZVrG74uy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7qZpZV7K74Oy7');
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      }
     } catch (err) {
       console.error('发送消息失败:', err);
       const errorConversations = finalConversations.map((c) =>
@@ -413,6 +481,7 @@ export function AIChat() {
           : c
       );
       saveConversations(errorConversations);
+      error('網絡發生錯誤');
     } finally {
       setIsLoading(false);
     }
@@ -431,6 +500,7 @@ export function AIChat() {
     );
     saveConversations(newConversations);
     setShowPresets(true);
+    success('已清空對話');
   };
 
   // 复制消息
@@ -453,6 +523,24 @@ export function AIChat() {
       c.id === currentConversation.id ? { ...c, messages: updated } : c
     );
     saveConversations(newConversations);
+    success(feedback === 'like' ? '感謝您的肯定' : '感謝您的反饋');
+  };
+
+  // 导出对话
+  const exportConversation = () => {
+    if (!currentConversation) return;
+    const text = currentConversation.messages
+      .map((m) => `${m.role === 'user' ? '用戶' : 'AI'}: ${m.content}`)
+      .join('\n\n');
+
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `對話_${new Date().toLocaleDateString()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    success('對話已導出');
   };
 
   // 处理按键事件
@@ -462,6 +550,14 @@ export function AIChat() {
       sendMessage();
     }
   };
+
+  // 搜索消息
+  const filteredMessages = useMemo(() => {
+    if (!searchQuery.trim() || !currentConversation) return null;
+    return currentConversation.messages.filter((m) =>
+      m.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, currentConversation]);
 
   return (
     <div className="flex flex-col h-[600px] md:h-[700px]">
@@ -474,12 +570,35 @@ export function AIChat() {
             </div>
             <div>
               <CardTitle className="text-lg">符寶AI助手</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {isLoading ? '思考中...' : currentConversation?.messages.length ? '對話中' : '就緒'}
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                {isLoading ? (
+                  <>
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    思考中...
+                  </>
+                ) : currentConversation?.messages.length ? (
+                  <>
+                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                    在線
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 bg-muted-foreground rounded-full" />
+                    就緒
+                  </>
+                )}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowSearch(!showSearch)}
+              title="搜索"
+            >
+              <Search className="w-4 h-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -491,43 +610,92 @@ export function AIChat() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setShowSettings(!showSettings)}
+              title="設置"
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={createNewConversation}
               title="新建對話"
             >
               <RefreshCw className="w-4 h-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clearCurrentConversation}
-              disabled={!currentConversation?.messages.length}
-              title="清空對話"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
           </div>
         </div>
+
+        {/* 搜索栏 */}
+        {showSearch && (
+          <div className="mt-3 flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="搜索對話內容..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </CardHeader>
 
       {/* Messages */}
       <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full p-4" ref={scrollRef}>
+        <ScrollArea className="h-full p-4" ref={scrollRef} onScroll={handleScroll}>
           {showPresets && (!currentConversation || currentConversation.messages.length === 0) ? (
             <WelcomeScreen onSelectQuestion={sendMessage} />
+          ) : filteredMessages !== null && filteredMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center py-8">
+              <Search className="w-12 h-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">沒有找到匹配的內容</p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {currentConversation?.messages.map((message) => (
+              {(filteredMessages || currentConversation?.messages || []).map((message) => (
                 <MessageBubble
                   key={message.id}
                   message={message}
                   onCopy={() => copyMessage(message.content, message.id)}
                   onFeedback={(fb) => giveFeedback(message.id, fb)}
                   isCopied={copiedId === message.id}
+                  onContextMenu={(x, y) => setContextMenu({ x, y, messageId: message.id })}
                 />
               ))}
+              {isLoading && (
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <div className="bg-muted rounded-2xl rounded-tl-sm px-4 py-3">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
             </div>
           )}
         </ScrollArea>
+
+        {/* 滚动到底部按钮 */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-24 right-6 w-10 h-10 rounded-full bg-background border shadow-lg flex items-center justify-center hover:bg-muted transition-colors"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </button>
+        )}
       </CardContent>
 
       {/* Input */}
@@ -556,17 +724,26 @@ export function AIChat() {
             )}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2 text-center">
-          按 Enter 發送，Shift + Enter 換行
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-muted-foreground">
+            按 Enter 發送，Shift + Enter 換行
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setIsMuted(!isMuted)}
+              title={isMuted ? '開啟提示音' : '靜音'}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* History Modal */}
-      <Modal
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-        title="對話記錄"
-      >
+      <Modal isOpen={showHistory} onClose={() => setShowHistory(false)} title="對話記錄">
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {conversations.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">暫無對話記錄</p>
@@ -588,17 +765,56 @@ export function AIChat() {
                     {conv.messages.length} 條消息 · {formatMessageTime(conv.updatedAt)}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={(e) => deleteConversation(conv.id, e)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentConversationId(conv.id);
+                      exportConversation();
+                    }}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => deleteConversation(conv.id, e)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             ))
           )}
+        </div>
+      </Modal>
+
+      {/* Settings Modal */}
+      <Modal isOpen={showSettings} onClose={() => setShowSettings(false)} title="設置">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">提示音</p>
+              <p className="text-sm text-muted-foreground">收到回覆時播放提示音</p>
+            </div>
+            <Button
+              variant={isMuted ? 'outline' : 'default'}
+              size="sm"
+              onClick={() => setIsMuted(!isMuted)}
+            >
+              {isMuted ? '靜音' : '開啟'}
+            </Button>
+          </div>
+          <div className="border-t pt-4">
+            <Button variant="outline" className="w-full" onClick={clearCurrentConversation}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              清空當前對話
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
@@ -608,21 +824,20 @@ export function AIChat() {
 // 欢迎界面
 function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => void }) {
   const [activeCategory, setActiveCategory] = useState(PRESET_CATEGORIES[0].id);
-
   const currentCategory = PRESET_CATEGORIES.find((c) => c.id === activeCategory)!;
 
   return (
     <div className="flex flex-col items-center justify-center h-full text-center py-8">
-      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-        <Sparkles className="w-8 h-8 text-primary" />
+      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
+        <Sparkles className="w-10 h-10 text-primary" />
       </div>
-      <h3 className="text-lg font-medium mb-2">歡迎使用符寶AI助手</h3>
+      <h3 className="text-xl font-medium mb-2">歡迎使用符寶AI助手</h3>
       <p className="text-muted-foreground mb-6 max-w-md">
         我可以為您解答玄門文化、符籙法器、風水命理等問題，也可以幫您了解符寶網的商品和服務。
       </p>
 
       {/* 分类标签 */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-6">
         {PRESET_CATEGORIES.map((cat) => (
           <Button
             key={cat.id}
@@ -638,7 +853,7 @@ function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => 
       </div>
 
       {/* 问题列表 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 w-full max-w-md">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
         {currentCategory.questions.map((question, index) => (
           <Button
             key={index}
@@ -646,11 +861,16 @@ function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => 
             className="justify-start h-auto py-3 px-4 text-left"
             onClick={() => onSelectQuestion(question)}
           >
-            <MessageSquare className="w-4 h-4 mr-2 shrink-0" />
-            <span className="truncate">{question}</span>
+            <MessageSquare className="w-4 h-4 mr-2 shrink-0 text-muted-foreground" />
+            <span className="truncate text-sm">{question}</span>
           </Button>
         ))}
       </div>
+
+      {/* 快捷提示 */}
+      <p className="text-xs text-muted-foreground mt-6">
+        嘗試描述您的問題，我會尽力為您解答
+      </p>
     </div>
   );
 }
@@ -661,40 +881,47 @@ interface MessageBubbleProps {
   onCopy: () => void;
   onFeedback: (fb: 'like' | 'dislike') => void;
   isCopied: boolean;
+  onContextMenu?: (x: number, y: number) => void;
 }
 
-function MessageBubble({ message, onCopy, onFeedback, isCopied }: MessageBubbleProps) {
+function MessageBubble({ message, onCopy, onFeedback, isCopied, onContextMenu }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isStreaming = message.status === 'streaming';
 
   return (
-    <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
+    <div
+      className={cn('flex gap-3 group', isUser && 'flex-row-reverse')}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onContextMenu?.(e.clientX, e.clientY);
+      }}
+    >
       {/* Avatar */}
       <div
         className={cn(
           'w-8 h-8 rounded-full flex items-center justify-center shrink-0',
-          isUser ? 'bg-primary' : 'bg-muted'
+          isUser ? 'bg-primary' : 'bg-gradient-to-br from-primary/20 to-primary/5'
         )}
       >
         {isUser ? (
           <User className="w-4 h-4 text-primary-foreground" />
         ) : (
-          <Bot className="w-4 h-4" />
+          <Bot className="w-4 h-4 text-primary" />
         )}
       </div>
 
       {/* Content */}
-      <div className={cn('max-w-[80%]', isUser && 'items-end')}>
+      <div className={cn('max-w-[85%]', isUser && 'items-end')}>
         <div
           className={cn(
-            'rounded-2xl px-4 py-2',
+            'rounded-2xl px-4 py-3',
             isUser
-              ? 'bg-primary text-primary-foreground rounded-tr-sm'
+              ? 'bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-tr-sm'
               : 'bg-muted rounded-tl-sm'
           )}
         >
           {isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
+            <p className="whitespace-pre-wrap text-sm">{message.content}</p>
           ) : (
             <div
               className="prose prose-sm dark:prose-invert max-w-none"
@@ -708,12 +935,13 @@ function MessageBubble({ message, onCopy, onFeedback, isCopied }: MessageBubbleP
 
         {/* Actions */}
         {!isUser && message.status === 'done' && (
-          <div className="flex items-center gap-1 mt-1">
+          <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7"
               onClick={onCopy}
+              title="複製"
             >
               {isCopied ? (
                 <Check className="w-3 h-3 text-green-500" />
@@ -724,26 +952,35 @@ function MessageBubble({ message, onCopy, onFeedback, isCopied }: MessageBubbleP
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-7 w-7', message.feedback === 'like' && 'text-green-500')}
+              className={cn('h-7 w-7', message.feedback === 'like' && 'text-green-500 bg-green-500/10')}
               onClick={() => onFeedback('like')}
+              title="贊"
             >
               <ThumbsUp className="w-3 h-3" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className={cn('h-7 w-7', message.feedback === 'dislike' && 'text-red-500')}
+              className={cn('h-7 w-7', message.feedback === 'dislike' && 'text-red-500 bg-red-500/10')}
               onClick={() => onFeedback('dislike')}
+              title="踩"
             >
               <ThumbsDown className="w-3 h-3" />
             </Button>
           </div>
         )}
 
-        {/* Time */}
-        <p className="text-xs text-muted-foreground mt-1">
-          {formatTime(message.timestamp)}
-        </p>
+        {/* Time & Status */}
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-muted-foreground">
+            {formatTime(message.timestamp)}
+          </p>
+          {message.status === 'error' && (
+            <Badge variant="destructive" className="text-xs">
+              發送失敗
+            </Badge>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -6,12 +6,16 @@
 
 import { Metadata } from 'next';
 import { AIChat } from '@/components/ai/AIChat';
+import { QuickStartAI, AIAbilityCard } from '@/components/ai/QuickStartAI';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Sparkles,
   BookOpen,
   Shield,
   HelpCircle,
+  MessageSquare,
+  Zap,
+  Clock,
 } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -25,22 +29,33 @@ const FEATURES = [
     icon: BookOpen,
     title: '文化科普',
     description: '解答道教文化、符箓法器、風水命理等問題',
+    color: 'bg-amber-500/10 text-amber-600',
   },
   {
     icon: Sparkles,
     title: '產品諮詢',
     description: '介紹符寶網商品，幫助選擇合適的符箓法器',
+    color: 'bg-blue-500/10 text-blue-600',
   },
   {
     icon: Shield,
     title: '證書查詢',
     description: '了解一物一證認證體系，查詢商品真偽',
+    color: 'bg-green-500/10 text-green-600',
   },
   {
     icon: HelpCircle,
     title: '使用指導',
     description: '指導正確使用符箓法器的方法和注意事項',
+    color: 'bg-purple-500/10 text-purple-600',
   },
+];
+
+// 使用提示
+const TIPS = [
+  { icon: MessageSquare, text: '可以詢問符籙的種類和用途' },
+  { icon: Zap, text: '嘗試更具體的問題獲得更準確的回答' },
+  { icon: Clock, text: 'AI會根據對話上下文提供更個性化的建議' },
 ];
 
 export default function AIAssistantPage() {
@@ -57,14 +72,19 @@ export default function AIAssistantPage() {
             符寶AI助手
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            我們的AI助手熟悉玄門文化知識，可以為您解答符箓法器、風水命理等問題，
+            我們的AI助手熟悉玄門文化知識，可以為您解答符籙法器、風水命理等問題，
             幫助您更好地了解和使用符寶網的服務。
           </p>
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* 能力展示 */}
       <section className="container mx-auto px-4 py-8">
+        <AIAbilityCard />
+      </section>
+
+      {/* Main Content */}
+      <section className="container mx-auto px-4 pb-12">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Chat Component */}
           <div className="lg:col-span-2">
@@ -80,8 +100,8 @@ export default function AIAssistantPage() {
                 <div className="space-y-4">
                   {FEATURES.map((feature, index) => (
                     <div key={index} className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <feature.icon className="w-5 h-5 text-primary" />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${feature.color}`}>
+                        <feature.icon className="w-5 h-5" />
                       </div>
                       <div>
                         <h4 className="font-medium text-sm">{feature.title}</h4>
@@ -95,27 +115,28 @@ export default function AIAssistantPage() {
               </CardContent>
             </Card>
 
+            {/* Quick Start */}
+            <Card className="bg-gradient-to-br from-primary/5 to-transparent border-primary/10">
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-primary" />
+                  快速開始
+                </h3>
+                <QuickStartAI variant="minimal" />
+              </CardContent>
+            </Card>
+
             {/* Tips */}
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-6">
                 <h3 className="font-semibold mb-3">使用提示</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>可以詢問符箓的種類和用途</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>了解如何選擇適合自己的法器</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>查詢商品的認證信息</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>獲取使用和保養建議</span>
-                  </li>
+                <ul className="space-y-3">
+                  {TIPS.map((tip, index) => (
+                    <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <tip.icon className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+                      <span>{tip.text}</span>
+                    </li>
+                  ))}
                 </ul>
               </CardContent>
             </Card>
