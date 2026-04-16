@@ -263,6 +263,34 @@ $routers = [
     'api/admin/ai/cleanLogs' => ['app\controller\admin\AI::cleanLogs', ['POST']],
     'api/admin/ai/export' => ['app\controller\admin\AI::export', ['GET']],
     'api/admin/ai/promptTemplates' => ['app\controller\admin\AI::promptTemplates', ['GET']],
+    
+    // ========== 管理员 - AI训练知识库 ==========
+    'api/admin/ai/training/knowledge' => ['app\controller\admin\AITraining::knowledgeList', ['GET']],
+    'api/admin/ai/training/knowledgeDetail' => ['app\controller\admin\AITraining::knowledgeDetail', ['GET']],
+    'api/admin/ai/training/knowledgeCreate' => ['app\controller\admin\AITraining::knowledgeCreate', ['POST']],
+    'api/admin/ai/training/knowledgeUpdate' => ['app\controller\admin\AITraining::knowledgeUpdate', ['POST']],
+    'api/admin/ai/training/knowledgeDelete' => ['app\controller\admin\AITraining::knowledgeDelete', ['POST']],
+    'api/admin/ai/training/knowledgeBatchImport' => ['app\controller\admin\AITraining::knowledgeBatchImport', ['POST']],
+    
+    // ========== 管理员 - AI问答对 ==========
+    'api/admin/ai/training/qa' => ['app\controller\admin\AITraining::qaList', ['GET']],
+    'api/admin/ai/training/qaCreate' => ['app\controller\admin\AITraining::qaCreate', ['POST']],
+    'api/admin/ai/training/qaUpdate' => ['app\controller\admin\AITraining::qaUpdate', ['POST']],
+    'api/admin/ai/training/qaDelete' => ['app\controller\admin\AITraining::qaDelete', ['POST']],
+    'api/admin/ai/training/generateQA' => ['app\controller\admin\AITraining::generateQA', ['POST']],
+    
+    // ========== 管理员 - AI训练任务 ==========
+    'api/admin/ai/training/tasks' => ['app\controller\admin\AITraining::taskList', ['GET']],
+    'api/admin/ai/training/taskCreate' => ['app\controller\admin\AITraining::taskCreate', ['POST']],
+    'api/admin/ai/training/taskStart' => ['app\controller\admin\AITraining::taskStart', ['POST']],
+    'api/admin/ai/training/taskCancel' => ['app\controller\admin\AITraining::taskCancel', ['POST']],
+    
+    // ========== 管理员 - AI训练统计 ==========
+    'api/admin/ai/training/stats' => ['app\controller\admin\AITraining::stats', ['GET']],
+    'api/admin/ai/training/search' => ['app\controller\admin\AITraining::searchKnowledge', ['GET']],
+    
+    // ========== 用户 - AI问答推荐 ==========
+    'api/ai/recommendQA' => ['app\controller\AITraining::getRecommendedQA', ['GET']], 
 ];
 
 // 支持 RESTful 风格

@@ -583,7 +583,81 @@ INSERT INTO `ai_configurations` (`name`, `model`, `system_prompt`, `temperature`
 ('符寶默認助手', 'doubao-seed-1-6-251015', '你是符寶網的AI助手，專注於玄門文化科普與服務...', 0.7, 2000, 1);
 
 -- ----------------------------
--- 25. 消息表（私信/系统消息）
+-- 27. AI训练知识库表
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_training_knowledge`;
+CREATE TABLE `ai_training_knowledge` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) NOT NULL COMMENT '标题',
+  `content` text NOT NULL COMMENT '内容',
+  `category` varchar(50) DEFAULT 'general' COMMENT '分类：culture文化/product商品/usage使用/fortune命理/general通用',
+  `source_type` enum('text','url','document','qa') NOT NULL DEFAULT 'text' COMMENT '来源类型',
+  `source_url` varchar(500) DEFAULT NULL COMMENT '来源URL',
+  `tags` json DEFAULT NULL COMMENT '标签',
+  `status` enum('draft','training','ready','archived') NOT NULL DEFAULT 'draft' COMMENT '状态',
+  `embedding_status` enum('pending','processing','completed','failed') NOT NULL DEFAULT 'pending' '向量化状态',
+  `embedding_vector` text COMMENT '向量化数据(JSON)',
+  `usage_count` int(11) NOT NULL DEFAULT 0 COMMENT '使用次数',
+  `accuracy_score` float DEFAULT NULL COMMENT '准确率评分',
+  `admin_id` int(11) UNSIGNED DEFAULT NULL COMMENT '创建管理员ID',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_category` (`category`),
+  KEY `idx_status` (`status`),
+  KEY `idx_embedding_status` (`embedding_status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI训练知识库表';
+
+-- ----------------------------
+-- 28. AI训练任务表
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_training_tasks`;
+CREATE TABLE `ai_training_tasks` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL COMMENT '任务名称',
+  `description` text COMMENT '任务描述',
+  `type` enum('full','incremental','fine_tune') NOT NULL DEFAULT 'incremental' COMMENT '训练类型',
+  `knowledge_ids` json DEFAULT NULL COMMENT '关联知识库ID列表',
+  `model` varchar(100) DEFAULT NULL COMMENT '目标模型',
+  `status` enum('pending','running','completed','failed','cancelled') NOT NULL DEFAULT 'pending' COMMENT '状态',
+  `progress` int(11) NOT NULL DEFAULT 0 COMMENT '进度百分比',
+  `total_records` int(11) NOT NULL DEFAULT 0 COMMENT '总记录数',
+  `processed_records` int(11) NOT NULL DEFAULT 0 COMMENT '已处理记录数',
+  `failed_records` int(11) NOT NULL DEFAULT 0 COMMENT '失败记录数',
+  `error_message` text COMMENT '错误信息',
+  `started_at` datetime DEFAULT NULL COMMENT '开始时间',
+  `completed_at` datetime DEFAULT NULL COMMENT '完成时间',
+  `admin_id` int(11) UNSIGNED DEFAULT NULL COMMENT '创建管理员ID',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI训练任务表';
+
+-- ----------------------------
+-- 29. AI问答对表
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_qa_pairs`;
+CREATE TABLE `ai_qa_pairs` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `knowledge_id` int(11) UNSIGNED DEFAULT NULL COMMENT '关联知识库ID',
+  `question` text NOT NULL COMMENT '问题',
+  `answer` text NOT NULL COMMENT '回答',
+  `keywords` json DEFAULT NULL COMMENT '关键词',
+  `category` varchar(50) DEFAULT 'general' COMMENT '分类',
+  `usage_count` int(11) NOT NULL DEFAULT 0 COMMENT '使用次数',
+  `accuracy` float DEFAULT NULL COMMENT '准确率',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_knowledge_id` (`knowledge_id`),
+  KEY `idx_category` (`category`),
+  KEY `idx_is_active` (`is_active`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI问答对表';
+
+-- ----------------------------
+-- 30. 消息表（私信/系统消息）
 -- ----------------------------
 DROP TABLE IF EXISTS `messages`;
 CREATE TABLE `messages` (

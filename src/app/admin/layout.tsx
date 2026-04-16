@@ -35,6 +35,7 @@ import {
   ChevronRight,
   LogOut,
   User,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,6 +88,7 @@ const navItems: NavItem[] = [
       { key: 'videos', label: '視頻管理', icon: FileText, href: '/admin/videos' },
       { key: 'news', label: '新聞管理', icon: FileText, href: '/admin/news' },
       { key: 'ai-content', label: 'AI內容生成', icon: FileText, href: '/admin/ai-content' },
+      { key: 'ai-training', label: 'AI訓練中心', icon: Brain, href: '/admin/ai-training' },
     ],
   },
   { key: 'page-builder', label: '頁面裝修', icon: Palette, href: '/admin/page-builder' },
