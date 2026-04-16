@@ -38,7 +38,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import {
   Select,
@@ -52,7 +51,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
   Loader2,
   Search,
   Pin,

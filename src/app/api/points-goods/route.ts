@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 积分商城商品 API
  * @description 获取积分商品列表

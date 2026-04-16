@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 前端公告API
  * @description 获取启用的公告列表

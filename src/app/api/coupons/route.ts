@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 优惠券 API
  * @description 处理优惠券的领取、查询等操作

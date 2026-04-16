@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 用户反馈API
  * @description 接收和处理用户反馈

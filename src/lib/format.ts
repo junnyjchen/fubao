@@ -99,6 +99,20 @@ export function formatDate(date: string | Date, format = 'YYYY-MM-DD'): string {
 }
 
 /**
+ * 格式化时间（HH:mm:ss）
+ */
+export function formatTime(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+  
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+/**
  * 相对时间
  */
 export function formatRelativeTime(date: string | Date): string {

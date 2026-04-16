@@ -114,7 +114,7 @@ const formatMessageTime = (date: Date) => {
 
 // Markdown简化渲染（处理粗体、斜体、列表等）
 const renderMarkdown = (text: string): string => {
-  let html = text
+  const html = text
     // 转义HTML
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

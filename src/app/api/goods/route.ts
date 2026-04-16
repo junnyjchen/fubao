@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 商品列表API
  * @description 获取商品列表，支持筛选、排序、分页

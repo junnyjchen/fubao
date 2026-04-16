@@ -12,14 +12,13 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Gift,
   ShoppingCart,
   ArrowRight,
   Loader2,
   Tag,
-  CheckCircle2,
   Heart,
   ChevronLeft,
   Calculator,
@@ -67,7 +66,6 @@ export default function DiscountPage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [favorites, setFavorites] = useState<FavoriteState>({});
   const [favoriteLoading, setFavoriteLoading] = useState<number | null>(null);
-  const [showCalculator, setShowCalculator] = useState(false);
   const [calculatorAmount, setCalculatorAmount] = useState<string>('');
 
   // 满减规则

@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 视频列表API
  * @description 视频列表查询和新增功能

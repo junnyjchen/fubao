@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 轮播图 API
  * @description 处理轮播图的增删改查

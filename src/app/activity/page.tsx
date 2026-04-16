@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Zap,
   Gift,
@@ -22,8 +22,6 @@ import {
   Clock,
   Truck,
   MapPin,
-  Users,
-  Share2,
   Star,
   Bell,
 } from 'lucide-react';

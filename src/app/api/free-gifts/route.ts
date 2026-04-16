@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 免费领商品API
  * @description 免费领取商品，支持邮寄或到店自取

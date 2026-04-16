@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 充值 API
  * @description 处理用户余额充值

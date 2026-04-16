@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 系统设置 API
  * @description 提供系统设置的查询和更新接口

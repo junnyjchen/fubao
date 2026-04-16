@@ -25,7 +25,6 @@ import {
   Ticket,
   Heart,
   ChevronLeft,
-  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShareButton } from '@/components/free-gifts/ShareButton';

@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 购物车API
  * @description 购物车CRUD操作

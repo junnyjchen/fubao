@@ -19,9 +19,11 @@ interface TabsContextType {
 const TabsContext = createContext<TabsContextType | null>(null);
 
 interface TabsProps {
-  tabs: Tab[];
-  defaultTab?: string;
+  tabs?: Tab[];
+  defaultValue?: string;
+  value?: string;
   onChange?: (tabId: string) => void;
+  onValueChange?: (value: string) => void;
   className?: string;
   variant?: 'line' | 'pill' | 'segmented';
   children: ReactNode;
@@ -29,17 +31,21 @@ interface TabsProps {
 
 export function Tabs({
   tabs,
-  defaultTab,
+  defaultValue,
+  value,
   onChange,
+  onValueChange,
   className,
   variant = 'line',
   children,
 }: TabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id);
+  const [internalActiveTab, setInternalActiveTab] = useState(defaultValue || tabs?.[0]?.id || '');
+  const activeTab = value ?? internalActiveTab;
 
   const handleTabChange = (id: string) => {
-    setActiveTab(id);
+    setInternalActiveTab(id);
     onChange?.(id);
+    onValueChange?.(id);
   };
 
   return (
@@ -122,6 +128,36 @@ export function TabPanel({ id, children, className }: TabPanelProps) {
 
   return <div className={className}>{children}</div>;
 }
+
+// Alias for backwards compatibility
+export const TabsContent = ({ children, value, className }: { children: ReactNode; value: string; className?: string }) => {
+  const context = useContext(TabsContext);
+  if (!context) return null;
+  if (context.activeTab !== value) return null;
+  return <div className={className}>{children}</div>;
+};
+export const TabsList = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <div className={cn('flex border-b border-border', className)}>{children}</div>
+);
+export const TabsTrigger = ({ children, value, disabled, className }: { children: ReactNode; value: string; disabled?: boolean; className?: string }) => {
+  const context = useContext(TabsContext);
+  if (!context) return null;
+  return (
+    <button
+      onClick={() => !disabled && context.setActiveTab(value)}
+      disabled={disabled}
+      className={cn(
+        'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+        context.activeTab === value
+          ? 'border-primary text-primary'
+          : 'border-transparent text-muted-foreground hover:text-foreground',
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+};
 
 // Hook for tab state
 export function useTabState(defaultTab?: string) {

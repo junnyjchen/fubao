@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -187,7 +187,7 @@ export default function AIContentPage() {
   
   // 批量生成状态
   const [batchMode, setBatchMode] = useState(false);
-  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [batchItems] = useState<BatchItem[]>([]);
   const [batchKeywords, setBatchKeywords] = useState('');
   const [batchGenerating, setBatchGenerating] = useState(false);
   const [batchResults, setBatchResults] = useState<BatchItem[]>([]);
@@ -617,8 +617,6 @@ export default function AIContentPage() {
     wiki: ['符籙起源', '道教禮儀', '開光儀式', '風水知識', '太上老君', '龍虎山'],
     news: ['道教文化節', '符籙展覽', '法會活動', '道觀新聞', '文化遺產', '民俗節日'],
   };
-
-  const TypeIcon = contentTypeConfig[activeTab].icon;
 
   return (
     <div className="min-h-screen bg-muted/20">

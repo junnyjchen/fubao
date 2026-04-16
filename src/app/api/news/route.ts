@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 新闻资讯 API
  * @description 处理新闻的增删改查

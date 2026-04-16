@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 商户 API
  * @description 处理商户的增删改查

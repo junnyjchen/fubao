@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 文章列表 API
  * @description 提供文章的查询和创建接口

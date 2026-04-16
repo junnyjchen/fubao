@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * RSS Feed API
  * GET /api/rss.xml

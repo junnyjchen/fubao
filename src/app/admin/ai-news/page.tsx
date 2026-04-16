@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useI18n } from '@/lib/i18n';
 import { useAdminData } from '@/hooks/useAdminData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { Loader2, Plus, Edit, Trash2, Save, Play, Pause, Eye, CheckCircle, XCircle, RefreshCw, Zap, Globe, Clock, Search, FileText } from 'lucide-react';
+import { Loader2, Plus, Edit, Trash2, Save, Play, Pause, Eye, CheckCircle, XCircle, RefreshCw, Zap, Globe, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -97,7 +96,6 @@ interface AIGeneratedArticle {
 }
 
 export default function AINewsPage() {
-  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('config');
 
   // AI配置相关状态

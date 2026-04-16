@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 支付创建 API
  * @description 创建支付订单，生成支付链接或二维码

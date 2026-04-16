@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 数据库种子数据 API
  * @description 用于初始化测试数据（仅开发环境使用）

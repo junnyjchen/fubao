@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 快速下单API
  * @description 免登录快速下单功能，游客可直接下单

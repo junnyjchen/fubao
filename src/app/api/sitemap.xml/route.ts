@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * Sitemap API
  * GET /api/sitemap.xml

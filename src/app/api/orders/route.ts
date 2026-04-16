@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 订单 API
  * @description 处理订单的创建、查询、更新

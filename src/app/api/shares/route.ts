@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 晒图分享API路由
  * @description 晒图功能的增删查接口

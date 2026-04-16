@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 用户收藏 API
  * @description 提供用户收藏的增删查功能

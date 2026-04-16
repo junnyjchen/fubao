@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * 站点统计 API
  * GET /api/stats

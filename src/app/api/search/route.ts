@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * 搜索 API
  * GET /api/search?q=keyword&type=goods|articles

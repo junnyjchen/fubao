@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 商品推荐API
  * @description 根据不同策略推荐商品

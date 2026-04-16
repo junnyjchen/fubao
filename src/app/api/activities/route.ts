@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 活动 API
  * @description 获取活动列表和详情

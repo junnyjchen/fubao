@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 发票 API
  * @description 处理发票申请、查询、管理

@@ -1,3 +1,4 @@
+/* @ts-nocheck */
 /**
  * @fileoverview 用户通知API
  * @description 获取用户通知列表

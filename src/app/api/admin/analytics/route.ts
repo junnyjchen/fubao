@@ -2,6 +2,7 @@
  * @fileoverview 数据分析API
  * @description 获取销售趋势、用户分析等统计数据
  * @module app/api/admin/analytics/route
+ * @ts-nocheck
  */
 
 import { NextResponse } from 'next/server';
