@@ -535,6 +535,54 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- =====================================================
 
 -- ----------------------------
+-- 25. AI聊天日志表
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_chat_logs`;
+CREATE TABLE `ai_chat_logs` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `config_id` int(11) UNSIGNED NOT NULL DEFAULT 1 COMMENT 'AI配置ID',
+  `session_id` varchar(100) DEFAULT NULL COMMENT '会话ID',
+  `user_id` int(11) UNSIGNED DEFAULT NULL COMMENT '用户ID',
+  `role` enum('system','user','assistant') NOT NULL COMMENT '角色',
+  `content` text NOT NULL COMMENT '消息内容',
+  `input_tokens` int(11) NOT NULL DEFAULT 0 COMMENT '输入Token数',
+  `output_tokens` int(11) NOT NULL DEFAULT 0 COMMENT '输出Token数',
+  `model` varchar(100) DEFAULT NULL COMMENT '使用的模型',
+  `status` enum('success','error') NOT NULL DEFAULT 'success' COMMENT '状态',
+  `error_code` varchar(50) DEFAULT NULL COMMENT '错误码',
+  `latency_ms` float NOT NULL DEFAULT 0 COMMENT '响应延迟(毫秒)',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_session_id` (`session_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI聊天日志表';
+
+-- ----------------------------
+-- 26. AI配置表
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_configurations`;
+CREATE TABLE `ai_configurations` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL COMMENT '配置名称',
+  `model` varchar(100) NOT NULL COMMENT '模型名称',
+  `api_key` varchar(255) DEFAULT NULL COMMENT 'API密钥',
+  `api_endpoint` varchar(255) DEFAULT NULL COMMENT 'API端点',
+  `system_prompt` text COMMENT '系统提示词',
+  `temperature` float NOT NULL DEFAULT 0.7 COMMENT '温度参数',
+  `max_tokens` int(11) NOT NULL DEFAULT 2000 COMMENT '最大Token数',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI配置表';
+
+-- 插入默认配置
+INSERT INTO `ai_configurations` (`name`, `model`, `system_prompt`, `temperature`, `max_tokens`, `is_active`) VALUES
+('符寶默認助手', 'doubao-seed-1-6-251015', '你是符寶網的AI助手，專注於玄門文化科普與服務...', 0.7, 2000, 1);
+
+-- ----------------------------
 -- 25. 消息表（私信/系统消息）
 -- ----------------------------
 DROP TABLE IF EXISTS `messages`;

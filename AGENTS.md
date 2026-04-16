@@ -469,6 +469,33 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | `GET /api/rss.xml` | GET | RSS订阅源 |
 | `GET /api/robots.txt` | GET | robots.txt |
 
+### AI助手
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `POST /api/ai/chat` | POST | AI聊天（SSE流式输出） |
+| `GET /api/ai/configs` | GET | 获取AI配置列表（管理员） |
+| `GET /api/ai/usageStats` | GET | AI使用统计 |
+| `GET /api/ai/myHistory` | GET | 我的对话历史 |
+| `POST /api/ai/deleteSession` | POST | 删除会话 |
+| `GET /api/ai/capabilities` | GET | AI能力列表 |
+| `GET /api/ai/models` | GET | 可用模型列表 |
+| `GET /api/admin/ai/dashboard` | GET | AI管理统计仪表盘（管理员） |
+| `GET /api/admin/ai/logs` | GET | AI聊天日志（管理员） |
+
+### 消息与反馈
+
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `GET /api/messages` | GET | 消息列表 |
+| `POST /api/messages/send` | POST | 发送私信 |
+| `POST /api/messages/markRead` | POST | 标记已读 |
+| `GET /api/feedbacks` | GET | 我的反馈列表 |
+| `POST /api/feedbacks/submit` | POST | 提交反馈 |
+| `GET /api/feedbacks/faq` | GET | FAQ列表 |
+| `GET /api/reports` | GET | 我的举报列表 |
+| `POST /api/reports/submit` | POST | 提交举报 |
+
 ---
 
 ## 数据库表
@@ -490,9 +517,16 @@ $count = $this->db->count('users', '`status` = ?', [1]);
 | articles | 文章 |
 | banners | Banner |
 | ai_configurations | AI 配置 |
+| ai_chat_logs | AI 聊天日志 |
 | ai_generated_articles | AI 生成文章 |
 | certificates | 商品认证证书 |
 | notifications | 通知消息 |
+| messages | 消息/私信 |
+| feedbacks | 用户反馈 |
+| feedback_replies | 反馈回复 |
+| faq | FAQ |
+| reports | 举报 |
+| report_responses | 举报回复 |
 
 ---
 

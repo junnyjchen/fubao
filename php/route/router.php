@@ -236,6 +236,33 @@ $routers = [
     'api/reports/detail' => ['app\controller\Report::detail', ['GET']],
     'api/reports/cancel' => ['app\controller\Report::cancel', ['POST']],
     'api/reports/types' => ['app\controller\Report::types', ['GET']],
+    
+    // ========== AI配置与统计 ==========
+    'api/ai/configs' => ['app\controller\AI::configs', ['GET']],
+    'api/ai/configDetail' => ['app\controller\AI::configDetail', ['GET']],
+    'api/ai/updateConfig' => ['app\controller\AI::updateConfig', ['POST']],
+    'api/ai/usageStats' => ['app\controller\AI::usageStats', ['GET']],
+    'api/ai/logChat' => ['app\controller\AI::logChat', ['POST']],
+    'api/ai/sessionHistory' => ['app\controller\AI::sessionHistory', ['GET']],
+    'api/ai/myHistory' => ['app\controller\AI::myHistory', ['GET']],
+    'api/ai/deleteSession' => ['app\controller\AI::deleteSession', ['POST']],
+    'api/ai/capabilities' => ['app\controller\AI::capabilities', ['GET']],
+    'api/ai/models' => ['app\controller\AI::models', ['GET']],
+    'api/ai/testConnection' => ['app\controller\AI::testConnection', ['POST']],
+    'api/ai/cleanLogs' => ['app\controller\AI::cleanLogs', ['POST']],
+    'api/ai/exportLogs' => ['app\controller\AI::exportLogs', ['GET']],
+    
+    // ========== 管理员 - AI管理 ==========
+    'api/admin/ai/configs' => ['app\controller\admin\AI::configs', ['GET']],
+    'api/admin/ai/createConfig' => ['app\controller\admin\AI::createConfig', ['POST']],
+    'api/admin/ai/updateConfig' => ['app\controller\admin\AI::updateConfig', ['POST']],
+    'api/admin/ai/deleteConfig' => ['app\controller\admin\AI::deleteConfig', ['POST']],
+    'api/admin/ai/dashboard' => ['app\controller\admin\AI::dashboard', ['GET']],
+    'api/admin/ai/logs' => ['app\controller\admin\AI::logs', ['GET']],
+    'api/admin/ai/sessionDetail' => ['app\controller\admin\AI::sessionDetail', ['GET']],
+    'api/admin/ai/cleanLogs' => ['app\controller\admin\AI::cleanLogs', ['POST']],
+    'api/admin/ai/export' => ['app\controller\admin\AI::export', ['GET']],
+    'api/admin/ai/promptTemplates' => ['app\controller\admin\AI::promptTemplates', ['GET']],
 ];
 
 // 支持 RESTful 风格
