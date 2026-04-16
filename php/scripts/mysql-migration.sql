@@ -531,5 +531,131 @@ CREATE TABLE `notifications` (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =====================================================
+-- 新增表结构
+-- =====================================================
+
+-- ----------------------------
+-- 25. 消息表（私信/系统消息）
+-- ----------------------------
+DROP TABLE IF EXISTS `messages`;
+CREATE TABLE `messages` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) UNSIGNED NOT NULL COMMENT '接收用户ID',
+  `from_user_id` int(11) UNSIGNED NOT NULL COMMENT '发送用户ID（系统消息时为0）',
+  `type` enum('system','order','chat','activity') NOT NULL DEFAULT 'system' COMMENT '类型',
+  `msg_type` enum('text','image','goods') NOT NULL DEFAULT 'text' COMMENT '消息类型',
+  `title` varchar(200) DEFAULT NULL COMMENT '标题（系统消息）',
+  `content` text NOT NULL COMMENT '内容',
+  `data` json DEFAULT NULL COMMENT '附加数据',
+  `is_read` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否已读',
+  `read_at` datetime DEFAULT NULL COMMENT '阅读时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_from_user_id` (`from_user_id`),
+  KEY `idx_type` (`type`),
+  KEY `idx_is_read` (`is_read`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表';
+
+-- ----------------------------
+-- 26. 反馈表
+-- ----------------------------
+DROP TABLE IF EXISTS `feedbacks`;
+CREATE TABLE `feedbacks` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) UNSIGNED NOT NULL COMMENT '用户ID',
+  `type` enum('suggestion','complaint','bug','other') NOT NULL DEFAULT 'other' COMMENT '类型',
+  `title` varchar(200) NOT NULL COMMENT '标题',
+  `content` text NOT NULL COMMENT '内容',
+  `images` json DEFAULT NULL COMMENT '图片',
+  `contact` varchar(100) DEFAULT NULL COMMENT '联系方式',
+  `status` enum('pending','processing','resolved','rejected') NOT NULL DEFAULT 'pending' COMMENT '状态',
+  `admin_reply` text DEFAULT NULL COMMENT '管理员回复',
+  `replied_at` datetime DEFAULT NULL COMMENT '回复时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_type` (`type`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='反馈表';
+
+-- ----------------------------
+-- 27. 反馈回复表
+-- ----------------------------
+DROP TABLE IF EXISTS `feedback_replies`;
+CREATE TABLE `feedback_replies` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `feedback_id` int(11) UNSIGNED NOT NULL COMMENT '反馈ID',
+  `user_id` int(11) UNSIGNED NOT NULL COMMENT '回复用户ID',
+  `content` text NOT NULL COMMENT '回复内容',
+  `is_admin` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否管理员回复',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_feedback_id` (`feedback_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='反馈回复表';
+
+-- ----------------------------
+-- 28. FAQ表
+-- ----------------------------
+DROP TABLE IF EXISTS `faq`;
+CREATE TABLE `faq` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `category` varchar(50) NOT NULL DEFAULT 'other' COMMENT '分类',
+  `question` varchar(500) NOT NULL COMMENT '问题',
+  `answer` text NOT NULL COMMENT '答案',
+  `sort_order` int(11) NOT NULL DEFAULT 0 COMMENT '排序',
+  `view_count` int(11) NOT NULL DEFAULT 0 COMMENT '浏览次数',
+  `is_published` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否发布',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_category` (`category`),
+  KEY `idx_sort_order` (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='FAQ表';
+
+-- ----------------------------
+-- 29. 举报表
+-- ----------------------------
+DROP TABLE IF EXISTS `reports`;
+CREATE TABLE `reports` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) UNSIGNED NOT NULL COMMENT '举报用户ID',
+  `type` enum('goods','merchant','user','article') NOT NULL COMMENT '被举报类型',
+  `target_id` int(11) UNSIGNED NOT NULL COMMENT '被举报对象ID',
+  `reason` varchar(50) NOT NULL COMMENT '举报原因',
+  `description` text NOT NULL COMMENT '详细描述',
+  `evidence` json DEFAULT NULL COMMENT '证据图片',
+  `status` enum('pending','processing','resolved','rejected') NOT NULL DEFAULT 'pending' COMMENT '状态',
+  `handle_result` text DEFAULT NULL COMMENT '处理结果',
+  `handled_by` int(11) UNSIGNED DEFAULT NULL COMMENT '处理人ID',
+  `handled_at` datetime DEFAULT NULL COMMENT '处理时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_type` (`type`),
+  KEY `idx_target_id` (`target_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='举报表';
+
+-- ----------------------------
+-- 30. 举报回复表
+-- ----------------------------
+DROP TABLE IF EXISTS `report_responses`;
+CREATE TABLE `report_responses` (
+  `id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `report_id` int(11) UNSIGNED NOT NULL COMMENT '举报ID',
+  `content` text NOT NULL COMMENT '回复内容',
+  `images` json DEFAULT NULL COMMENT '附件图片',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_report_id` (`report_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='举报回复表';
+
+-- =====================================================
 -- 执行完成
 -- =====================================================

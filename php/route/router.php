@@ -206,6 +206,36 @@ $routers = [
     'api/stats/users' => ['app\controller\Stats::users', ['GET']],
     'api/stats/categories' => ['app\controller\Stats::categories', ['GET']],
     'api/stats/realtime' => ['app\controller\Stats::realtime', ['GET']],
+    
+    // ========== 消息/私信 ==========
+    'api/messages' => ['app\controller\Message::index', ['GET']],
+    'api/messages/conversations' => ['app\controller\Message::conversations', ['GET']],
+    'api/messages/chatHistory' => ['app\controller\Message::chatHistory', ['GET']],
+    'api/messages/send' => ['app\controller\Message::send', ['POST']],
+    'api/messages/detail' => ['app\controller\Message::detail', ['GET']],
+    'api/messages/markRead' => ['app\controller\Message::markRead', ['POST']],
+    'api/messages/delete' => ['app\controller\Message::delete', ['POST']],
+    'api/messages/unreadCount' => ['app\controller\Message::unreadCount', ['GET']],
+    'api/messages/templates' => ['app\controller\Message::templates', ['GET']],
+    
+    // ========== 反馈 ==========
+    'api/feedbacks' => ['app\controller\Feedback::index', ['GET']],
+    'api/feedbacks/submit' => ['app\controller\Feedback::submit', ['POST']],
+    'api/feedbacks/detail' => ['app\controller\Feedback::detail', ['GET']],
+    'api/feedbacks/reply' => ['app\controller\Feedback::reply', ['POST']],
+    'api/feedbacks/delete' => ['app\controller\Feedback::delete', ['POST']],
+    'api/feedbacks/types' => ['app\controller\Feedback::types', ['GET']],
+    'api/feedbacks/faq' => ['app\controller\Feedback::faq', ['GET']],
+    'api/feedbacks/faqDetail' => ['app\controller\Feedback::faqDetail', ['GET']],
+    'api/feedbacks/faqCategories' => ['app\controller\Feedback::faqCategories', ['GET']],
+    'api/feedbacks/searchFaq' => ['app\controller\Feedback::searchFaq', ['GET']],
+    
+    // ========== 举报 ==========
+    'api/reports' => ['app\controller\Report::index', ['GET']],
+    'api/reports/submit' => ['app\controller\Report::submit', ['POST']],
+    'api/reports/detail' => ['app\controller\Report::detail', ['GET']],
+    'api/reports/cancel' => ['app\controller\Report::cancel', ['POST']],
+    'api/reports/types' => ['app\controller\Report::types', ['GET']],
 ];
 
 // 支持 RESTful 风格
