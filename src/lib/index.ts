@@ -15,7 +15,10 @@ export type {
   Goods, GoodsSpec, Category,
   Order, OrderItem, CartItem,
   Merchant, Coupon, Address,
-  Article, Banner, Notification
+  Article, Banner, Notification,
+  // AI 相关类型
+  AIMessage, AIConversation, AIKnowledge, AIQA, AITrainingTask,
+  AIChatRequest, AIKnowledgeSearchResult,
 } from './types';
 
 // 工具函数

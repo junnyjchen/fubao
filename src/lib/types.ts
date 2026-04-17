@@ -328,6 +328,85 @@ export interface UploadResponse {
   mime_type: string;
 }
 
+// ==================== AI 相关 ====================
+
+// AI 消息
+export interface AIMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+  feedback?: 'up' | 'down';
+}
+
+// AI 会话
+export interface AIConversation {
+  id: string;
+  title: string;
+  messages: AIMessage[];
+  createdAt: Date;
+  updatedAt: Date;
+  pinned?: boolean;
+  tags?: string[];
+}
+
+// AI 知识库
+export interface AIKnowledge {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  status: 'draft' | 'pending' | 'ready' | 'archived';
+  usage_count: number;
+  embedding_status?: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  updated_at: string;
+}
+
+// AI 问答对
+export interface AIQA {
+  id: number;
+  question: string;
+  answer: string;
+  category: string;
+  accuracy?: number;
+  is_active: boolean;
+  knowledge_id?: number;
+  keywords?: string[];
+  created_at: string;
+}
+
+// AI 训练任务
+export interface AITrainingTask {
+  id: number;
+  name: string;
+  description?: string;
+  type: 'full' | 'incremental';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  progress: number;
+  model_version?: string;
+  created_at: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+// AI 聊天请求
+export interface AIChatRequest {
+  message: string;
+  session_id?: string;
+  use_knowledge?: boolean;
+  temperature?: number;
+}
+
+// AI 知识搜索结果
+export interface AIKnowledgeSearchResult {
+  knowledge_id: number;
+  title: string;
+  content: string;
+  score: number;
+  category: string;
+}
+
 // ==================== 验证相关 ====================
 
 export interface VerifyResult {

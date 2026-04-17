@@ -35,7 +35,7 @@ pnpm ts-check
 
 ```
 src/
-├── app/                    # 页面
+├── app/                    # 页面 (Next.js App Router)
 │   ├── page.tsx           # 首页
 │   ├── [slug]/page.tsx   # 动态路由
 │   ├── api/               # API Routes
@@ -43,20 +43,16 @@ src/
 │   │   ├── goods/        # 商品 API
 │   │   ├── orders/       # 订单 API
 │   │   └── ai/           # AI API
-│   ├── admin/             # 管理后台
-│   │   ├── page.tsx     # 仪表盘
-│   │   ├── goods/       # 商品管理
-│   │   ├── orders/      # 订单管理
-│   │   └── users/       # 用户管理
-│   ├── (user)/           # 用户页面组
+│   ├── admin/             # 管理后台页面
 │   └── layout.tsx        # 根布局
 ├── components/            # 组件
 │   ├── ui/               # shadcn/ui 基础组件
 │   ├── ai/               # AI 组件
-│   ├── admin/            # 管理后台组件
-│   └── common/           # 通用组件
+│   ├── admin/             # 管理后台组件
+│   └── [feature]/        # 功能模块组件
 └── lib/                   # 工具库
-    ├── api-config.ts     # API 配置
+    ├── api-request.ts     # API 请求封装
+    ├── api-config.ts      # API 配置
     ├── types.ts          # 类型定义
     ├── utils.ts          # 工具函数
     ├── format.ts         # 格式化函数
@@ -99,8 +95,8 @@ src/
 | `product/` | 商品组件 |
 | `favorite/` | 收藏组件 |
 | `coupon/` | 优惠券组件 |
-| `search/` | 搜索组件 |
-| `share/` | 分享组件 |
+| `search/` | 搜索组件 (HighlightText, GlobalSearch) |
+| `share/` | 分享组件 (SharePoster) |
 
 ---
 
