@@ -152,6 +152,58 @@ const QUICK_ACTIONS = [
   { id: 'recommend', label: '推薦合適的', icon: <Sparkle className="w-4 h-4" /> },
 ];
 
+// 管理员预设问题
+const ADMIN_PRESET_CATEGORIES = [
+  {
+    id: 'operations',
+    name: '運營幫助',
+    icon: <Sparkles className="w-4 h-4" />,
+    color: 'bg-purple-500/10 text-purple-500',
+    questions: [
+      '如何創建促銷活動？',
+      '如何分析銷售數據？',
+      '如何管理商品分類？',
+      '如何設置首頁Banner？',
+    ],
+  },
+  {
+    id: 'orders',
+    name: '訂單處理',
+    icon: <ShoppingBag className="w-4 h-4" />,
+    color: 'bg-blue-500/10 text-blue-500',
+    questions: [
+      '如何處理退款申請？',
+      '如何查看物流信息？',
+      '如何批量導出訂單？',
+      '如何設置訂單自動確認？',
+    ],
+  },
+  {
+    id: 'users',
+    name: '用戶管理',
+    icon: <MessageSquare className="w-4 h-4" />,
+    color: 'bg-green-500/10 text-green-500',
+    questions: [
+      '如何查看用戶列表？',
+      '如何禁用問題用戶？',
+      '如何查看用戶消費記錄？',
+      '如何設置用戶等級？',
+    ],
+  },
+  {
+    id: 'content',
+    name: '內容管理',
+    icon: <FileText className="w-4 h-4" />,
+    color: 'bg-orange-500/10 text-orange-500',
+    questions: [
+      '如何發布公告？',
+      '如何管理Banner？',
+      '如何使用AI生成內容？',
+      '如何審核商家入駐？',
+    ],
+  },
+];
+
 // 本地存储键名
 const STORAGE_KEY_CONVERSATIONS = 'fubao_ai_conversations';
 const STORAGE_KEY_CURRENT_ID = 'fubao_ai_current_conversation_id';
@@ -218,7 +270,7 @@ const TypingIndicator = () => (
   </div>
 );
 
-export function AIChat() {
+export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
   // 状态
   const [conversations, setConversations] = useState<AIConversation[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
@@ -815,7 +867,7 @@ export function AIChat() {
       >
         <ScrollArea className="h-full p-4" ref={scrollRef} onScroll={handleScroll}>
           {showPresets && (!currentConversation || currentConversation.messages.length === 0) ? (
-            <WelcomeScreen onSelectQuestion={sendMessage} />
+            <WelcomeScreen onSelectQuestion={sendMessage} adminMode={adminMode} />
           ) : filteredMessages !== null && filteredMessages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center py-8">
               <Search className="w-12 h-12 text-muted-foreground mb-4" />
@@ -1046,10 +1098,11 @@ const ENHANCED_SUGGESTIONS = {
   ],
 };
 
-function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => void }) {
-  const [activeCategory, setActiveCategory] = useState(PRESET_CATEGORIES[0].id);
+function WelcomeScreen({ onSelectQuestion, adminMode = false }: { onSelectQuestion: (q: string) => void; adminMode?: boolean }) {
+  const presets = adminMode ? ADMIN_PRESET_CATEGORIES : PRESET_CATEGORIES;
+  const [activeCategory, setActiveCategory] = useState(presets[0].id);
   const [hoveredSuggestion, setHoveredSuggestion] = useState<string | null>(null);
-  const currentCategory = PRESET_CATEGORIES.find((c) => c.id === activeCategory)!;
+  const currentCategory = presets.find((c) => c.id === activeCategory)!;
   const suggestions = ENHANCED_SUGGESTIONS[activeCategory as keyof typeof ENHANCED_SUGGESTIONS] || [];
 
   return (
@@ -1057,14 +1110,19 @@ function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => 
       <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 animate-pulse">
         <Sparkles className="w-10 h-10 text-primary" />
       </div>
-      <h3 className="text-xl font-medium mb-2">歡迎使用符寶AI助手</h3>
+      <h3 className="text-xl font-medium mb-2">
+        {adminMode ? '歡迎使用管理員AI助手' : '歡迎使用符寶AI助手'}
+      </h3>
       <p className="text-muted-foreground mb-6 max-w-md">
-        我可以為您解答玄門文化、符籙法器、風水命理等問題，也可以幫您了解符寶網的商品和服務。
+        {adminMode 
+          ? '我可以為您解答後台操作、訂單處理、用戶管理等問題，幫助您高效管理工作。'
+          : '我可以為您解答玄門文化、符籙法器、風水命理等問題，也可以幫您了解符寶網的商品和服務。'
+        }
       </p>
 
       {/* 分类标签 */}
       <div className="flex flex-wrap gap-2 mb-6">
-        {PRESET_CATEGORIES.map((cat) => (
+        {presets.map((cat) => (
           <Button
             key={cat.id}
             variant={activeCategory === cat.id ? 'default' : 'outline'}
@@ -1121,14 +1179,17 @@ function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => 
 
       {/* 热门话题快捷入口 */}
       <div className="mt-6 w-full max-w-xl">
-        <p className="text-xs text-muted-foreground mb-3">熱門話題</p>
+        <p className="text-xs text-muted-foreground mb-3">{adminMode ? '常用功能' : '熱門話題'}</p>
         <div className="flex flex-wrap justify-center gap-2">
-          {['符籙入門', '風水基礎', '命理查詢', '商品諮詢', '使用指南'].map((topic) => (
+          {(adminMode 
+            ? ['訂單管理', '用戶列表', '商品上架', '優惠券設置', 'AI訓練']
+            : ['符籙入門', '風水基礎', '命理查詢', '商品諮詢', '使用指南']
+          ).map((topic) => (
             <Badge
               key={topic}
               variant="secondary"
               className="cursor-pointer hover:bg-primary/10"
-              onClick={() => onSelectQuestion(`關於${topic}我想了解`)}
+              onClick={() => onSelectQuestion(adminMode ? `如何${topic}？` : `關於${topic}我想了解`)}
             >
               {topic}
             </Badge>
@@ -1138,7 +1199,7 @@ function WelcomeScreen({ onSelectQuestion }: { onSelectQuestion: (q: string) => 
 
       {/* 快捷提示 */}
       <p className="text-xs text-muted-foreground mt-6">
-        嘗試描述您的問題，我會尽力為您解答
+        {adminMode ? '描述您遇到的問題，我會幫您找到解決方案' : '嘗試描述您的問題，我會尽力為您解答'}
       </p>
     </div>
   );

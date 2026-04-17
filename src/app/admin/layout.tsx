@@ -89,6 +89,7 @@ const navItems: NavItem[] = [
       { key: 'news', label: '新聞管理', icon: FileText, href: '/admin/news' },
       { key: 'ai-content', label: 'AI內容生成', icon: FileText, href: '/admin/ai-content' },
       { key: 'ai-training', label: 'AI訓練中心', icon: Brain, href: '/admin/ai-training' },
+      { key: 'ai-assistant', label: 'AI助手', icon: MessageSquare, href: '/admin/ai-assistant' },
     ],
   },
   { key: 'page-builder', label: '頁面裝修', icon: Palette, href: '/admin/page-builder' },
