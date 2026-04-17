@@ -343,7 +343,7 @@ export function HomePage() {
       try {
         const [bannersRes, goodsRes, newsRes, wikiRes, videosRes] = await Promise.all([
           fetch('/api/banners?position=home'),
-          fetch('/api/goods?hot=true&limit=8'),
+          fetch('/api/goods?hot=true&limit=10'),
           fetch('/api/news?limit=4'),
           fetch('/api/wiki/articles?limit=1&is_featured=true'),
           fetch('/api/videos?limit=4&is_featured=true'),
