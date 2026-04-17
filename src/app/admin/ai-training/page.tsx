@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -92,24 +92,74 @@ const STATUS_OPTIONS = [
   { value: 'archived', label: '归档', color: 'bg-orange-500/10 text-orange-600' },
 ];
 
+// 类型定义
+interface TrainingStats {
+  knowledge?: {
+    total?: number;
+    ready?: number;
+    pending?: number;
+    usage_total?: number;
+  };
+  qa?: {
+    active?: number;
+    avg_accuracy?: number;
+  };
+  task?: {
+    total?: number;
+    completed?: number;
+  };
+}
+
+interface KnowledgeItem {
+  id: number;
+  title: string;
+  content: string;
+  category: string;
+  status: string;
+  usage_count?: number;
+  created_at: string;
+  tags?: string[];
+}
+
+interface QAItem {
+  id: number;
+  question: string;
+  answer: string;
+  category: string;
+  accuracy?: number;
+  is_active?: boolean;
+  knowledge_id?: number;
+  created_at: string;
+}
+
+interface TrainingTask {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  progress?: number;
+  created_at: string;
+  completed_at?: string;
+}
+
 export default function AITrainingPage() {
   const [activeTab, setActiveTab] = useState('knowledge');
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<TrainingStats | null>(null);
 
   // 加载统计数据
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const res = await getTrainingStats();
       setStats(res.data);
     } catch (error) {
       console.error('加载统计失败:', error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [loadStats]);
 
   const tabs = [
     { id: 'knowledge', label: '知识库', icon: <BookOpen className="w-4 h-4" /> },
@@ -174,7 +224,7 @@ export default function AITrainingPage() {
 }
 
 // 统计卡片
-function StatsCards({ stats }: { stats: any }) {
+function StatsCards({ stats }: { stats: TrainingStats }) {
   const items = [
     {
       label: '知识库总数',
@@ -289,7 +339,7 @@ function StatsCards({ stats }: { stats: any }) {
 
 // 知识库管理
 function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
-  const [list, setList] = useState<any[]>([]);
+  const [list, setList] = useState<KnowledgeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -297,9 +347,9 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
   const [category, setCategory] = useState('');
   const [status, setStatus] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<KnowledgeItem | null>(null);
   const [showImport, setShowImport] = useState(false);
-  const [showPreview, setShowPreview] = useState<any>(null);
+  const [showPreview, setShowPreview] = useState<KnowledgeItem | null>(null);
   const { success, error } = useToast();
   const { confirm } = useConfirm();
 
@@ -344,7 +394,7 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Partial<QAItem>) => {
     try {
       if (editItem) {
         await updateKnowledge({ id: editItem.id, ...data });
@@ -565,8 +615,8 @@ function KnowledgeForm({
   onSubmit,
   onCancel,
 }: {
-  initialData?: any;
-  onSubmit: (data: any) => void;
+  initialData?: Partial<KnowledgeItem>;
+  onSubmit: (data: Partial<KnowledgeItem>) => void;
   onCancel: () => void;
 }) {
   const [title, setTitle] = useState(initialData?.title || '');
@@ -734,12 +784,12 @@ function BatchImportForm({
 
 // 问答对管理
 function QATab() {
-  const [list, setList] = useState<any[]>([]);
+  const [list, setList] = useState<QAItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
+  const [editItem, setEditItem] = useState<QAItem | null>(null);
   const { success, error } = useToast();
   const { confirm } = useConfirm();
 
@@ -772,7 +822,7 @@ function QATab() {
     }
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: Partial<QAItem>) => {
     try {
       if (editItem) {
         await updateQA({ id: editItem.id, ...data });
@@ -893,7 +943,7 @@ function QAForm({ initialData, onSubmit, onCancel }: { initialData?: any; onSubm
 
 // 训练任务管理
 function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
-  const [list, setList] = useState<any[]>([]);
+  const [list, setList] = useState<TrainingTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -928,7 +978,7 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
-  const handleCreate = async (data: any) => {
+  const handleCreate = async (data: { name: string; description?: string; type?: string; knowledge_ids?: number[] }) => {
     try {
       await createTrainingTask(data);
       success('任务创建成功');
@@ -1012,13 +1062,13 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
 }
 
 // 任务表单
-function TaskForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) {
+function TaskForm({ onSubmit, onCancel }: { onSubmit: (data: { name: string; description?: string; type?: string; knowledge_ids?: number[] }) => void; onCancel: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('incremental');
-  const [selectedKnowledge, setSelectedKnowledge] = useState<any[]>([]);
+  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeItem[]>([]);
   const [showKnowledgeSelect, setShowKnowledgeSelect] = useState(false);
-  const [availableKnowledge, setAvailableKnowledge] = useState<any[]>([]);
+  const [availableKnowledge, setAvailableKnowledge] = useState<KnowledgeItem[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadKnowledge = async () => {
@@ -1034,7 +1084,7 @@ function TaskForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCan
     }
   };
 
-  const toggleKnowledge = (item: any) => {
+  const toggleKnowledge = (item: KnowledgeItem) => {
     setSelectedKnowledge((prev) => {
       const exists = prev.find((k) => k.id === item.id);
       if (exists) return prev.filter((k) => k.id !== item.id);
@@ -1087,9 +1137,9 @@ function TaskForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCan
 // 工具Tab
 function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
   const [generating, setGenerating] = useState(false);
-  const [selectedKnowledge, setSelectedKnowledge] = useState<any[]>([]);
+  const [selectedKnowledge, setSelectedKnowledge] = useState<KnowledgeItem[]>([]);
   const [showKnowledgeSelect, setShowKnowledgeSelect] = useState(false);
-  const [availableKnowledge, setAvailableKnowledge] = useState<any[]>([]);
+  const [availableKnowledge, setAvailableKnowledge] = useState<KnowledgeItem[]>([]);
   const [generatedCount, setGeneratedCount] = useState(0);
   const { success, error } = useToast();
 
@@ -1103,7 +1153,7 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
-  const toggleKnowledge = (item: any) => {
+  const toggleKnowledge = (item: KnowledgeItem) => {
     setSelectedKnowledge((prev) => {
       const exists = prev.find((k) => k.id === item.id);
       if (exists) return prev.filter((k) => k.id !== item.id);
@@ -1149,7 +1199,7 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
         summary: statsRes.data,
         knowledge: {
           total: knowledgeRes.data.total || 0,
-          list: (knowledgeRes.data.list || []).map((k: any) => ({
+          list: (knowledgeRes.data.list || []).map((k: KnowledgeItem) => ({
             id: k.id,
             title: k.title,
             category: k.category,
@@ -1160,7 +1210,7 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
         },
         qa: {
           total: qaRes.data.total || 0,
-          list: (qaRes.data.list || []).map((q: any) => ({
+          list: (qaRes.data.list || []).map((q: QAItem) => ({
             id: q.id,
             question: q.question,
             answer: q.answer,
@@ -1170,7 +1220,7 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
         },
         tasks: {
           total: tasksRes.data.length || 0,
-          list: (tasksRes.data || []).map((t: any) => ({
+          list: (tasksRes.data || []).map((t: TrainingTask) => ({
             id: t.id,
             name: t.name,
             type: t.type,
