@@ -44,7 +44,7 @@ function keywordMatchScore(query: string, text: string): number {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, topK = 5, useEmbedding = true } = body;
+    const { query, topK = 5, useEmbedding: useEmbeddingParam = true } = body;
 
     if (!query) {
       return NextResponse.json(
@@ -52,6 +52,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // 标志：是否使用向量搜索
+    let useEmbedding = useEmbeddingParam;
+    let useEmbeddingFailed = false;
 
     // 模拟知识库数据（实际应从数据库读取）
     const knowledgeBase = [
@@ -141,12 +145,12 @@ export async function POST(request: NextRequest) {
       } catch (embeddingError) {
         console.error('向量搜索失敗，回退到關鍵詞搜索:', embeddingError);
         // 回退到关键词搜索
-        useEmbedding = false;
+        useEmbeddingFailed = true;
       }
     }
 
     // 方法2：关键词匹配
-    if (!useEmbedding) {
+    if (useEmbeddingFailed || !useEmbedding) {
       const results = knowledgeBase.map(item => {
         const text = `${item.title} ${item.content}`;
         const score = keywordMatchScore(query, text);

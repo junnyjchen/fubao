@@ -45,6 +45,9 @@ import {
   MessageCircle,
   FileText,
   Wand2,
+  Keyboard,
+  Tag,
+  Share,
 } from 'lucide-react';
 
 // 消息类型
@@ -66,7 +69,26 @@ export interface AIConversation {
   createdAt: Date;
   updatedAt: Date;
   pinned?: boolean;
+  tags?: string[]; // 上下文话题标签
 }
+
+// 上下文话题映射
+const CONTEXT_TAGS: Record<string, string[]> = {
+  '符籙': ['文化科普', '歷史', '道教', '法器'],
+  '道教': ['文化科普', '宗教', '儀式', '經典'],
+  '風水': ['命理', '環境', '方位', '五行'],
+  '命理': ['八字', '五行', '流年', '命盤'],
+  '商品': ['符籙', '認證', '選購', '保養'],
+  '使用方法': ['禁忌', '開光', '佩戴', '注意事項'],
+  '符水': ['製作', '使用', '禁忌', '保存'],
+  '護身符': ['佩戴', '保養', '禁忌', '開光'],
+  '一物一證': ['認證', '驗證', '正品', '證書'],
+  '五行': ['金', '木', '水', '火', '土'],
+  '八字': ['命盤', '十神', '大運', '流年'],
+  '招財': ['財運', '風水', '方位', '時機'],
+  '平安': ['健康', '運勢', '符籙', '祈福'],
+  '姻緣': ['感情', '桃花', '和合', '風水'],
+};
 
 // 预设问题分类
 const PRESET_CATEGORIES = [
@@ -138,6 +160,20 @@ const STORAGE_KEY_THEME = 'fubao_ai_theme';
 // 生成唯一ID
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
+// 从消息内容提取上下文标签
+const extractContextTags = (messages: AIMessage[]): string[] => {
+  const allText = messages.map(m => m.content).join('');
+  const tags = new Set<string>();
+  
+  Object.entries(CONTEXT_TAGS).forEach(([keyword, relatedTags]) => {
+    if (allText.includes(keyword)) {
+      relatedTags.forEach(tag => tags.add(tag));
+    }
+  });
+  
+  return Array.from(tags).slice(0, 4);
+};
+
 // 格式化时间
 const formatMessageTime = (date: Date) => {
   const now = new Date();
@@ -198,16 +234,106 @@ export function AIChat() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; messageId: string } | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showContextTags, setShowContextTags] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { success, error } = useToast();
+  
+  // 触摸手势支持
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // 最小滑动距离
+  const MIN_SWIPE_DISTANCE = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd({
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const x = touchStart.x - touchEnd.x;
+    const y = touchStart.y - touchEnd.y;
+    
+    // 水平滑动
+    if (Math.abs(x) > Math.abs(y) && Math.abs(x) > MIN_SWIPE_DISTANCE) {
+      if (x > 0) {
+        // 右滑 - 打开历史记录
+        setShowHistory(true);
+      } else {
+        // 左滑 - 关闭弹窗
+        setShowHistory(false);
+        setShowSettings(false);
+        setShowSearch(false);
+      }
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
 
   // 获取当前会话
   const currentConversation = useMemo(() => {
     return conversations.find((c) => c.id === currentConversationId) || null;
   }, [conversations, currentConversationId]);
+
+  // 提取当前对话的上下文标签
+  const contextTags = useMemo(() => {
+    if (!currentConversation?.messages.length) return [];
+    return extractContextTags(currentConversation.messages);
+  }, [currentConversation?.messages]);
+
+  // 键盘快捷键处理
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + K: 打开设置
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSettings(true);
+      }
+      // Ctrl/Cmd + L: 清空输入
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        setInput('');
+        inputRef.current?.focus();
+      }
+      // Ctrl/Cmd + H: 打开历史
+      if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+        e.preventDefault();
+        setShowHistory(true);
+      }
+      // Ctrl/Cmd + ?: 显示快捷键
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        setShowShortcuts(true);
+      }
+      // Escape: 关闭弹窗
+      if (e.key === 'Escape') {
+        setShowHistory(false);
+        setShowSettings(false);
+        setShowSearch(false);
+        setShowShortcuts(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // 加载会话历史
   useEffect(() => {
@@ -594,6 +720,14 @@ export function AIChat() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => setShowShortcuts(true)}
+              title="快捷鍵 (Ctrl+/)"
+            >
+              <Keyboard className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setShowSearch(!showSearch)}
               title="搜索"
             >
@@ -603,7 +737,7 @@ export function AIChat() {
               variant="ghost"
               size="icon"
               onClick={() => setShowHistory(!showHistory)}
-              title="對話記錄"
+              title="歷史 (Ctrl+H)"
             >
               <History className="w-4 h-4" />
             </Button>
@@ -611,7 +745,7 @@ export function AIChat() {
               variant="ghost"
               size="icon"
               onClick={() => setShowSettings(!showSettings)}
-              title="設置"
+              title="設置 (Ctrl+K)"
             >
               <Settings className="w-4 h-4" />
             </Button>
@@ -625,6 +759,28 @@ export function AIChat() {
             </Button>
           </div>
         </div>
+
+        {/* 上下文话题标签 */}
+        {showContextTags && contextTags.length > 0 && (
+          <div className="mt-2 flex items-center gap-2">
+            <Tag className="w-3 h-3 text-muted-foreground" />
+            <div className="flex flex-wrap gap-1">
+              {contextTags.map((tag) => (
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="text-xs px-2 py-0 cursor-pointer hover:bg-primary/10"
+                  onClick={() => {
+                    setInput(`關於${tag}我想了解`);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 搜索栏 */}
         {showSearch && (
@@ -651,7 +807,12 @@ export function AIChat() {
       </CardHeader>
 
       {/* Messages */}
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent 
+        className="flex-1 overflow-hidden p-0"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         <ScrollArea className="h-full p-4" ref={scrollRef} onScroll={handleScroll}>
           {showPresets && (!currentConversation || currentConversation.messages.length === 0) ? (
             <WelcomeScreen onSelectQuestion={sendMessage} />
@@ -809,12 +970,51 @@ export function AIChat() {
               {isMuted ? '靜音' : '開啟'}
             </Button>
           </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">上下文標籤</p>
+              <p className="text-sm text-muted-foreground">顯示對話相關話題標籤</p>
+            </div>
+            <Button
+              variant={showContextTags ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowContextTags(!showContextTags)}
+            >
+              {showContextTags ? '顯示' : '隱藏'}
+            </Button>
+          </div>
+          <div className="border-t pt-4">
+            <Button variant="outline" className="w-full" onClick={() => setShowShortcuts(true)}>
+              <Keyboard className="w-4 h-4 mr-2" />
+              鍵盤快捷鍵
+            </Button>
+          </div>
           <div className="border-t pt-4">
             <Button variant="outline" className="w-full" onClick={clearCurrentConversation}>
               <Trash2 className="w-4 h-4 mr-2" />
               清空當前對話
             </Button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Keyboard Shortcuts Modal */}
+      <Modal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} title="鍵盤快捷鍵">
+        <div className="space-y-3">
+          {[
+            { key: 'Ctrl/Cmd + K', action: '打開設置' },
+            { key: 'Ctrl/Cmd + L', action: '清空輸入框' },
+            { key: 'Ctrl/Cmd + H', action: '打開歷史記錄' },
+            { key: 'Ctrl/Cmd + /', action: '顯示快捷鍵' },
+            { key: 'Enter', action: '發送消息' },
+            { key: 'Shift + Enter', action: '換行' },
+            { key: 'Escape', action: '關閉彈窗' },
+          ].map((shortcut) => (
+            <div key={shortcut.key} className="flex items-center justify-between">
+              <span className="text-sm">{shortcut.action}</span>
+              <kbd className="px-2 py-1 text-xs bg-muted rounded border">{shortcut.key}</kbd>
+            </div>
+          ))}
         </div>
       </Modal>
     </div>

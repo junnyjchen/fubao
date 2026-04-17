@@ -1133,6 +1133,128 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
+  // 导出训练报告
+  const exportTrainingReport = async () => {
+    try {
+      const [knowledgeRes, qaRes, tasksRes, statsRes] = await Promise.all([
+        getKnowledgeList({ page: 1, page_size: 1000 }),
+        getQAList({ page: 1, page_size: 1000 }),
+        getTrainingTasks(),
+        getTrainingStats(),
+      ]);
+
+      const report = {
+        title: '符寶網 AI訓練報告',
+        generatedAt: new Date().toLocaleString('zh-TW'),
+        summary: statsRes.data,
+        knowledge: {
+          total: knowledgeRes.data.total || 0,
+          list: (knowledgeRes.data.list || []).map((k: any) => ({
+            id: k.id,
+            title: k.title,
+            category: k.category,
+            status: k.status,
+            usage_count: k.usage_count || 0,
+            created_at: k.created_at,
+          })),
+        },
+        qa: {
+          total: qaRes.data.total || 0,
+          list: (qaRes.data.list || []).map((q: any) => ({
+            id: q.id,
+            question: q.question,
+            answer: q.answer,
+            accuracy: q.accuracy || 0,
+            knowledge_id: q.knowledge_id,
+          })),
+        },
+        tasks: {
+          total: tasksRes.data.length || 0,
+          list: (tasksRes.data || []).map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            type: t.type,
+            status: t.status,
+            progress: t.progress || 0,
+            created_at: t.created_at,
+            completed_at: t.completed_at,
+          })),
+        },
+      };
+
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AI訓練報告_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      success('報告導出成功');
+    } catch (err) {
+      console.error('導出失敗:', err);
+      error('導出失敗');
+    }
+  };
+
+  // 导出知识库为CSV
+  const exportKnowledgeCSV = async () => {
+    try {
+      const res = await getKnowledgeList({ page: 1, page_size: 1000 });
+      const list = res.data.list || [];
+      
+      const headers = ['ID', '標題', '分類', '狀態', '使用次數', '創建時間'];
+      const rows = list.map((k: any) => [
+        k.id,
+        `"${k.title.replace(/"/g, '""')}"`,
+        k.category,
+        k.status,
+        k.usage_count || 0,
+        k.created_at,
+      ]);
+      
+      const csv = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `知識庫_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      success('CSV導出成功');
+    } catch (err) {
+      error('導出失敗');
+    }
+  };
+
+  // 导出问答对为CSV
+  const exportQACSV = async () => {
+    try {
+      const res = await getQAList({ page: 1, page_size: 1000 });
+      const list = res.data.list || [];
+      
+      const headers = ['ID', '問題', '答案', '準確率', '創建時間'];
+      const rows = list.map((q: any) => [
+        q.id,
+        `"${q.question.replace(/"/g, '""')}"`,
+        `"${q.answer.replace(/"/g, '""')}"`,
+        q.accuracy || 0,
+        q.created_at,
+      ]);
+      
+      const csv = [headers.join(','), ...rows.map((r: any) => r.join(','))].join('\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `問答對_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      success('CSV導出成功');
+    } catch (err) {
+      error('導出失敗');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -1170,18 +1292,38 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4" />快速操作</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4" />数据导出</CardTitle>
+          <CardDescription>导出训练数据和报告</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Button variant="outline" onClick={exportTrainingReport} className="h-20 flex-col gap-2">
+              <FileText className="w-5 h-5" />
+              <span className="text-xs">完整训练报告 (JSON)</span>
+            </Button>
+            <Button variant="outline" onClick={exportKnowledgeCSV} className="h-20 flex-col gap-2">
+              <BookOpen className="w-5 h-5" />
+              <span className="text-xs">知识库 (CSV)</span>
+            </Button>
+            <Button variant="outline" onClick={exportQACSV} className="h-20 flex-col gap-2">
+              <MessageSquare className="w-5 h-5" />
+              <span className="text-xs">问答对 (CSV)</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><ExternalLink className="w-4 h-4" />快速操作</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Button variant="outline" className="h-20 flex-col gap-2" asChild>
-              <a href="/knowledge" target="_blank"><ExternalLink className="w-5 h-5" /><span className="text-xs">查看知识库</span></a>
+              <a href="/knowledge" target="_blank"><BookOpen className="w-5 h-5" /><span className="text-xs">查看知识库</span></a>
             </Button>
             <Button variant="outline" className="h-20 flex-col gap-2" asChild>
               <a href="/ai-assistant" target="_blank"><Sparkles className="w-5 h-5" /><span className="text-xs">AI助手</span></a>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col gap-2" onClick={() => {}}>
-              <Download className="w-5 h-5" /><span className="text-xs">导出数据</span>
             </Button>
             <Button variant="outline" className="h-20 flex-col gap-2" onClick={onRefresh}>
               <RefreshCw className="w-5 h-5" /><span className="text-xs">刷新统计</span>

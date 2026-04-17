@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Metadata } from 'next';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabPanel } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 import {
   Search,
@@ -20,6 +19,13 @@ import {
   ChevronRight,
   Filter,
   MessageCircle,
+  Bookmark,
+  BookmarkCheck,
+  Clock,
+  Eye,
+  Share2,
+  Sparkle,
+  ThumbsUp,
 } from 'lucide-react';
 
 // 知识库分类
@@ -212,11 +218,147 @@ const KNOWLEDGE_DATA = [
   },
 ];
 
+// 本地存储键名
+const STORAGE_KEY_FAVORITES = 'fubao_knowledge_favorites';
+const STORAGE_KEY_LIKES = 'fubao_knowledge_likes';
+const STORAGE_KEY_HISTORY = 'fubao_knowledge_history';
+
 export default function KnowledgePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
   const [selectedArticle, setSelectedArticle] = useState<typeof KNOWLEDGE_DATA[0] | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // 收藏状态
+  const [favorites, setFavorites] = useState<number[]>([]);
+  // 点赞状态
+  const [likedItems, setLikedItems] = useState<number[]>([]);
+  // 阅读历史
+  const [history, setHistory] = useState<{ id: number; time: number }[]>([]);
+  // 弹窗状态
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  // 文章点赞数（本地）
+  const [localLikes, setLocalLikes] = useState<Record<number, number>>({});
+
+  // 加载本地数据
+  useEffect(() => {
+    try {
+      const storedFavorites = localStorage.getItem(STORAGE_KEY_FAVORITES);
+      const storedLikes = localStorage.getItem(STORAGE_KEY_LIKES);
+      const storedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
+      
+      if (storedFavorites) setFavorites(JSON.parse(storedFavorites));
+      if (storedLikes) setLikedItems(JSON.parse(storedLikes));
+      if (storedHistory) setHistory(JSON.parse(storedHistory));
+      
+      // 初始化本地点赞数
+      const initialLikes: Record<number, number> = {};
+      KNOWLEDGE_DATA.forEach((item) => {
+        initialLikes[item.id] = item.likes;
+      });
+      setLocalLikes(initialLikes);
+    } catch (e) {
+      console.error('加载本地数据失败:', e);
+    }
+  }, []);
+
+  // 保存收藏
+  const saveFavorites = (newFavorites: number[]) => {
+    setFavorites(newFavorites);
+    localStorage.setItem(STORAGE_KEY_FAVORITES, JSON.stringify(newFavorites));
+  };
+
+  // 保存点赞
+  const saveLikes = (newLikes: number[]) => {
+    setLikedItems(newLikes);
+    localStorage.setItem(STORAGE_KEY_LIKES, JSON.stringify(newLikes));
+  };
+
+  // 保存历史
+  const saveHistory = (newHistory: { id: number; time: number }[]) => {
+    setHistory(newHistory);
+    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(newHistory));
+  };
+
+  // 切换收藏
+  const toggleFavorite = (id: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const newFavorites = favorites.includes(id)
+      ? favorites.filter((f) => f !== id)
+      : [...favorites, id];
+    saveFavorites(newFavorites);
+  };
+
+  // 切换点赞
+  const toggleLike = (id: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const isLiked = likedItems.includes(id);
+    const newLikes = isLiked
+      ? likedItems.filter((l) => l !== id)
+      : [...likedItems, id];
+    saveLikes(newLikes);
+    
+    // 更新本地点赞数
+    setLocalLikes((prev) => ({
+      ...prev,
+      [id]: prev[id] + (isLiked ? -1 : 1),
+    }));
+  };
+
+  // 添加到历史
+  const addToHistory = (id: number) => {
+    const now = Date.now();
+    const newHistory = [
+      { id, time: now },
+      ...history.filter((h) => h.id !== id),
+    ].slice(0, 20); // 最多保留20条
+    saveHistory(newHistory);
+  };
+
+  // 打开文章
+  const openArticle = (item: typeof KNOWLEDGE_DATA[0]) => {
+    setSelectedArticle(item);
+    addToHistory(item.id);
+    
+    // 更新浏览数
+    setLocalLikes((prev) => ({
+      ...prev,
+      [item.id]: (prev[item.id] || item.likes) + 1,
+    }));
+  };
+
+  // 格式化时间
+  const formatTime = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return '剛剛';
+    if (minutes < 60) return `${minutes}分鐘前`;
+    if (hours < 24) return `${hours}小時前`;
+    if (days < 7) return `${days}天前`;
+    return new Date(timestamp).toLocaleDateString('zh-TW');
+  };
+
+  // 分享文章
+  const shareArticle = (item: typeof KNOWLEDGE_DATA[0], e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const text = `${item.title}\n\n${item.excerpt}\n\n來自符寶網知識庫`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: item.title,
+        text: text,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard.writeText(text);
+      // 可以添加toast提示
+    }
+  };
 
   // 过滤知识库
   const filteredKnowledge = KNOWLEDGE_DATA.filter((item) => {
@@ -228,8 +370,21 @@ export default function KnowledgePage() {
     return matchesCategory && matchesSearch;
   });
 
+  // 获取收藏的知识
+  const favoriteKnowledge = KNOWLEDGE_DATA.filter((item) => favorites.includes(item.id));
+
+  // 获取历史记录中的知识
+  const historyKnowledge = history
+    .map((h) => KNOWLEDGE_DATA.find((item) => item.id === h.id))
+    .filter(Boolean) as typeof KNOWLEDGE_DATA;
+
   // 获取热门知识
   const hotKnowledge = [...KNOWLEDGE_DATA].sort((a, b) => b.views - a.views).slice(0, 5);
+
+  // 获取最多赞的知识
+  const topLikedKnowledge = [...KNOWLEDGE_DATA]
+    .sort((a, b) => (localLikes[b.id] || b.likes) - (localLikes[a.id] || a.likes))
+    .slice(0, 5);
 
   const getCategoryInfo = (categoryId: string) => {
     return CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[0];
@@ -261,6 +416,34 @@ export default function KnowledgePage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 h-12 text-base"
             />
+          </div>
+
+          {/* 功能按钮 */}
+          <div className="flex justify-center gap-4 mt-4">
+            <Button
+              variant={showFavorites ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setShowFavorites(true);
+                setShowHistory(false);
+              }}
+              className="gap-1"
+            >
+              <Bookmark className="w-4 h-4" />
+              我的收藏 ({favorites.length})
+            </Button>
+            <Button
+              variant={showHistory ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setShowHistory(true);
+                setShowFavorites(false);
+              }}
+              className="gap-1"
+            >
+              <Clock className="w-4 h-4" />
+              閱讀歷史
+            </Button>
           </div>
         </div>
       </section>
@@ -320,11 +503,15 @@ export default function KnowledgePage() {
               <div className="space-y-4">
                 {filteredKnowledge.map((item) => {
                   const catInfo = getCategoryInfo(item.category);
+                  const isFavorited = favorites.includes(item.id);
+                  const isLiked = likedItems.includes(item.id);
+                  const likeCount = localLikes[item.id] || item.likes;
+                  
                   return (
                     <Card
                       key={item.id}
-                      className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setSelectedArticle(item)}
+                      className="hover:shadow-md transition-shadow cursor-pointer group"
+                      onClick={() => openArticle(item)}
                     >
                       <CardContent className="p-6">
                         <div className="flex items-start gap-4">
@@ -337,18 +524,21 @@ export default function KnowledgePage() {
                               <Badge variant="secondary" className="text-xs">
                                 {catInfo.label}
                               </Badge>
+                              {isFavorited && (
+                                <BookmarkCheck className="w-4 h-4 text-primary fill-primary" />
+                              )}
                             </div>
                             <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
                               {item.excerpt}
                             </p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
-                                <Star className="w-3 h-3" />
-                                {item.views.toLocaleString()} 閱讀
+                                <Eye className="w-3 h-3" />
+                                {likeCount.toLocaleString()} 閱讀
                               </span>
                               <span className="flex items-center gap-1">
-                                <Heart className="w-3 h-3" />
-                                {item.likes}
+                                <Heart className={cn('w-3 h-3', isLiked && 'text-red-500 fill-red-500')} />
+                                {likeCount}
                               </span>
                               <span className="flex items-center gap-1">
                                 <MessageSquare className="w-3 h-3" />
@@ -356,7 +546,43 @@ export default function KnowledgePage() {
                               </span>
                             </div>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                          
+                          {/* 操作按钮 */}
+                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => toggleFavorite(item.id, e)}
+                              title={isFavorited ? '取消收藏' : '收藏'}
+                            >
+                              {isFavorited ? (
+                                <BookmarkCheck className="w-4 h-4 text-primary fill-primary" />
+                              ) : (
+                                <Bookmark className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => toggleLike(item.id, e)}
+                              title={isLiked ? '取消點讚' : '點讚'}
+                            >
+                              <Heart className={cn('w-4 h-4', isLiked && 'text-red-500 fill-red-500')} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => shareArticle(item, e)}
+                              title="分享"
+                            >
+                              <Share2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          
+                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 self-center" />
                         </div>
                       </CardContent>
                     </Card>
@@ -400,7 +626,7 @@ export default function KnowledgePage() {
                   <div
                     key={item.id}
                     className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
-                    onClick={() => setSelectedArticle(item)}
+                    onClick={() => openArticle(item)}
                   >
                     <span className={cn(
                       'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
@@ -412,6 +638,39 @@ export default function KnowledgePage() {
                       <p className="text-sm font-medium truncate">{item.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.views.toLocaleString()} 閱讀
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* 最多赞 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ThumbsUp className="w-4 h-4 text-red-500" />
+                  最多點讚
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {topLikedKnowledge.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
+                    onClick={() => openArticle(item)}
+                  >
+                    <span className={cn(
+                      'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
+                      index < 3 ? 'bg-red-500/10 text-red-600' : 'bg-muted text-muted-foreground'
+                    )}>
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{item.title}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Heart className="w-3 h-3 text-red-500" />
+                        {localLikes[item.id] || item.likes} 讚
                       </p>
                     </div>
                   </div>
@@ -488,7 +747,7 @@ export default function KnowledgePage() {
           onClick={() => setSelectedArticle(null)}
         >
           <div
-            className="bg-background rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-background rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden animate-in fade-in-0 zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b">
@@ -498,64 +757,94 @@ export default function KnowledgePage() {
                     'w-10 h-10 rounded-lg flex items-center justify-center',
                     getCategoryInfo(selectedArticle.category).color
                   )}>
-                    {getCategoryInfo(selectedArticle.category).icon &&
-                      <getCategoryInfo(selectedArticle.category).icon className="w-5 h-5" />}
+                    {(() => {
+                      const cat = getCategoryInfo(selectedArticle.category);
+                      const Icon = cat.icon;
+                      return <Icon className="w-5 h-5" />;
+                    })()}
                   </div>
                   <div>
                     <h2 className="font-semibold text-lg">{selectedArticle.title}</h2>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{getCategoryInfo(selectedArticle.category).label}</span>
-                      <span>|</span>
-                      <span>{selectedArticle.views.toLocaleString()} 閱讀</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Badge variant="secondary" className="text-xs">
+                        {getCategoryInfo(selectedArticle.category).label}
+                      </Badge>
+                      <span>{localLikes[selectedArticle.id]?.toLocaleString() || selectedArticle.views} 閱讀</span>
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedArticle(null)}
-                >
-                  ✕
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => toggleFavorite(selectedArticle.id, e)}
+                  >
+                    <Bookmark className={cn('w-5 h-5', favorites.includes(selectedArticle.id) && 'text-primary fill-primary')} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => toggleLike(selectedArticle.id, e)}
+                  >
+                    <Heart className={cn('w-5 h-5', likedItems.includes(selectedArticle.id) && 'text-red-500 fill-red-500')} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => shareArticle(selectedArticle, e)}
+                  >
+                    <Share2 className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedArticle(null)}
+                  >
+                    ✕
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <div className="prose prose-sm max-w-none">
-                {selectedArticle.content.split('\n').map((paragraph, index) => {
-                  if (!paragraph.trim()) return <br key={index} />;
-                  if (paragraph.match(/^\d+\./)) {
-                    return <p key={index} className="ml-4">{paragraph}</p>;
-                  }
-                  if (paragraph.startsWith('-')) {
-                    return <p key={index} className="ml-4">{paragraph}</p>;
-                  }
-                  return <p key={index}>{paragraph}</p>;
-                })}
-              </div>
-              <div className="flex flex-wrap gap-2 mt-6 pt-4 border-t">
+              
+              {/* 标签 */}
+              <div className="flex flex-wrap gap-2 mt-4">
                 {selectedArticle.tags.map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    #{tag}
+                  <Badge key={tag} variant="outline" className="text-xs">
+                    {tag}
                   </Badge>
                 ))}
               </div>
             </div>
-            <div className="p-4 border-t bg-muted/50">
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-200px)]">
+              <div className="prose prose-sm max-w-none">
+                {selectedArticle.content.split('\n').map((line, index) => (
+                  <p key={index} className={cn(
+                    'mb-2',
+                    line.match(/^[一二三四五六七]、/) && 'ml-4',
+                    line.match(/^[-*]/) && 'ml-4',
+                  )}>
+                    {line}
+                  </p>
+                ))}
+              </div>
+            </div>
+            
+            <div className="p-4 border-t bg-muted/20">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Star className="w-4 h-4" />
-                    {selectedArticle.views.toLocaleString()}
+                    <Eye className="w-4 h-4" />
+                    {localLikes[selectedArticle.id]?.toLocaleString() || selectedArticle.views}
                   </span>
                   <span className="flex items-center gap-1">
                     <Heart className="w-4 h-4" />
-                    {selectedArticle.likes}
+                    {localLikes[selectedArticle.id] || selectedArticle.likes}
                   </span>
                 </div>
                 <Button asChild>
-                  <a href="/ai-assistant">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    問問AI
+                  <a href={`/ai-assistant?query=${encodeURIComponent(selectedArticle.title)}`}>
+                    <Sparkle className="w-4 h-4 mr-2" />
+                    向AI提問
                   </a>
                 </Button>
               </div>
@@ -563,6 +852,117 @@ export default function KnowledgePage() {
           </div>
         </div>
       )}
+
+      {/* 收藏弹窗 */}
+      <Modal isOpen={showFavorites} onClose={() => setShowFavorites(false)} title="我的收藏">
+        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          {favoriteKnowledge.length === 0 ? (
+            <div className="text-center py-8">
+              <Bookmark className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">暫無收藏內容</p>
+              <Button variant="link" onClick={() => setShowFavorites(false)}>
+                開始探索 →
+              </Button>
+            </div>
+          ) : (
+            favoriteKnowledge.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                onClick={() => {
+                  openArticle(item);
+                  setShowFavorites(false);
+                }}
+              >
+                <div className={cn(
+                  'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+                  getCategoryInfo(item.category).color
+                )}>
+                  {(() => {
+                    const cat = getCategoryInfo(item.category);
+                    const Icon = cat.icon;
+                    return <Icon className="w-5 h-5" />;
+                  })()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.views} 閱讀</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(item.id);
+                  }}
+                >
+                  <BookmarkCheck className="w-4 h-4 text-primary fill-primary" />
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
+      {/* 历史弹窗 */}
+      <Modal isOpen={showHistory} onClose={() => setShowHistory(false)} title="閱讀歷史">
+        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          {historyKnowledge.length === 0 ? (
+            <div className="text-center py-8">
+              <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">暫無閱讀記錄</p>
+              <Button variant="link" onClick={() => setShowHistory(false)}>
+                開始閱讀 →
+              </Button>
+            </div>
+          ) : (
+            historyKnowledge.map((item, index) => {
+              const historyItem = history.find((h) => h.id === item.id);
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors"
+                  onClick={() => {
+                    openArticle(item);
+                    setShowHistory(false);
+                  }}
+                >
+                  <div className={cn(
+                    'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
+                    getCategoryInfo(item.category).color
+                  )}>
+                    {(() => {
+                      const cat = getCategoryInfo(item.category);
+                      const Icon = cat.icon;
+                      return <Icon className="w-5 h-5" />;
+                    })()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{item.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {historyItem && formatTime(historyItem.time)}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </div>
+              );
+            })
+          )}
+        </div>
+        {historyKnowledge.length > 0 && (
+          <div className="border-t pt-4 mt-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                saveHistory([]);
+              }}
+            >
+              清空歷史記錄
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

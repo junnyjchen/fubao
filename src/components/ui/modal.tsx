@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback, ReactNode } from 'react';
+import { useEffect, useCallback, ReactNode, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ModalProps {
@@ -98,6 +98,69 @@ export function Modal({
       </div>
     </div>
   );
+}
+
+// Confirm Dialog Hook
+interface ConfirmOptions {
+  title?: string;
+  message: string;
+  type?: 'default' | 'danger' | 'warning';
+  confirmText?: string;
+  cancelText?: string;
+}
+
+export function useConfirm() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [options, setOptions] = useState<ConfirmOptions>({
+    type: 'default',
+    confirmText: '確認',
+    cancelText: '取消',
+  });
+  const [resolve, setResolve] = useState<((value: boolean) => void) | null>(null);
+
+  const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setOptions({
+        ...options,
+        ...opts,
+        confirmText: opts.confirmText || '確認',
+        cancelText: opts.cancelText || '取消',
+      });
+      setResolve(() => resolve);
+      setIsOpen(true);
+    });
+  }, [options]);
+
+  const handleConfirm = () => {
+    setIsOpen(false);
+    resolve?.(true);
+  };
+
+  const handleCancel = () => {
+    setIsOpen(false);
+    resolve?.(false);
+  };
+
+  const ConfirmDialogWrapper = useCallback(() => {
+    if (!isOpen) return null;
+    return (
+      <ConfirmDialog
+        isOpen={isOpen}
+        onClose={handleCancel}
+        onConfirm={handleConfirm}
+        title={options.title}
+        message={options.message}
+        type={options.type || 'default'}
+        confirmText={options.confirmText}
+        cancelText={options.cancelText}
+      />
+    );
+  }, [isOpen, options, resolve]);
+
+  return {
+    confirm,
+    ConfirmDialog: ConfirmDialogWrapper,
+  };
 }
 
 // Confirm Dialog

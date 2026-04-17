@@ -2,6 +2,62 @@
  * AI训练相关API接口封装
  */
 
+import { getApiUrl } from './api-config';
+
+// 基础请求函数
+async function request<T = any>(
+  method: string,
+  path: string,
+  data?: any,
+  params?: any
+): Promise<T> {
+  const url = getApiUrl(path);
+  
+  const options: RequestInit = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  };
+
+  // 处理 GET 请求的参数
+  if (method === 'GET' && params) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        searchParams.append(key, String(value));
+      }
+    });
+    const queryString = searchParams.toString();
+    const fullUrl = queryString ? `${url}?${queryString}` : url;
+    options.body = undefined;
+  } else if (data) {
+    options.body = JSON.stringify(data);
+  }
+
+  const response = await fetch(url, options);
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: '请求失败' }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+  
+  return response.json();
+}
+
+// API 对象
+const api = {
+  get: <T = any>(path: string, config?: { params?: any }) => 
+    request<T>( 'GET', path, undefined, config?.params),
+  post: <T = any>(path: string, data?: any) => 
+    request<T>('POST', path, data),
+  put: <T = any>(path: string, data?: any) => 
+    request<T>('PUT', path, data),
+  delete: <T = any>(path: string, data?: any) => 
+    request<T>('DELETE', path, data),
+};
+
 // 获取知识库列表
 export async function getKnowledgeList(params: {
   page?: number;
@@ -10,13 +66,11 @@ export async function getKnowledgeList(params: {
   status?: string;
   keyword?: string;
 }) {
-  const { api } = await import('@/lib/api');
   return api.get('/admin/ai/training/knowledge', { params });
 }
 
 // 获取知识库详情
 export async function getKnowledgeDetail(id: number) {
-  const { api } = await import('@/lib/api');
   return api.get('/admin/ai/training/knowledgeDetail', { params: { id } });
 }
 
@@ -30,7 +84,6 @@ export async function createKnowledge(data: {
   tags?: string[];
   status?: string;
 }) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/knowledgeCreate', data);
 }
 
@@ -45,13 +98,11 @@ export async function updateKnowledge(data: {
   tags?: string[];
   status?: string;
 }) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/knowledgeUpdate', data);
 }
 
 // 删除知识库
 export async function deleteKnowledge(id: number) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/knowledgeDelete', { id });
 }
 
@@ -65,7 +116,6 @@ export async function batchImportKnowledge(data: {
   }>;
   category?: string;
 }) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/knowledgeBatchImport', data);
 }
 
@@ -76,7 +126,6 @@ export async function getQAList(params: {
   category?: string;
   knowledge_id?: number;
 }) {
-  const { api } = await import('@/lib/api');
   return api.get('/admin/ai/training/qa', { params });
 }
 
@@ -88,7 +137,6 @@ export async function createQA(data: {
   knowledge_id?: number;
   keywords?: string[];
 }) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/qaCreate', data);
 }
 
@@ -101,19 +149,16 @@ export async function updateQA(data: {
   keywords?: string[];
   is_active?: boolean;
 }) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/qaUpdate', data);
 }
 
 // 删除问答对
 export async function deleteQA(id: number) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/qaDelete', { id });
 }
 
 // 从知识库生成问答对
 export async function generateQA(knowledgeId: number) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/generateQA', { knowledge_id: knowledgeId });
 }
 
@@ -123,7 +168,6 @@ export async function getTrainingTasks(params?: {
   page_size?: number;
   status?: string;
 }) {
-  const { api } = await import('@/lib/api');
   return api.get('/admin/ai/training/tasks', { params });
 }
 
@@ -134,25 +178,21 @@ export async function createTrainingTask(data: {
   type?: string;
   knowledge_ids?: number[];
 }) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/taskCreate', data);
 }
 
 // 启动训练任务
 export async function startTrainingTask(id: number) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/taskStart', { id });
 }
 
 // 取消训练任务
 export async function cancelTrainingTask(id: number) {
-  const { api } = await import('@/lib/api');
   return api.post('/admin/ai/training/taskCancel', { id });
 }
 
 // 获取训练统计
 export async function getTrainingStats() {
-  const { api } = await import('@/lib/api');
   return api.get('/admin/ai/training/stats');
 }
 
@@ -162,7 +202,6 @@ export async function searchKnowledge(params: {
   category?: string;
   limit?: number;
 }) {
-  const { api } = await import('@/lib/api');
   return api.get('/admin/ai/training/search', { params });
 }
 
@@ -171,6 +210,5 @@ export async function getRecommendedQA(params: {
   query: string;
   limit?: number;
 }) {
-  const { api } = await import('@/lib/api');
   return api.get('/ai/recommendQA', { params });
 }
