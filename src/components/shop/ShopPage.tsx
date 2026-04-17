@@ -31,13 +31,15 @@ interface Merchant {
 interface Goods {
   id: number;
   name: string;
+  subtitle?: string;
   main_image: string | null;
   price: string;
   original_price: string | null;
   is_certified: boolean;
   sales: number;
-  stock: number;
-  merchants: Merchant;
+  stock?: number;
+  merchant?: Merchant;
+  category?: Category;
 }
 
 export function ShopPage() {
@@ -272,21 +274,21 @@ function ProductCard({ item, t }: { item: Goods; t: ReturnType<typeof useI18n>['
             <span>{t.shop.sold} {item.sales}</span>
           </div>
           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
-            {item.merchants.logo ? (
+            {item.merchant?.logo ? (
               <Image
-                src={item.merchants.logo}
-                alt={item.merchants.name}
+                src={item.merchant.logo || ''}
+                alt={item.merchant?.name || '商戶'}
                 width={20}
                 height={20}
                 className="rounded-full"
               />
             ) : (
               <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs">
-                {item.merchants.name.charAt(0)}
+                {item.merchant?.name?.charAt(0) || '商'}
               </div>
             )}
             <span className="text-xs text-muted-foreground truncate flex-1">
-              {item.merchants.name}
+              {item.merchant?.name || '符寶商城'}
             </span>
           </div>
         </CardContent>
