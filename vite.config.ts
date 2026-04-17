@@ -5,14 +5,25 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [vue()],
   resolve: {
-    alias: { '@': resolve(__dirname, 'src') },
-  },
-  server: {
-    port: 3000,
-    host: true,
-    proxy: {
-      '/api': { target: 'http://localhost:5000', changeOrigin: true },
+    alias: {
+      '@': resolve(__dirname, 'src'),
     },
   },
-  build: { outDir: 'dist' },
+  server: {
+    port: 5000,
+    host: true,
+    open: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
+  },
 })

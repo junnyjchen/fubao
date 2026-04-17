@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { api } from '@/lib/api'
+import { apiRequest } from '@/lib/api'
 
 const certificateNo = ref('')
 const result = ref<any>(null)
@@ -11,7 +11,7 @@ async function verifyCertificate() {
   if (!certificateNo.value.trim()) return
   loading.value = true; error.value = ''; result.value = null
   try {
-    const res = await api(`/certificate/verify?no=${certificateNo.value.trim()}`)
+    const res = await apiRequest.get(`/certificate/verify`, { no: certificateNo.value.trim() })
     result.value = res.data
   } catch (err: any) { error.value = err.message || '驗證失敗' }
   finally { loading.value = false }

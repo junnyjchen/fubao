@@ -7,4 +7,4 @@ run = ["pnpm", "run", "dev"]
 
 [deploy]
 build = ["pnpm", "install", "&&", "pnpm", "run", "build"]
-run = ["pnpm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5000"]
+run = ["npx", "serve", "-l", "5000", "-s", "dist"]

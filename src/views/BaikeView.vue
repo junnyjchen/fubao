@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { api } from '@/lib/api'
+import { baikeApi } from '@/lib/api'
 
 const articles = ref<any[]>([])
 const loading = ref(true)
@@ -10,7 +10,7 @@ const activeCategory = ref('全部')
 async function loadArticles() {
   loading.value = true
   try {
-    const res = await api('/baike')
+    const res = await baikeApi.list()
     articles.value = res.data || []
   } catch (error) { console.error('Failed to load articles:', error) }
   finally { loading.value = false }

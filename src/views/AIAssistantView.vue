@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { apiRequest } from '@/lib/api'
+
 const messages = ref<Array<{role: string, content: string}>>([
   { role: 'assistant', content: '您好！我是符寶網 AI 助手，可以幫您解答關於玄門文化、符籙知識等問題。請問有什麼可以幫到您？' }
 ])
@@ -12,11 +15,8 @@ async function sendMessage() {
   input.value = ''
   loading.value = true
   try {
-    const res = await fetch('/api/ai/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMsg }) })
-    if (res.ok) {
-      const data = await res.json()
-      messages.value.push({ role: 'assistant', content: data.data || '抱歉，我無法回答這個問題。' })
-    } else { messages.value.push({ role: 'assistant', content: '抱歉，服務暫時不可用。' }) }
+    const res = await apiRequest.post('/ai/chat', { message: userMsg })
+    messages.value.push({ role: 'assistant', content: res.data || '抱歉，我無法回答這個問題。' })
   } catch (error) { messages.value.push({ role: 'assistant', content: '抱歉，網絡錯誤。' }) }
   finally { loading.value = false }
 }

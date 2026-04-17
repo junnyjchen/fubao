@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { apiRequest } from '@/lib/api'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -14,13 +15,11 @@ async function handleSubmit() {
   loading.value = true; error.value = ''
   try {
     if (isLogin.value) {
-      const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: form.value.email, password: form.value.password }) })
-      const data = await res.json()
+      const data = await apiRequest.post('/auth/login', { email: form.value.email, password: form.value.password })
       if (data.data) { userStore.setUser(data.data); userStore.setToken(data.token); router.push('/') }
       else { error.value = '登入失敗' }
     } else {
-      const res = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form.value) })
-      const data = await res.json()
+      const data = await apiRequest.post('/auth/register', form.value)
       if (data.data) { userStore.setUser(data.data); userStore.setToken(data.token); router.push('/') }
       else { error.value = '註冊失敗' }
     }

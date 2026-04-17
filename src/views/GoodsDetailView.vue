@@ -23,7 +23,13 @@ async function loadGoods() {
 
 function addToCart() { if (goods.value) { cartStore.addItem(goods.value, quantity.value); alert('已加入購物車') } }
 function buyNow() { if (goods.value) { cartStore.addItem(goods.value, quantity.value); router.push('/cart') } }
-function changeQuantity(delta: number) { const newVal = quantity.value + delta; if (newVal >= 1 && newVal <= (goods.value?.stock || 99)) quantity.value = newVal } }
+function changeQuantity(delta: number) { 
+  const maxStock = goods.value?.stock || 99
+  const newVal = quantity.value + delta
+  if (newVal >= 1 && newVal <= maxStock) {
+    quantity.value = newVal
+  }
+}
 
 onMounted(() => { loadGoods() })
 </script>
