@@ -1,27 +1,48 @@
-# 符寶網 一键部署教程
+# 符寶網 Vue 项目一键部署教程
 
-## 概述
+## 技术栈变更
 
-本项目使用 Coze Coding 平台部署，支持一键部署代码和数据。
+| 项目 | 原技术 | 新技术 |
+|------|--------|--------|
+| 框架 | Next.js 16 (App Router) | Vue 3 + Vite |
+| UI | React 19 | Vue 3 Composition API |
+| 样式 | Tailwind CSS 4 | Tailwind CSS 3 |
+| 路由 | Next.js 内置 | Vue Router 4 |
+| 状态 | React Context | Pinia |
+| 类型 | TypeScript 5 | TypeScript 5 |
 
 ---
 
-## 部署架构
+## 项目结构
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Coze Coding 平台                      │
-│                                                         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐      │
-│  │   构建环境   │  │   运行容器   │  │   对象存储   │      │
-│  │  (Build)    │  │  (Runtime)  │  │   (OSS)     │      │
-│  └─────────────┘  └─────────────┘  └─────────────┘      │
-│         │                │                │            │
-│         └────────────────┼────────────────┘            │
-│                          │                              │
-│                          ▼                              │
-│              https://xxx.dev.coze.site                  │
-└─────────────────────────────────────────────────────────┘
+src/
+├── main.ts              # 入口文件
+├── App.vue              # 根组件
+├── router/
+│   └── index.ts         # 路由配置
+├── stores/
+│   ├── user.ts          # 用户状态
+│   └── cart.ts          # 购物车状态
+├── lib/
+│   └── api.ts           # API 请求封装
+├── types/
+│   └── index.ts         # 类型定义
+├── components/
+│   └── common/          # 公共组件
+│       ├── AppHeader.vue
+│       ├── AppFooter.vue
+│       └── AppNav.vue
+└── views/               # 页面视图
+    ├── HomeView.vue
+    ├── ShopView.vue
+    ├── GoodsDetailView.vue
+    ├── CartView.vue
+    ├── NewsView.vue
+    ├── AIAssistantView.vue
+    ├── BaikeView.vue
+    ├── VerifyView.vue
+    └── ...
 ```
 
 ---
@@ -34,27 +55,35 @@
    ```bash
    cd /workspace/projects
    git add .
-   git commit -m "feat: 更新内容描述"
+   git commit -m "feat: 迁移到 Vue 3"
    git push
    ```
 
 2. **在 Coze Coding 平台点击「部署」**
 
----
-
-### 方式二：通过 Coze CLI 部署
+### 方式二：使用 Coze CLI
 
 ```bash
-# 进入项目目录
-cd /workspace/projects
-
-# 1. 安装依赖
+# 安装依赖
 pnpm install
 
-# 2. 构建生产版本
+# 开发模式（端口 5000）
+pnpm dev
+
+# 构建生产版本
 pnpm build
 
-# 3. 部署到服务器（Coze Coding 自动处理）
+# 预览生产版本
+pnpm preview
+```
+
+---
+
+## 一键部署命令
+
+```bash
+# 完整部署流程
+cd /workspace/projects && pnpm install && pnpm build && git add . && git commit -m "$(date +%Y-%m-%d)" && git push
 ```
 
 ---
@@ -65,169 +94,81 @@ pnpm build
 |------|------|
 | `pnpm dev` | 启动开发模式（端口 5000） |
 | `pnpm build` | 构建生产版本 |
-| `pnpm start` | 启动生产服务 |
+| `pnpm preview` | 预览生产版本 |
 | `pnpm lint` | 代码检查 |
-| `pnpm ts-check` | TypeScript 类型检查 |
 
 ---
 
-## 数据部署
+## 注意事项
 
-### 初始化数据脚本
+### API 代理配置
 
-项目包含 `php/scripts/goods-news-articles.sql` 数据脚本：
+Vue 开发服务器配置了 API 代理：
+- 开发时：`/api/*` 请求自动代理到 `http://localhost:5000`
+- 生产环境：需要配置 Nginx 反向代理或使用现有后端服务
 
-```sql
--- 包含以下数据：
--- - 34 条商品数据
--- - 16 条百科文章
--- - 15 条新闻文章
--- - 分类、标签等基础数据
-```
+### 后端 API
 
-### 部署数据
-
-由于使用 **Mock 数据兜底机制**，数据库不可用时自动返回预设数据：
-
-```typescript
-// src/app/api/goods/route.ts
-if (!supabase || typeof supabase.from !== 'function') {
-  return NextResponse.json({
-    data: getMockGoods(limit),  // 自动使用 mock 数据
-    pagination: {...}
-  });
-}
-```
-
-### 配置真实数据库
-
-如需使用真实数据库，请配置环境变量：
-
-```bash
-# .env.local
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-```
-
-然后执行数据初始化：
-
-```bash
-# 导入 SQL 数据
-psql -h your-db-host -U postgres -d fubao < php/scripts/goods-news-articles.sql
-```
+项目依赖后端 API 服务提供数据，请确保以下 API 端点可用：
+- `/api/goods` - 商品列表
+- `/api/goods/:id` - 商品详情
+- `/api/news` - 新闻列表
+- `/api/ai/chat` - AI 对话
 
 ---
 
-## 一键部署脚本
+## 环境变量
 
-创建 `deploy.sh` 脚本实现一键部署：
-
-```bash
-#!/bin/bash
-# deploy.sh - 符寶網一键部署脚本
-
-set -e
-
-echo "🚀 开始部署符寶網..."
-
-# 进入项目目录
-cd /workspace/projects
-
-# 1. 安装依赖
-echo "📦 安装依赖..."
-pnpm install
-
-# 2. 代码检查
-echo "🔍 代码检查..."
-pnpm lint --quiet || true
-pnpm ts-check --quiet || true
-
-# 3. 构建生产版本
-echo "🏗️ 构建生产版本..."
-pnpm build
-
-# 4. 提交代码
-echo "📝 提交代码..."
-git add .
-git commit -m "deploy: $(date +%Y-%m-%d-%H:%M:%S)"
-git push
-
-echo "✅ 部署完成！"
-```
-
-使用方式：
-
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
+无需额外配置，所有环境变量通过 Coze Coding 平台自动注入。
 
 ---
 
 ## 部署检查清单
 
-部署后请检查：
-
-- [ ] 首页是否正常加载
-- [ ] 商品列表是否显示
-- [ ] 商品详情页是否正常
-- [ ] 控制台是否有报错
+- [ ] 首页正常加载
+- [ ] 商品列表显示正常
+- [ ] 商品详情页正常
+- [ ] 购物车功能正常
+- [ ] AI 助手页面正常
 
 ---
 
 ## 常见问题
 
-### Q: 部署后页面显示 500 错误
+### Q: 页面空白或显示 404
 
-检查日志：
-```bash
-tail -n 50 /app/work/logs/bypass/app.log
-tail -n 50 /app/work/logs/bypass/console.log
+检查 Vite 配置和路由是否正确：
+```typescript
+// vite.config.ts
+export default defineConfig({
+  plugins: [vue()],
+  server: {
+    port: 5000,
+  },
+})
 ```
 
-### Q: 数据没有更新
+### Q: API 请求失败
 
-1. 清除浏览器缓存
-2. 检查 API 是否返回新数据：
-   ```bash
-   curl -s http://localhost:5000/api/goods | jq '.data | length'
-   ```
-
-### Q: 数据库连接失败
-
-这是正常的，系统会自动使用 Mock 数据兜底，不影响功能使用。
-
----
-
-## 环境变量说明
-
-| 变量名 | 说明 | 示例值 |
-|--------|------|--------|
-| `COZE_WORKSPACE_PATH` | 项目工作目录 | `/workspace/projects/` |
-| `COZE_PROJECT_DOMAIN_DEFAULT` | 访问域名 | `https://abc123.dev.coze.site` |
-| `DEPLOY_RUN_PORT` | 服务端口 | `5000` |
-| `COZE_PROJECT_ENV` | 环境 | `DEV` / `PROD` |
+确保后端服务运行在 5000 端口，或配置正确的代理目标。
 
 ---
 
 ## 快速命令汇总
 
 ```bash
-# 完整部署流程
-cd /workspace/projects && pnpm install && pnpm build && git add . && git commit -m "update" && git push
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+pnpm dev
+
+# 构建生产版本
+pnpm build
+
+# 预览生产版本
+pnpm preview
 
 # 查看日志
-tail -f /app/work/logs/bypass/app.log
-tail -f /app/work/logs/bypass/console.log
-
-# 测试 API
-curl -s http://localhost:5000/api/goods | jq '.data | length'
+tail -f /app/work/logs/bypass/dev.log
 ```
-
----
-
-## 联系支持
-
-如遇部署问题，请查看：
-- 开发日志：`/app/work/logs/bypass/`
-- API 端点：`/api/` 路由
