@@ -6,7 +6,7 @@ import AppNav from '@/components/common/AppNav.vue'
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col">
+  <div class="min-h-screen bg-background text-foreground">
     <AppHeader />
     <AppNav />
     <main class="flex-1 pb-16 md:pb-0">
