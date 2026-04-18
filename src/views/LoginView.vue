@@ -1,50 +1,163 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
-import { apiRequest } from '@/lib/api'
+import { RouterLink } from 'vue-router'
+import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
+import Card from '@/components/ui/Card.vue'
 
-const router = useRouter()
-const userStore = useUserStore()
 const isLogin = ref(true)
-const form = ref({ email: '', password: '', name: '' })
 const loading = ref(false)
-const error = ref('')
+const form = ref({
+  email: '',
+  password: '',
+  confirmPassword: '',
+  phone: '',
+  verifyCode: ''
+})
 
 async function handleSubmit() {
-  loading.value = true; error.value = ''
-  try {
-    if (isLogin.value) {
-      const data = await apiRequest.post('/auth/login', { email: form.value.email, password: form.value.password })
-      if (data.data) { userStore.setUser(data.data); userStore.setToken(data.token); router.push('/') }
-      else { error.value = '登入失敗' }
-    } else {
-      const data = await apiRequest.post('/auth/register', form.value)
-      if (data.data) { userStore.setUser(data.data); userStore.setToken(data.token); router.push('/') }
-      else { error.value = '註冊失敗' }
-    }
-  } catch (err) { error.value = '請求失敗，請稍後重試' }
-  finally { loading.value = false }
+  if (!isLogin.value && form.value.password !== form.value.confirmPassword) {
+    alert('密碼確認不一致')
+    return
+  }
+  loading.value = true
+  // Simulate API call
+  setTimeout(() => {
+    loading.value = false
+    alert(isLogin.value ? '登入成功' : '註冊成功')
+  }, 1500)
 }
 </script>
 
 <template>
-  <div class="container mx-auto px-4 py-16">
-    <div class="max-w-md mx-auto">
-      <div class="bg-card rounded-xl border p-8">
-        <div class="text-center mb-8">
-          <div class="w-16 h-16 mx-auto mb-4 rounded-xl bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">符</div>
-          <h1 class="text-2xl font-bold">{{ isLogin ? '登入' : '註冊' }}</h1>
-        </div>
-        <form @submit.prevent="handleSubmit" class="space-y-4">
-          <div v-if="!isLogin"><label class="block text-sm font-medium mb-2">用戶名</label><input v-model="form.name" type="text" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="請輸入用戶名"/></div>
-          <div><label class="block text-sm font-medium mb-2">電子郵箱</label><input v-model="form.email" type="email" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="請輸入電子郵箱"/></div>
-          <div><label class="block text-sm font-medium mb-2">密碼</label><input v-model="form.password" type="password" required class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" placeholder="請輸入密碼"/></div>
-          <div v-if="error" class="text-red-500 text-sm">{{ error }}</div>
-          <button type="submit" :disabled="loading" class="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">{{ loading ? '處理中...' : (isLogin ? '登入' : '註冊') }}</button>
-        </form>
-        <div class="mt-6 text-center text-sm"><span class="text-muted-foreground">{{ isLogin ? '還沒有帳戶？' : '已有帳戶？' }}</span><button @click="isLogin = !isLogin" class="text-primary hover:underline ml-1">{{ isLogin ? '立即註冊' : '立即登入' }}</button></div>
+  <div class="container mx-auto px-4 py-8 min-h-[calc(100vh-200px)] flex items-center justify-center">
+    <Card class="w-full max-w-md p-8">
+      <!-- Header -->
+      <div class="text-center mb-8">
+        <h1 class="text-2xl font-bold mb-2">{{ isLogin ? '歡迎回來' : '創建帳戶' }}</h1>
+        <p class="text-muted-foreground">
+          {{ isLogin ? '登入您的符寶網帳戶' : '註冊新帳戶開始探索' }}
+        </p>
       </div>
-    </div>
+
+      <!-- Form -->
+      <form @submit.prevent="handleSubmit" class="space-y-4">
+        <!-- Phone (Register only) -->
+        <div v-if="!isLogin" class="space-y-2">
+          <label class="text-sm font-medium">手機號碼</label>
+          <div class="flex gap-2">
+            <Input 
+              v-model="form.phone"
+              type="tel"
+              placeholder="請輸入手機號碼"
+              class="flex-1"
+            />
+            <Button type="button" variant="outline" class="whitespace-nowrap">
+              獲取驗證碼
+            </Button>
+          </div>
+        </div>
+
+        <!-- Verify Code (Register only) -->
+        <div v-if="!isLogin" class="space-y-2">
+          <label class="text-sm font-medium">驗證碼</label>
+          <Input 
+            v-model="form.verifyCode"
+            type="text"
+            placeholder="請輸入驗證碼"
+          />
+        </div>
+
+        <!-- Email -->
+        <div class="space-y-2">
+          <label class="text-sm font-medium">電子郵箱</label>
+          <Input 
+            v-model="form.email"
+            type="email"
+            placeholder="請輸入電子郵箱"
+          />
+        </div>
+
+        <!-- Password -->
+        <div class="space-y-2">
+          <label class="text-sm font-medium">密碼</label>
+          <Input 
+            v-model="form.password"
+            type="password"
+            placeholder="請輸入密碼"
+          />
+        </div>
+
+        <!-- Confirm Password (Register only) -->
+        <div v-if="!isLogin" class="space-y-2">
+          <label class="text-sm font-medium">確認密碼</label>
+          <Input 
+            v-model="form.confirmPassword"
+            type="password"
+            placeholder="請再次輸入密碼"
+          />
+        </div>
+
+        <!-- Forgot Password (Login only) -->
+        <div v-if="isLogin" class="text-right">
+          <RouterLink to="/forgot-password" class="text-sm text-primary hover:underline">
+            忘記密碼？
+          </RouterLink>
+        </div>
+
+        <!-- Submit Button -->
+        <Button type="submit" class="w-full h-12" :disabled="loading">
+          <span v-if="loading" class="flex items-center gap-2">
+            <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            處理中...
+          </span>
+          <span v-else>{{ isLogin ? '登入' : '註冊' }}</span>
+        </Button>
+      </form>
+
+      <!-- Divider -->
+      <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-border"></div>
+        </div>
+        <div class="relative flex justify-center text-xs uppercase">
+          <span class="bg-card px-2 text-muted-foreground">或</span>
+        </div>
+      </div>
+
+      <!-- Social Login -->
+      <div class="grid grid-cols-2 gap-4">
+        <Button variant="outline" class="h-12">
+          <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Google
+        </Button>
+        <Button variant="outline" class="h-12">
+          <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+          </svg>
+          GitHub
+        </Button>
+      </div>
+
+      <!-- Toggle Login/Register -->
+      <p class="text-center mt-6 text-sm text-muted-foreground">
+        {{ isLogin ? '還沒有帳戶？' : '已有帳戶？' }}
+        <button 
+          type="button"
+          @click="isLogin = !isLogin"
+          class="text-primary hover:underline font-medium"
+        >
+          {{ isLogin ? '立即註冊' : '立即登入' }}
+        </button>
+      </p>
+    </Card>
   </div>
 </template>
