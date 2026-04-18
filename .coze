@@ -1,10 +1,15 @@
 [project]
-requires = ["nodejs-24"]
+requires = [ "nodejs-24" ]
+template = "nextjs"
+version = "legacy"
+appliedPatches = [ "nextjs/replace-npx-with-pnpm@0.0.13" ]
 
 [dev]
-build = ["pnpm", "install"]
-run = ["pnpm", "run", "dev"]
+build = [ "bash", "./scripts/prepare.sh" ]
+run = [ "bash", "./scripts/dev.sh" ]
+deps = [ "git" ]
 
 [deploy]
-build = ["pnpm", "install", "&&", "pnpm", "run", "build"]
-run = ["npx", "serve", "-l", "5000", "-s", "dist"]
+build = [ "bash", "./scripts/build.sh" ]
+run = [ "bash", "./scripts/start.sh" ]
+deps = [ "git" ]
