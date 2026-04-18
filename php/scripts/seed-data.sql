@@ -71,14 +71,14 @@ INSERT INTO `categories` (`name`, `icon`, `sort`, `status`) VALUES
 -- =====================================================
 
 INSERT INTO `users` (`username`, `email`, `phone`, `password`, `nickname`, `name`, `gender`, `birthday`, `status`, `created_at`) VALUES
-('john_doe', 'john@example.com', '0912345678', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '約翰', '約翰·王', 'male', '1990-05-15', 1, DATE_SUB(NOW(), INTERVAL 90 DAY)),
-('mary_chen', 'mary@example.com', '0923456789', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '瑪麗', '陳瑪麗', 'female', '1985-08-20', 1, DATE_SUB(NOW(), INTERVAL 60 DAY)),
-('alex_wu', 'alex@example.com', '0934567890', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '亞歷克斯', '吳亞歷克斯', 'male', '1992-03-10', 1, DATE_SUB(NOW(), INTERVAL 45 DAY)),
-('sarah_lin', 'sarah@example.com', '0945678901', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '莎拉', '林莎拉', 'female', '1988-11-25', 1, DATE_SUB(NOW(), INTERVAL 30 DAY)),
-('david_zhang', 'david@example.com', '0956789012', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '大衛', '張大衛', 'male', '1995-01-08', 1, DATE_SUB(NOW(), INTERVAL 20 DAY)),
-('emma_liu', 'emma@example.com', '0967890123', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '艾瑪', '劉艾瑪', 'female', '1993-07-22', 1, DATE_SUB(NOW(), INTERVAL 15 DAY)),
-('james_huang', 'james@example.com', '0978901234', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '詹姆斯', '黃詹姆斯', 'male', '1987-04-30', 1, DATE_SUB(NOW(), INTERVAL 10 DAY)),
-('lisa_wang', 'lisa@example.com', '0989012345', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '麗莎', '王麗莎', 'female', '1991-09-18', 1, DATE_SUB(NOW(), INTERVAL 5 DAY));
+('john_doe', 'john@example.com', '0912345678', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '約翰', '約翰·王', 'male', '1990-05-15', 1, DATE_SUB(NOW(), INTERVAL 90 DAY)),
+('mary_chen', 'mary@example.com', '0923456789', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '瑪麗', '陳瑪麗', 'female', '1985-08-20', 1, DATE_SUB(NOW(), INTERVAL 60 DAY)),
+('alex_wu', 'alex@example.com', '0934567890', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '亞歷克斯', '吳亞歷克斯', 'male', '1992-03-10', 1, DATE_SUB(NOW(), INTERVAL 45 DAY)),
+('sarah_lin', 'sarah@example.com', '0945678901', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '莎拉', '林莎拉', 'female', '1988-11-25', 1, DATE_SUB(NOW(), INTERVAL 30 DAY)),
+('david_zhang', 'david@example.com', '0956789012', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '大衛', '張大衛', 'male', '1995-01-08', 1, DATE_SUB(NOW(), INTERVAL 20 DAY)),
+('emma_liu', 'emma@example.com', '0967890123', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '艾瑪', '劉艾瑪', 'female', '1993-07-22', 1, DATE_SUB(NOW(), INTERVAL 15 DAY)),
+('james_huang', 'james@example.com', '0978901234', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '詹姆斯', '黃詹姆斯', 'male', '1987-04-30', 1, DATE_SUB(NOW(), INTERVAL 10 DAY)),
+('lisa_wang', 'lisa@example.com', '0989012345', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '麗莎', '王麗莎', 'female', '1991-09-18', 1, DATE_SUB(NOW(), INTERVAL 5 DAY));
 
 -- =====================================================
 -- 3. 用户地址数据

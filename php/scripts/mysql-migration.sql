@@ -27,7 +27,7 @@ CREATE TABLE `admin_users` (
 
 -- 默认管理员账户
 INSERT INTO `admin_users` (`username`, `password`, `name`, `role`, `status`) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '管理员', 'super_admin', 1);
+('admin', '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy', '管理员', 'super_admin', 1);
 
 -- ----------------------------
 -- 2. 用户表
