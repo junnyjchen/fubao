@@ -260,10 +260,11 @@ export function UserPage() {
     { label: uh.quickAccess.unshipped, count: orders.filter(o => o.orderStatus === 1).length, icon: Package, href: '/user/orders?status=unshipped' },
     { label: uh.quickAccess.shipped, count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, href: '/user/orders?status=shipped' },
     { label: uh.quickAccess.toReview, count: orders.filter(o => o.orderStatus === 3).length, icon: Star, href: '/user/reviews/pending' },
-    { label: uh.quickAccess.vip, icon: Crown, href: '/vip', highlight: true, highlightColor: 'gold' },
-    { label: uh.quickAccess.distribution, icon: TrendingUp, href: '/distribution', highlight: true, highlightColor: 'purple' },
+    { label: uh.quickAccess.vip, icon: Crown, href: '/user/vip', highlight: true, highlightColor: 'gold' },
+    { label: uh.quickAccess.distribution, icon: TrendingUp, href: '/distribution/team', highlight: true, highlightColor: 'purple' },
     { label: uh.quickAccess.coupons, icon: Ticket, href: '/user/coupons' },
     { label: uh.quickAccess.myPoints, icon: Coins, href: '/user/points' },
+    { label: uh.quickAccess.pointsMall, icon: Gift, href: '/user/points-mall' },
   ];
 
   // 侧边菜单配置
@@ -404,7 +405,7 @@ export function UserPage() {
           <div className="lg:col-span-1">
             {/* VIP和分销突出卡片 */}
             <div className={`grid grid-cols-2 gap-3 mb-4 ${isRTL ? 'direction-rtl' : ''}`}>
-              <Link href="/vip">
+              <Link href="/user/vip">
                 <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/30 dark:to-yellow-950/30 border-amber-300/50 hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-3 text-center">
                     <Crown className="w-6 h-6 mx-auto mb-1 text-amber-500" />
@@ -413,7 +414,7 @@ export function UserPage() {
                   </CardContent>
                 </Card>
               </Link>
-              <Link href="/distribution">
+              <Link href="/distribution/team">
                 <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border-purple-300/50 hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-3 text-center">
                     <TrendingUp className="w-6 h-6 mx-auto mb-1 text-purple-500" />

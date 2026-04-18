@@ -55,8 +55,6 @@ export function Header() {
     { href: '/shop', label: t.nav.shop },
     { href: '/video', label: t.nav.video },
     { href: '/shares', label: t.nav.ruyuan, icon: Camera, highlight: true },
-    { href: '/points-mall', label: t.nav.pointsMall, icon: Ticket },
-    { href: '/vip', label: t.nav.vip, icon: Crown },
     { href: '/news', label: t.nav.news },
     { href: '/verify', label: t.nav.verify },
     { href: '/ai-assistant', label: t.nav.aiAssistant, icon: Sparkles },

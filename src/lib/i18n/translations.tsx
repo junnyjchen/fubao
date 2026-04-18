@@ -657,6 +657,7 @@ export const translations = {
           distribution: '分銷中心',
           coupons: '優惠券',
           myPoints: '我的積分',
+          pointsMall: '積分商城',
           privilege: '特權',
           earnMoney: '賺錢',
         },
