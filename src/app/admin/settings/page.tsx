@@ -32,7 +32,7 @@ import {
   Bell,
   Shield,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface SettingItem {
   id: number;
@@ -64,7 +64,6 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     loadSettings();

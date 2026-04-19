@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { Tabs, TabPanel } from '@/components/ui/tabs';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/modal';
 import {
   Table,

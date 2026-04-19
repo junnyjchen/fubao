@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Modal, ConfirmDialog } from '@/components/ui/modal';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatPrice, formatDate, getOrderStatusText, getOrderStatusColor } from '@/lib/format';
 import {
