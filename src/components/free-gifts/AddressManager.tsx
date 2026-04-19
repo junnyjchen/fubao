@@ -243,8 +243,10 @@ function AddressFormDialog({
       toast.error('請輸入收貨人姓名');
       return;
     }
-    if (!formData.phone.trim()) {
-      toast.error('請輸入手機號碼');
+    // 手机号非必填，但如果有填写则验证格式
+    const phone = formData.phone.trim();
+    if (phone && !/^[\+]?[\d\s\-]{6,20}$/.test(phone)) {
+      toast.error('請輸入正確的手機號碼');
       return;
     }
     if (!formData.address.trim()) {
@@ -276,11 +278,11 @@ function AddressFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>手機</Label>
+              <Label>手機（選填）</Label>
               <Input
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="手機號碼"
+                placeholder="手機號碼（選填）"
               />
             </div>
           </div>

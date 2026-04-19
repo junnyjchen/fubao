@@ -131,9 +131,10 @@ function QuickOrderForm() {
       newErrors.shipping_name = '請填寫收貨人姓名（至少2個字符）';
     }
 
+    // 手机号非必填，支持国际手机号码格式
     const phone = formData.shipping_phone.replace(/\s/g, '');
-    if (!phone || !/^[2-9]\d{7}$/.test(phone)) {
-      newErrors.shipping_phone = '請填寫正確的香港手機號碼（8位數字）';
+    if (phone && !/^[\+]?[\d\s\-]{6,20}$/.test(phone)) {
+      newErrors.shipping_phone = '請填寫正確的手機號碼';
     }
 
     if (!formData.shipping_address.trim() || formData.shipping_address.trim().length < 5) {

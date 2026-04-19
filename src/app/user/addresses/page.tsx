@@ -270,8 +270,10 @@ export default function AddressesPage() {
       toast.error(form.nameRequired);
       return;
     }
-    if (!formData.phone.trim()) {
-      toast.error(form.phoneRequired);
+    // 手机号非必填，但如果有填写则验证格式
+    const phone = formData.phone.trim();
+    if (phone && !/^[\+]?[\d\s\-]{6,20}$/.test(phone)) {
+      toast.error('請輸入正確的手機號碼');
       return;
     }
     if (!formData.district) {
@@ -450,7 +452,7 @@ export default function AddressesPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>{addr.form.phone} *</Label>
+                <Label>{addr.form.phone}（選填）</Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
