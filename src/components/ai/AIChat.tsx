@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { useToast } from '@/components/ui/toast';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/lib/format';
 import {
@@ -292,7 +292,6 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { success, error } = useToast();
   
   // 触摸手势支持
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -490,8 +489,8 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
         localStorage.removeItem(STORAGE_KEY_CURRENT_ID);
       }
     }
-    success('已刪除對話');
-  }, [conversations, currentConversationId, saveConversations, success]);
+    toast.success('已刪除對話');
+  }, [conversations, currentConversationId, saveConversations]);
 
   // 发送消息
   const sendMessage = async (messageText?: string) => {
@@ -659,7 +658,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
           : c
       );
       saveConversations(errorConversations);
-      error('網絡發生錯誤');
+      toast.error('網絡發生錯誤');
     } finally {
       setIsLoading(false);
     }
@@ -678,14 +677,14 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
     );
     saveConversations(newConversations);
     setShowPresets(true);
-    success('已清空對話');
+    toast.success('已清空對話');
   };
 
   // 复制消息
   const copyMessage = async (content: string, id: string) => {
     await navigator.clipboard.writeText(content);
     setCopiedId(id);
-    success('已複製到剪貼簿');
+    toast.success('已複製到剪貼簿');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -701,7 +700,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
       c.id === currentConversation.id ? { ...c, messages: updated } : c
     );
     saveConversations(newConversations);
-    success(feedback === 'like' ? '感謝您的肯定' : '感謝您的反饋');
+    toast.success(feedback === 'like' ? '感謝您的肯定' : '感謝您的反饋');
   };
 
   // 导出对话
@@ -718,7 +717,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
     a.download = `對話_${new Date().toLocaleDateString()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    success('對話已導出');
+    toast.success('對話已導出');
   };
 
   // 处理按键事件
