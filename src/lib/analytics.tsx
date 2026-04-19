@@ -9,6 +9,31 @@
 import { useEffect, useCallback, useRef } from 'react';
 
 /**
+ * 安全序列化对象，避免循环引用
+ */
+function safeStringify(obj: unknown): string {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, value) => {
+    // 跳过函数和 undefined
+    if (typeof value === 'function' || value === undefined) {
+      return undefined;
+    }
+    // 跳过 DOM 元素
+    if (value instanceof Element || value instanceof Node) {
+      return '[DOM Element]';
+    }
+    // 跳过循环引用
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular Reference]';
+      }
+      seen.add(value);
+    }
+    return value;
+  });
+}
+
+/**
  * 事件类型
  */
 type EventType =
@@ -187,7 +212,7 @@ class Analytics {
       await fetch(this.config.apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
+        body: safeStringify(event),
         keepalive: true,
       });
     } catch (error) {

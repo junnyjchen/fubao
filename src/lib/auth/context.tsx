@@ -43,6 +43,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 /** 本地存储键 */
 const USER_STORAGE_KEY = 'fubao_user';
 
+/**
+ * 安全解析用户数据
+ */
+function safeParseUser(str: string | null): User | null {
+  if (!str) return null;
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 先尝试从本地存储恢复
         const storedUser = localStorage.getItem(USER_STORAGE_KEY);
         if (storedUser) {
-          setUser(JSON.parse(storedUser));
+          setUser(safeParseUser(storedUser));
         }
 
         // 然后从服务器验证
