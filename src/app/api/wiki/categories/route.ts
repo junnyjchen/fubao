@@ -23,11 +23,11 @@ export async function GET(request: NextRequest) {
 
     // Mock数据兜底 - 数据库不可用时返回
     const mockCategories = [
-      { id: 1, name: '符籙文化', slug: 'fuji', description: '道教符籙的種類與使用', article_count: 12, icon: '📜', sort_order: 1 },
-      { id: 2, name: '法器介紹', slug: 'faqi', description: '道教法器的種類與作用', article_count: 8, icon: '⚔️', sort_order: 2 },
-      { id: 3, name: '道教科儀', slug: 'yiyuan', description: '傳統道教科儀詳解', article_count: 15, icon: '🎭', sort_order: 3 },
-      { id: 4, name: '風水命理', slug: 'fengshui', description: '風水學說與命理推算', article_count: 20, icon: '🧭', sort_order: 4 },
-      { id: 5, name: '歷史傳承', slug: 'history', description: '道教歷史與傳承', article_count: 10, icon: '📚', sort_order: 5 },
+      { id: 1, name: '符籙文化', slug: 'fuji', description: '道教符籙的種類、使用方法與保存技巧', article_count: 15, icon: '📜', sort_order: 1 },
+      { id: 2, name: '法器介紹', slug: 'faqi', description: '道教法器的種類、功能與開光知識', article_count: 12, icon: '⚔️', sort_order: 2 },
+      { id: 3, name: '道教科儀', slug: 'yiyuan', description: '祈福、超度、驅邪等道教科儀詳解', article_count: 18, icon: '🎭', sort_order: 3 },
+      { id: 4, name: '風水命理', slug: 'fengshui', description: '家居風水、命理推算與環境調整', article_count: 20, icon: '🧭', sort_order: 4 },
+      { id: 5, name: '歷史傳承', slug: 'history', description: '道教歷史、神仙譜系與文化傳承', article_count: 10, icon: '📚', sort_order: 5 },
     ];
 
     if (error || !data || data.length === 0) {
@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
     // 发生错误时也返回mock数据
     return NextResponse.json({
       data: [
-        { id: 1, name: '符籙文化', slug: 'fuji', description: '道教符籙的種類與使用', article_count: 12, icon: '📜', sort_order: 1 },
-        { id: 2, name: '法器介紹', slug: 'faqi', description: '道教法器的種類與作用', article_count: 8, icon: '⚔️', sort_order: 2 },
-        { id: 3, name: '道教科儀', slug: 'yiyuan', description: '傳統道教科儀詳解', article_count: 15, icon: '🎭', sort_order: 3 },
-        { id: 4, name: '風水命理', slug: 'fengshui', description: '風水學說與命理推算', article_count: 20, icon: '🧭', sort_order: 4 },
-        { id: 5, name: '歷史傳承', slug: 'history', description: '道教歷史與傳承', article_count: 10, icon: '📚', sort_order: 5 },
+        { id: 1, name: '符籙文化', slug: 'fuji', description: '道教符籙的種類、使用方法與保存技巧', article_count: 15, icon: '📜', sort_order: 1 },
+        { id: 2, name: '法器介紹', slug: 'faqi', description: '道教法器的種類、功能與開光知識', article_count: 12, icon: '⚔️', sort_order: 2 },
+        { id: 3, name: '道教科儀', slug: 'yiyuan', description: '祈福、超度、驅邪等道教科儀詳解', article_count: 18, icon: '🎭', sort_order: 3 },
+        { id: 4, name: '風水命理', slug: 'fengshui', description: '家居風水、命理推算與環境調整', article_count: 20, icon: '🧭', sort_order: 4 },
+        { id: 5, name: '歷史傳承', slug: 'history', description: '道教歷史、神仙譜系與文化傳承', article_count: 10, icon: '📚', sort_order: 5 },
       ],
     });
   }
