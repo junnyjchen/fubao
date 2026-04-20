@@ -574,7 +574,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
         throw new Error('網絡請求失敗');
       }
 
-      const reader = response.body?.getReader();
+      const reader = response.body!.getReader();
       if (!reader) {
         throw new Error('無法讀取響應');
       }
