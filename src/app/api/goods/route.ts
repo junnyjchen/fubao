@@ -201,6 +201,22 @@ export async function GET(request: NextRequest) {
 function getMockGoods(limit: number) {
   const allGoods = [
     {
+      id: 0,
+      name: '免費平安符',
+      subtitle: '新手免費領取，道祖加持護平安',
+      main_image: 'https://images.unsplash.com/photo-1599707367072-cd6ada2bc375?w=400&h=400&fit=crop',
+      price: '0.00',
+      original_price: '99.00',
+      is_certified: true,
+      sales: 1523,
+      stock: 9999,
+      type: 1,
+      purpose: '平安',
+      is_free: true,
+      merchant: { id: 1, name: '符寶網官方', logo: null, certification_level: 3, rating: 5.0, total_sales: 5000 },
+      category: { id: 8, name: '符籙', slug: 'fujis' },
+    },
+    {
       id: 1,
       name: '太上老君護身符',
       subtitle: '正統道教開光，護佑平安',

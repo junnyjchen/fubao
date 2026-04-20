@@ -53,6 +53,7 @@ export function Header() {
     { href: '/', label: t.nav.home },
     { href: '/wiki', label: t.nav.baike },
     { href: '/shop', label: t.nav.shop },
+    { href: '/free', label: '免費領取', highlight: true, badge: 'NEW' },
     { href: '/video', label: t.nav.video },
     { href: '/shares', label: t.nav.ruyuan, icon: Camera, highlight: true },
     { href: '/news', label: t.nav.news },
