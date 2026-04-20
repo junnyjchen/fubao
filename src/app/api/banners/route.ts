@@ -29,12 +29,38 @@ export async function GET(request: Request) {
 
     const { data: banners, error } = await query;
 
-    if (error) {
-      // 如果表不存在，返回空数组
-      if (error.code === '42P01') {
-        return NextResponse.json({ data: [] });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // 如果数据库不可用或有错误，返回 mock 数据
+    if (error || !banners || banners.length === 0) {
+      const mockBanners = [
+        {
+          id: 1,
+          title: '符寶網上線優惠',
+          image: 'https://picsum.photos/1920/600?random=1',
+          link: '/shop',
+          position: 'home',
+          sort: 1,
+          status: true,
+        },
+        {
+          id: 2,
+          title: '道教文化科普',
+          image: 'https://picsum.photos/1920/600?random=2',
+          link: '/wiki',
+          position: 'home',
+          sort: 2,
+          status: true,
+        },
+        {
+          id: 3,
+          title: '會員專屬福利',
+          image: 'https://picsum.photos/1920/600?random=3',
+          link: '/user/vip',
+          position: 'home',
+          sort: 3,
+          status: true,
+        },
+      ];
+      return NextResponse.json({ data: position ? mockBanners.filter(b => b.position === position) : mockBanners });
     }
 
     // 过滤掉不在有效期内的轮播图
