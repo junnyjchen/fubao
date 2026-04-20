@@ -14,7 +14,7 @@ interface News {
   id: number;
   title: string;
   slug: string | null;
-  cover: string | null;
+  cover_image: string | null;
   summary: string | null;
   type: number;
   views: number;
@@ -102,9 +102,9 @@ export function NewsPage() {
                   <Link key={item.id} href={`/news/${item.slug || item.id}`}>
                     <Card className="group flex flex-col md:flex-row gap-4 p-4 hover:shadow-md transition-all duration-300">
                       <div className="relative w-full md:w-48 h-48 md:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-                        {item.cover ? (
+                        {item.cover_image ? (
                           <Image
-                            src={item.cover}
+                            src={item.cover_image}
                             alt={item.title}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-300"

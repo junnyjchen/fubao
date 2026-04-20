@@ -33,7 +33,8 @@ interface WikiArticle {
   content: string;
   cover_image: string | null;
   author: string;
-  view_count: number;
+  views: number;
+  view_count?: number;
   is_featured: boolean;
   tags: string[];
   created_at: string;
@@ -84,9 +85,10 @@ export function WikiArticlePage({ slug }: WikiArticlePageProps) {
         const articleData = data.data[0];
         setArticle(articleData);
 
-        // 加载相关文章
-        if (articleData.category_id) {
-          loadRelatedArticles(articleData.category_id, articleData.id);
+        // 加载相关文章 - 使用 category.id 而不是 category_id
+        const categoryId = articleData.category?.id || articleData.category_id;
+        if (categoryId) {
+          loadRelatedArticles(categoryId, articleData.id);
         }
 
         // 增加浏览量
@@ -272,7 +274,7 @@ export function WikiArticlePage({ slug }: WikiArticlePageProps) {
                     </span>
                     <span className="flex items-center gap-1">
                       <Eye className="w-4 h-4" />
-                      {article.view_count} 次閱讀
+                      {article.views || article.view_count} 次閱讀
                     </span>
                   </div>
                 </header>
@@ -330,7 +332,7 @@ export function WikiArticlePage({ slug }: WikiArticlePageProps) {
                           {related.title}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {related.view_count} 次閱讀
+                          {related.view_count || 0} 次閱讀
                         </p>
                       </Link>
                     ))}

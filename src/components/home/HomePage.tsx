@@ -58,7 +58,7 @@ interface News {
   id: number;
   title: string;
   slug: string | null;
-  cover: string | null;
+  cover_image: string | null;
   summary: string | null;
   type: number;
   views: number;
@@ -203,9 +203,9 @@ const NewsCard = memo(function NewsCard({ item, t }: { item: News; t: any }) {
     >
       <Card className="flex gap-4 p-4 hover:shadow-md transition-all duration-300 hover:-translate-y-1">
         <div className="relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
-          {item.cover ? (
+          {item.cover_image ? (
             <Image
-              src={item.cover}
+              src={item.cover_image}
               alt={item.title}
               fill
               sizes="96px"
