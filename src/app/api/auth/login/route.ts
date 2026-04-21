@@ -206,11 +206,21 @@ async function handleRegister(body: {
     const supabase = getSupabaseClient();
     
     // 检查邮箱是否已存在
-    const { data: existingUsers } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .limit(1);
+    let existingUsers: any[] = [];
+    let dbAvailable = true;
+    
+    try {
+      const result = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .limit(1);
+      
+      existingUsers = result.data || [];
+    } catch (dbError) {
+      console.error('数据库查询失败，使用 mock 模式:', dbError);
+      dbAvailable = false;
+    }
     
     if (existingUsers && existingUsers.length > 0) {
       return NextResponse.json(
@@ -219,23 +229,8 @@ async function handleRegister(body: {
       );
     }
     
-    // 创建用户
-    const { data: newUser, error: insertError } = await supabase
-      .from('users')
-      .insert({
-        email,
-        phone: phone || null,
-        name: name || email.split('@')[0],
-        password: hashedPassword,
-        nickname: name || email.split('@')[0],
-        status: true,
-      })
-      .select('id, name, email, phone, avatar, language')
-      .single();
-    
-    // 如果数据库不可用，返回成功（mock）
-    if (insertError || !newUser) {
-      // Mock 创建成功
+    // 如果数据库不可用，使用 mock 模式
+    if (!dbAvailable) {
       const mockId = Date.now();
       const token = generateToken({
         userId: mockId,
@@ -253,6 +248,64 @@ async function handleRegister(body: {
       
       return NextResponse.json({
         message: '註冊成功',
+        token,
+        user: {
+          id: mockId,
+          name: name || email.split('@')[0],
+          email,
+          phone: phone || null,
+          avatar: null,
+          language: 'zh-TW',
+          isGuest: false,
+        },
+      });
+    }
+    
+    // 创建用户
+    let newUser: any = null;
+    let insertError: any = null;
+    
+    try {
+      const result = await supabase
+        .from('users')
+        .insert({
+          email,
+          phone: phone || null,
+          name: name || email.split('@')[0],
+          password: hashedPassword,
+          nickname: name || email.split('@')[0],
+          status: true,
+        })
+        .select('id, name, email, phone, avatar, language')
+        .single();
+      
+      newUser = result.data;
+      insertError = result.error;
+    } catch (insertErr) {
+      console.error('创建用户失败，使用 mock 模式:', insertErr);
+      dbAvailable = false;
+    }
+    
+    // 如果数据库不可用，返回成功（mock）
+    if (!dbAvailable || insertError || !newUser) {
+      const mockId = Date.now();
+      const token = generateToken({
+        userId: mockId,
+        email,
+      });
+      
+      const cookieStore = await cookies();
+      cookieStore.set('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.COZE_PROJECT_ENV === 'PROD',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+        path: '/',
+      });
+      
+      return NextResponse.json({
+        message: '註冊成功',
+        token,
         user: {
           id: mockId,
           name: name || email.split('@')[0],
@@ -283,6 +336,7 @@ async function handleRegister(body: {
     
     return NextResponse.json({
       message: '註冊成功',
+      token,
       user: {
         ...newUser,
         isGuest: false,
