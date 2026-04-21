@@ -42,6 +42,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /** 本地存储键 */
 const USER_STORAGE_KEY = 'fubao_user';
+const TOKEN_STORAGE_KEY = 'fubao_token';
 
 /**
  * 安全解析用户数据
@@ -63,14 +64,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // 从本地存储获取 token
+        const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
+
         // 先尝试从本地存储恢复
         const storedUser = localStorage.getItem(USER_STORAGE_KEY);
         if (storedUser) {
           setUser(safeParseUser(storedUser));
         }
 
-        // 然后从服务器验证
-        const res = await fetch('/api/auth/me');
+        // 从服务器验证，使用 token
+        const headers: HeadersInit = {};
+        if (storedToken) {
+          headers['Authorization'] = `Bearer ${storedToken}`;
+        }
+
+        const res = await fetch('/api/auth/me', { headers });
         if (res.ok) {
           const data = await res.json();
           if (data.user) {
@@ -100,6 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json();
 
       if (data.user) {
+        // 保存 token
+        if (data.token) {
+          localStorage.setItem(TOKEN_STORAGE_KEY, data.token);
+        }
         setUser(data.user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
         return { success: true };
@@ -145,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem(USER_STORAGE_KEY);
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
   };
 

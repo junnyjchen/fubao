@@ -4,111 +4,111 @@
  * @module app/api/auth/me/route
  */
 
-import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import jwt from 'jsonwebtoken';
 
-/** 临时用户ID（开发环境使用） */
-const TEMP_USER_ID = 'guest-user-001';
+const JWT_SECRET = process.env.JWT_SECRET || 'fubao-ltd-jwt-secret-key-2024';
+
+/** Mock 用户数据 */
+const mockUsers: Record<number, any> = {
+  1: {
+    id: 1,
+    name: '測試用戶',
+    email: 'test@example.com',
+    phone: '0912345678',
+    status: true,
+    avatar: null,
+    language: 'zh-TW',
+  },
+  2: {
+    id: 2,
+    name: '演示用戶',
+    email: 'demo@example.com',
+    phone: '0923456789',
+    status: true,
+    avatar: null,
+    language: 'zh-TW',
+  },
+};
 
 /**
  * 获取当前用户信息
- * @returns 用户信息
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    // 优先从 Authorization Header 获取 token
+    const authHeader = request.headers.get('Authorization');
+    let token = authHeader?.replace('Bearer ', '');
 
-    // 尝试获取认证用户
-    const { data: { user: authUser }, error: authError } = await client.auth.getUser();
+    // 如果没有 header token，尝试从 cookie 获取
+    if (!token) {
+      const cookieStore = await cookies();
+      token = cookieStore.get('auth_token')?.value;
+    }
 
-    if (authError || !authUser) {
-      // 开发环境返回临时用户
-      if (process.env.NODE_ENV !== 'production') {
-        const { data: user } = await client
-          .from('users')
-          .select('*')
-          .eq('id', TEMP_USER_ID)
-          .single();
+    if (!token) {
+      // 没有登录，返回访客
+      return NextResponse.json({
+        user: {
+          id: 'guest-user-001',
+          email: 'guest@fubao.ltd',
+          name: '訪客用戶',
+          language: 'zh-TW',
+          isGuest: true,
+        },
+      });
+    }
 
-        if (!user) {
-          // 创建临时用户
-          await client.from('users').insert({
-            id: TEMP_USER_ID,
-            email: 'guest@fubao.ltd',
-            name: '訪客用戶',
-            language: 'zh-TW',
-            status: true,
-          });
-        }
-
+    try {
+      // 验证 JWT token
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
+      
+      // 查找 mock 用户
+      const mockUser = mockUsers[decoded.userId];
+      if (mockUser && mockUser.email === decoded.email) {
         return NextResponse.json({
           user: {
-            id: TEMP_USER_ID,
-            email: 'guest@fubao.ltd',
-            name: '訪客用戶',
-            language: 'zh-TW',
-            isGuest: true,
+            ...mockUser,
+            isGuest: false,
           },
         });
       }
 
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      // 使用 token 中的信息直接返回
+      return NextResponse.json({
+        user: {
+          id: decoded.userId,
+          email: decoded.email,
+          name: decoded.email.split('@')[0],
+          language: 'zh-TW',
+          isGuest: false,
+        },
+      });
+
+    } catch (jwtError) {
+      // Token 无效或过期
+      console.error('JWT 验证失败:', jwtError);
+      return NextResponse.json({
+        user: {
+          id: 'guest-user-001',
+          email: 'guest@fubao.ltd',
+          name: '訪客用戶',
+          language: 'zh-TW',
+          isGuest: true,
+        },
+      });
     }
-
-    // 获取用户详细信息
-    const { data: userInfo } = await client
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
-
-    return NextResponse.json({
-      user: {
-        ...userInfo,
-        email: authUser.email,
-        isGuest: false,
-      },
-    });
   } catch (error) {
     console.error('获取用户信息失败:', error);
-    return NextResponse.json({ error: '獲取用戶信息失敗' }, { status: 500 });
-  }
-}
-
-/**
- * 更新用户信息
- * @param request - 请求对象
- * @returns 更新结果
- */
-export async function PUT(request: Request) {
-  try {
-    const body = await request.json();
-    const client = getSupabaseClient();
-
-    const { data: { user: authUser } } = await client.auth.getUser();
-    const userId = authUser?.id || TEMP_USER_ID;
-
-    const updateData: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (body.name) updateData.name = body.name;
-    if (body.avatar) updateData.avatar = body.avatar;
-    if (body.language) updateData.language = body.language;
-    if (body.phone) updateData.phone = body.phone;
-
-    const { error } = await client
-      .from('users')
-      .update(updateData)
-      .eq('id', userId);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ message: '更新成功' });
-  } catch (error) {
-    console.error('更新用户信息失败:', error);
-    return NextResponse.json({ error: '更新失敗' }, { status: 500 });
+    return NextResponse.json({
+      user: {
+        id: 'guest-user-001',
+        email: 'guest@fubao.ltd',
+        name: '訪客用戶',
+        language: 'zh-TW',
+        isGuest: true,
+      },
+    });
   }
 }

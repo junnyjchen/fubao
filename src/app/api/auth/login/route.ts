@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
       const { password: _, ...userWithoutPassword } = mockUser;
       return NextResponse.json({
         message: '登錄成功',
+        token, // 返回 token 给前端使用
         user: {
           ...userWithoutPassword,
           isGuest: false,
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: '登錄成功',
+      token, // 返回 token 给前端使用
       user: {
         ...userWithoutPassword,
         isGuest: false,
