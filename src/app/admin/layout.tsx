@@ -113,37 +113,61 @@ export default function AdminRootLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [adminInfo, setAdminInfo] = useState<{ id: number; username: string; role: string } | null>(null);
+  const [adminInfo, setAdminInfo] = useState<{ id: number; username: string; role: string; name?: string; email?: string } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 获取管理员信息
   useEffect(() => {
     // 跳过登录页面
     if (pathname === '/admin/login') return;
+    if (!mounted) return;
 
     const fetchAdminInfo = async () => {
       try {
-        const res = await fetch('/api/admin/me');
+        // 从 localStorage 获取 token
+        const token = localStorage.getItem('admin_token');
+        const headers: HeadersInit = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const res = await fetch('/api/admin/me', { headers });
         const data = await res.json();
+        
         if (data.admin) {
           setAdminInfo(data.admin);
+          // 保存 token
+          if (data.token) {
+            localStorage.setItem('admin_token', data.token);
+          }
+        } else {
+          // 未登录，清除 token 并跳转
+          localStorage.removeItem('admin_token');
+          router.push('/admin/login');
         }
       } catch (error) {
         console.error('獲取管理員信息失敗:', error);
+        localStorage.removeItem('admin_token');
       }
     };
 
     fetchAdminInfo();
-  }, [pathname]);
+  }, [pathname, mounted, router]);
 
   // 登出
   const handleLogout = async () => {
     try {
       await fetch('/api/admin/login', { method: 'DELETE' });
+    } catch (error) {
+      console.error('退出登錄請求失敗:', error);
+    } finally {
+      localStorage.removeItem('admin_token');
       toast.success('已退出登錄');
       router.push('/admin/login');
-    } catch (error) {
-      console.error('退出登錄失敗:', error);
-      toast.error('退出失敗');
     }
   };
 

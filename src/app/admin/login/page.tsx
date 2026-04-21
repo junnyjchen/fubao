@@ -41,6 +41,10 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (data.admin) {
+        // 保存 token
+        if (data.token) {
+          localStorage.setItem('admin_token', data.token);
+        }
         toast.success('登錄成功');
         router.push('/admin');
       } else {
