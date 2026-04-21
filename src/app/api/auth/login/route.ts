@@ -11,12 +11,23 @@ import { compare } from 'bcryptjs';
 import { generateToken } from '@/lib/auth/utils';
 
 // Mock 用户数据（用于数据库不可用时）
+// 密码统一为: admin123
 const mockUsers = [
   {
     id: 1,
     name: '測試用戶',
     email: 'test@example.com',
     phone: '0912345678',
+    password: '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy',
+    status: true,
+    avatar: null,
+    language: 'zh-TW',
+  },
+  {
+    id: 2,
+    name: '演示用戶',
+    email: 'demo@example.com',
+    phone: '0923456789',
     password: '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy',
     status: true,
     avatar: null,
