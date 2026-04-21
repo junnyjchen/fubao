@@ -168,6 +168,32 @@ export async function GET(request: Request) {
         {} as Record<string, typeof data>
       );
 
+      // 如果没有数据，返回默认设置
+      if (Object.keys(groupedData).length === 0) {
+        const defaultGrouped = defaultSettings.reduce(
+          (acc, item) => {
+            const group = item.group || 'basic';
+            if (!acc[group]) {
+              acc[group] = [];
+            }
+            acc[group].push({
+              id: 0,
+              key: item.key,
+              value: item.value,
+              label: item.label,
+              type: item.type,
+              group: item.group,
+              options: item.options,
+              description: item.description,
+              sort: item.sort,
+            });
+            return acc;
+          },
+          {} as Record<string, typeof defaultSettings>
+        );
+        return NextResponse.json({ data: defaultGrouped });
+      }
+
       return NextResponse.json({ data: groupedData });
     }
   } catch (error) {

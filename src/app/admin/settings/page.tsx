@@ -73,9 +73,16 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/settings');
-      const data = await res.json();
-      if (data.data) {
-        setSettings(data.data);
+      const result = await res.json();
+      if (result.data) {
+        // 确保所有分组都存在
+        setSettings({
+          basic: result.data.basic || [],
+          payment: result.data.payment || [],
+          shipping: result.data.shipping || [],
+          notification: result.data.notification || [],
+          security: result.data.security || [],
+        });
       }
     } catch (error) {
       console.error('加载设置失败:', error);
@@ -87,7 +94,7 @@ export default function SettingsPage() {
   const handleValueChange = (group: keyof Settings, key: string, value: string) => {
     setSettings(prev => ({
       ...prev,
-      [group]: prev[group].map(item =>
+      [group]: (prev[group] || []).map(item =>
         item.key === key ? { ...item, value } : item
       ),
     }));
@@ -96,7 +103,8 @@ export default function SettingsPage() {
   const handleSave = async (group: keyof Settings) => {
     setSaving(true);
     try {
-      const updates = settings[group].map(item => ({
+      const groupSettings = settings[group] || [];
+      const updates = groupSettings.map(item => ({
         key: item.key,
         value: item.value,
       }));
@@ -295,7 +303,7 @@ export default function SettingsPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {settings[group].map((item, index) => (
+                    {(settings[group] || []).map((item, index) => (
                       <div key={item.key}>
                         {index > 0 && <Separator className="mb-6" />}
                         {renderField(item, group)}
