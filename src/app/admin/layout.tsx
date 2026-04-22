@@ -1,16 +1,17 @@
 /**
  * @fileoverview 管理后台布局
- * @description 管理后台独立布局，不包含前台导航
+ * @description 管理后台独立布局，不包含前台导航，支持权限控制
  * @module app/admin/layout
  */
 
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useAdminPermission, MENU_PERMISSION_MAP } from '@/lib/hooks/useAdminPermission';
 import {
   LayoutDashboard,
   Package,
@@ -54,6 +55,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   href: string;
   children?: NavItem[];
+  permission?: string; // 权限代码
 }
 
 /** 导航菜单配置 */
@@ -64,51 +66,54 @@ const navItems: NavItem[] = [
     label: '商品管理',
     icon: Package,
     href: '/admin/products',
+    permission: 'goods.view',
     children: [
-      { key: 'products-list', label: '商品列表', icon: Package, href: '/admin/products' },
-      { key: 'products-goods', label: '商品管理(舊)', icon: Package, href: '/admin/goods' },
-      { key: 'categories', label: '分類管理', icon: Package, href: '/admin/categories' },
+      { key: 'products-list', label: '商品列表', icon: Package, href: '/admin/products', permission: 'goods.view' },
+      { key: 'products-goods', label: '商品管理', icon: Package, href: '/admin/goods', permission: 'goods.view' },
+      { key: 'categories', label: '分類管理', icon: Package, href: '/admin/categories', permission: 'goods.view' },
     ],
   },
-  { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/admin/orders' },
-  { key: 'merchants', label: '商戶管理', icon: Store, href: '/admin/merchants' },
-  { key: 'merchant-applications', label: '商戶審核', icon: ClipboardCheck, href: '/admin/merchant-applications' },
-  { key: 'certificates', label: '證書管理', icon: Shield, href: '/admin/certificates' },
-  { key: 'coupons', label: '優惠券管理', icon: Ticket, href: '/admin/coupons' },
+  { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/admin/orders', permission: 'order.view' },
+  { key: 'merchants', label: '商戶管理', icon: Store, href: '/admin/merchants', permission: 'merchant.view' },
+  { key: 'merchant-applications', label: '商戶審核', icon: ClipboardCheck, href: '/admin/merchant-applications', permission: 'merchant.audit' },
+  { key: 'certificates', label: '證書管理', icon: Shield, href: '/admin/certificates', permission: 'content.view' },
+  { key: 'coupons', label: '優惠券管理', icon: Ticket, href: '/admin/coupons', permission: 'operation.coupon' },
   {
     key: 'content',
     label: '內容運營',
     icon: Palette,
     href: '/admin/content',
+    permission: 'content.view',
     children: [
-      { key: 'content', label: '內容管理', icon: FileText, href: '/admin/content' },
-      { key: 'banners', label: '輪播圖管理', icon: Image, href: '/admin/banners' },
-      { key: 'announcements', label: '公告管理', icon: Bell, href: '/admin/announcements' },
-      { key: 'wiki', label: '百科管理', icon: FileText, href: '/admin/wiki' },
-      { key: 'videos', label: '視頻管理', icon: FileText, href: '/admin/videos' },
-      { key: 'news', label: '新聞管理', icon: FileText, href: '/admin/news' },
-      { key: 'ai-content', label: 'AI內容生成', icon: FileText, href: '/admin/ai-content' },
-      { key: 'ai-training', label: 'AI訓練中心', icon: Brain, href: '/admin/ai-training' },
-      { key: 'ai-assistant', label: 'AI助手', icon: MessageSquare, href: '/admin/ai-assistant' },
+      { key: 'content', label: '內容管理', icon: FileText, href: '/admin/content', permission: 'content.view' },
+      { key: 'banners', label: '輪播圖管理', icon: Image, href: '/admin/banners', permission: 'operation.banner' },
+      { key: 'announcements', label: '公告管理', icon: Bell, href: '/admin/announcements', permission: 'operation.banner' },
+      { key: 'wiki', label: '百科管理', icon: FileText, href: '/admin/wiki', permission: 'content.wiki' },
+      { key: 'videos', label: '視頻管理', icon: FileText, href: '/admin/videos', permission: 'content.video' },
+      { key: 'news', label: '新聞管理', icon: FileText, href: '/admin/news', permission: 'content.news' },
+      { key: 'ai-content', label: 'AI內容生成', icon: FileText, href: '/admin/ai-content', permission: 'content.news' },
+      { key: 'ai-training', label: 'AI訓練中心', icon: Brain, href: '/admin/ai-training', permission: 'system.settings' },
+      { key: 'ai-assistant', label: 'AI助手', icon: MessageSquare, href: '/admin/ai-assistant', permission: 'content.view' },
     ],
   },
-  { key: 'page-builder', label: '頁面裝修', icon: Palette, href: '/admin/page-builder' },
-  { key: 'tickets', label: '客服工單', icon: MessageSquare, href: '/admin/tickets' },
-  { key: 'feedback', label: '反饋管理', icon: MessageSquare, href: '/admin/feedback' },
-  { key: 'distribution', label: '分銷管理', icon: TrendingUp, href: '/admin/distribution' },
-  { key: 'withdrawals', label: '提現審核', icon: Wallet, href: '/admin/withdrawals' },
-  { key: 'users', label: '用戶管理', icon: Users, href: '/admin/users' },
-  { key: 'finance', label: '財務管理', icon: Wallet, href: '/admin/finance' },
-  { key: 'database', label: '數據管理', icon: Database, href: '/admin/database' },
+  { key: 'page-builder', label: '頁面裝修', icon: Palette, href: '/admin/page-builder', permission: 'operation.page' },
+  { key: 'tickets', label: '客服工單', icon: MessageSquare, href: '/admin/tickets', permission: 'order.view' },
+  { key: 'feedback', label: '反饋管理', icon: MessageSquare, href: '/admin/feedback', permission: 'user.view' },
+  { key: 'distribution', label: '分銷管理', icon: TrendingUp, href: '/admin/distribution', permission: 'data.stats' },
+  { key: 'withdrawals', label: '提現審核', icon: Wallet, href: '/admin/withdrawals', permission: 'data.stats' },
+  { key: 'users', label: '用戶管理', icon: Users, href: '/admin/users', permission: 'user.view' },
+  { key: 'finance', label: '財務管理', icon: Wallet, href: '/admin/finance', permission: 'data.stats' },
+  { key: 'database', label: '數據管理', icon: Database, href: '/admin/database', permission: 'system.settings' },
   {
     key: 'system',
     label: '系統管理',
     icon: Settings,
     href: '/admin/settings',
+    permission: 'system.settings',
     children: [
-      { key: 'settings', label: '系統設置', icon: Settings, href: '/admin/settings' },
-      { key: 'roles', label: '角色管理', icon: Shield, href: '/admin/roles' },
-      { key: 'admins', label: '管理員管理', icon: Users, href: '/admin/admins' },
+      { key: 'settings', label: '系統設置', icon: Settings, href: '/admin/settings', permission: 'system.settings' },
+      { key: 'roles', label: '角色管理', icon: Shield, href: '/admin/roles', permission: 'system.roles' },
+      { key: 'admins', label: '管理員管理', icon: Users, href: '/admin/admins', permission: 'system.admins' },
     ],
   },
 ];
@@ -123,7 +128,14 @@ export default function AdminRootLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [adminInfo, setAdminInfo] = useState<{ id: number; username: string; role: string; name?: string; email?: string } | null>(null);
+  const [adminInfo, setAdminInfo] = useState<{
+    id: number;
+    username: string;
+    role: { id: number; name: string; code: string };
+    permissions: string[];
+    name?: string;
+    email?: string;
+  } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -167,6 +179,45 @@ export default function AdminRootLayout({
 
     fetchAdminInfo();
   }, [pathname, mounted, router]);
+
+  // 权限验证 hook
+  const { hasPermission, isSuperAdmin } = useAdminPermission();
+
+  // 根据权限过滤菜单
+  const filteredNavItems = useMemo(() => {
+    const filterItems = (items: NavItem[]): NavItem[] => {
+      return items
+        .map(item => {
+          // 如果有子菜单，先过滤子菜单
+          if (item.children) {
+            const filteredChildren = filterItems(item.children);
+            // 如果所有子菜单都被过滤掉，且父菜单没有权限，则不显示
+            if (filteredChildren.length === 0 && item.permission && !hasPermission(item.permission, adminInfo)) {
+              return null;
+            }
+            return {
+              ...item,
+              children: filteredChildren,
+            };
+          }
+          
+          // 如果没有权限，隐藏菜单
+          if (item.permission && !hasPermission(item.permission, adminInfo)) {
+            return null;
+          }
+          
+          return item;
+        })
+        .filter((item): item is NavItem => item !== null);
+    };
+
+    // 超级管理员显示所有菜单
+    if (isSuperAdmin(adminInfo)) {
+      return navItems;
+    }
+
+    return filterItems(navItems);
+  }, [adminInfo, hasPermission, isSuperAdmin]);
 
   // 登出
   const handleLogout = async () => {
@@ -271,7 +322,7 @@ export default function AdminRootLayout({
 
         {/* 导航菜单 */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => renderNavItem(item))}
+          {filteredNavItems.map((item) => renderNavItem(item))}
         </nav>
 
         {/* 折叠按钮 */}
@@ -312,7 +363,7 @@ export default function AdminRootLayout({
               </Button>
             </div>
             <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100%-4rem)]">
-              {navItems.map((item) => renderNavItem(item))}
+              {filteredNavItems.map((item) => renderNavItem(item))}
             </nav>
           </aside>
         </div>
@@ -360,10 +411,15 @@ export default function AdminRootLayout({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>
                   <div className="flex flex-col gap-1">
-                    <span>{adminInfo?.username || '管理員'}</span>
+                    <span>{adminInfo?.name || adminInfo?.username || '管理員'}</span>
                     <span className="text-xs font-normal text-muted-foreground">
-                      {adminInfo?.role === 'super_admin' ? '超級管理員' : '管理員'}
+                      {adminInfo?.role?.code === 'super_admin' ? '超級管理員' : adminInfo?.role?.name || '管理員'}
                     </span>
+                    {adminInfo?.permissions && adminInfo.permissions.length > 0 && adminInfo.permissions[0] !== '*' && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        許可權：{adminInfo.permissions.length} 項
+                      </span>
+                    )}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

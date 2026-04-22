@@ -234,6 +234,21 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: '未授權' }, { status: 401 });
     }
 
+    // 验证 token 并检查权限
+    const jwt = require('jsonwebtoken');
+    let payload: any;
+    try {
+      payload = jwt.verify(authHeader.replace('Bearer ', ''), 'fubao-ltd-jwt-secret-key-2024-admin');
+    } catch {
+      return NextResponse.json({ error: 'token無效' }, { status: 401 });
+    }
+
+    // 检查权限（超级管理员或系统设置权限）
+    const permissions = payload.permissions || [];
+    if (!permissions.includes('*') && !permissions.includes('system.settings')) {
+      return NextResponse.json({ error: '沒有許可權' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { group, settings: updates } = body;
 
