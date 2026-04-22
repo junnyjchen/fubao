@@ -95,7 +95,7 @@ export default function GoodsManagePage() {
         params.set('status', statusFilter);
       }
 
-      const res = await fetch(`/api/goods?${params}`);
+      const res = await fetch(`/api/admin/goods?${params}`);
       const data = await res.json();
 
       setGoods(data.data || []);
@@ -114,10 +114,10 @@ export default function GoodsManagePage() {
 
   const handleToggleStatus = async (id: number, currentStatus: boolean) => {
     try {
-      const res = await fetch(`/api/goods/${id}`, {
+      const res = await fetch(`/api/admin/goods/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: !currentStatus }),
+        body: JSON.stringify({ status: currentStatus ? 'inactive' : 'active' }),
       });
 
       const data = await res.json();
@@ -135,7 +135,7 @@ export default function GoodsManagePage() {
     if (!confirm('確定要刪除此商品嗎？')) return;
 
     try {
-      const res = await fetch(`/api/goods/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/goods/${id}`, { method: 'DELETE' });
       const data = await res.json();
       
       if (data.message) {
