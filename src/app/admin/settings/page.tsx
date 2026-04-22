@@ -109,17 +109,24 @@ export default function SettingsPage() {
         value: item.value,
       }));
 
+      // 获取管理员 token
+      const token = localStorage.getItem('admin_token');
+
       const res = await fetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ group, settings: updates }),
       });
 
       const data = await res.json();
+      console.log('保存设置响应:', data);
       if (data.message) {
         toast({
           title: '保存成功',
-          description: '設置已更新',
+          description: data.mock ? '設置已更新（本地模式）' : '設置已更新',
         });
       } else if (data.error) {
         toast({
