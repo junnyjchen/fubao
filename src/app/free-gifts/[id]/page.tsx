@@ -860,4 +860,3 @@ function FreeGiftDetailContent({ params }: PageProps) {
     </>
   );
 }
-}

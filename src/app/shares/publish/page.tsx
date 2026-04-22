@@ -426,4 +426,3 @@ function SharePublishContent() {
     </div>
   );
 }
-}

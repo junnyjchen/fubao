@@ -491,4 +491,3 @@ function DistributionCenterContent() {
     </div>
   );
 }
-}
