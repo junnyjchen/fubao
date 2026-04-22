@@ -100,7 +100,17 @@ const navItems: NavItem[] = [
   { key: 'users', label: '用戶管理', icon: Users, href: '/admin/users' },
   { key: 'finance', label: '財務管理', icon: Wallet, href: '/admin/finance' },
   { key: 'database', label: '數據管理', icon: Database, href: '/admin/database' },
-  { key: 'settings', label: '系統設置', icon: Settings, href: '/admin/settings' },
+  {
+    key: 'system',
+    label: '系統管理',
+    icon: Settings,
+    href: '/admin/settings',
+    children: [
+      { key: 'settings', label: '系統設置', icon: Settings, href: '/admin/settings' },
+      { key: 'roles', label: '角色管理', icon: Shield, href: '/admin/roles' },
+      { key: 'admins', label: '管理員管理', icon: Users, href: '/admin/admins' },
+    ],
+  },
 ];
 
 export default function AdminRootLayout({
