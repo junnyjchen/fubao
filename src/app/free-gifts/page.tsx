@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import {
   Gift,
   Truck,
@@ -75,6 +76,14 @@ interface FreeGift {
 type FilterType = 'all' | 'hot' | 'ending_soon' | 'new_user';
 
 export default function FreeGiftsPage() {
+  return (
+    <RequireAuth>
+      <FreeGiftsContent />
+    </RequireAuth>
+  );
+}
+
+function FreeGiftsContent() {
   const [gifts, setGifts] = useState<FreeGift[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -513,4 +522,5 @@ export default function FreeGiftsPage() {
       />
     </div>
   );
+}
 }

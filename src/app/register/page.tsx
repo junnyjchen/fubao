@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { GuestGuard } from '@/components/auth/GuestGuard';
 import {
   Eye,
   EyeOff,
@@ -499,12 +500,14 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    }>
-      <RegisterForm />
-    </Suspense>
+    <GuestGuard redirectTo="/">
+      <Suspense fallback={
+        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      }>
+        <RegisterForm />
+      </Suspense>
+    </GuestGuard>
   );
 }

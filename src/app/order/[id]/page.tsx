@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import {
   ArrowLeft,
   ArrowRight,
@@ -408,14 +409,16 @@ function OrderDetailContent() {
 
 export default function OrderDetailPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      }
-    >
-      <OrderDetailContent />
-    </Suspense>
+    <RequireAuth>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }
+      >
+        <OrderDetailContent />
+      </Suspense>
+    </RequireAuth>
   );
 }

@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import {
   Select,
   SelectContent,
@@ -59,6 +60,14 @@ interface Order {
 }
 
 export default function SharePublishPage() {
+  return (
+    <RequireAuth>
+      <SharePublishContent />
+    </RequireAuth>
+  );
+}
+
+function SharePublishContent() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -416,4 +425,5 @@ export default function SharePublishPage() {
       </Dialog>
     </div>
   );
+}
 }

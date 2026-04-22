@@ -11,7 +11,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/auth/context';
-import { AuthDialog } from '@/components/auth/AuthDialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -67,7 +66,6 @@ export function MerchantLayout({ children, title, description }: MerchantLayoutP
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading, logout } = useAuth();
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [merchantInfo, setMerchantInfo] = useState<{
     id: number;
     name: string;
@@ -75,15 +73,18 @@ export function MerchantLayout({ children, title, description }: MerchantLayoutP
     status: boolean;
   } | null>(null);
 
-  // 检查用户登录状态
+  // 检查用户登录状态并重定向
   useEffect(() => {
     if (!loading && !user) {
-      setShowAuthDialog(true);
+      // 未登录，重定向到登录页面
+      const currentPath = window.location.pathname;
+      const encodedPath = encodeURIComponent(currentPath);
+      router.push(`/login?redirect=${encodedPath}`);
     } else if (user) {
       // 加载商户信息
       loadMerchantInfo();
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
   const loadMerchantInfo = async () => {
     try {
@@ -272,9 +273,6 @@ export function MerchantLayout({ children, title, description }: MerchantLayoutP
           </main>
         </div>
       </div>
-
-      {/* Auth Dialog */}
-      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
     </>
   );
 }

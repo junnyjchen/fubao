@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import {
   Dialog,
   DialogContent,
@@ -86,6 +87,14 @@ interface PageProps {
 }
 
 export default function FreeGiftDetailPage({ params }: PageProps) {
+  return (
+    <RequireAuth>
+      <FreeGiftDetailContent params={params} />
+    </RequireAuth>
+  );
+}
+
+function FreeGiftDetailContent({ params }: PageProps) {
   const router = useRouter();
   const { id } = use(params);
   
@@ -850,4 +859,5 @@ export default function FreeGiftDetailPage({ params }: PageProps) {
       <CustomerService variant="fab" />
     </>
   );
+}
 }

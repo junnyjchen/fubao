@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import { useI18n } from '@/lib/i18n';
 import {
   MapPin,
@@ -541,14 +542,16 @@ function CheckoutPageContent() {
 
 export default function CheckoutPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      }
-    >
-      <CheckoutPageContent />
-    </Suspense>
+    <RequireAuth>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        }
+      >
+        <CheckoutPageContent />
+      </Suspense>
+    </RequireAuth>
   );
 }

@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import {
   Dialog,
   DialogContent,
@@ -64,6 +65,14 @@ interface DistributionData {
 }
 
 export default function DistributionCenterPage() {
+  return (
+    <RequireAuth>
+      <DistributionCenterContent />
+    </RequireAuth>
+  );
+}
+
+function DistributionCenterContent() {
   const router = useRouter();
   const { t, isRTL } = useI18n();
   const d = t.distribution;
@@ -481,4 +490,5 @@ export default function DistributionCenterPage() {
       </Dialog>
     </div>
   );
+}
 }
