@@ -147,6 +147,19 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
+        let isClosed = false;
+
+        // 安全地发送数据
+        const safeEnqueue = (data: string) => {
+          if (!isClosed) {
+            try {
+              controller.enqueue(encoder.encode(data));
+            } catch (e) {
+              console.error('发送数据失败:', e);
+              isClosed = true;
+            }
+          }
+        };
 
         try {
           const llmStream = client.stream(llmMessages, {
@@ -158,19 +171,23 @@ export async function POST(request: NextRequest) {
             if (chunk.content) {
               const text = chunk.content.toString();
               // SSE格式发送数据
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: text })}\n\n`));
+              safeEnqueue(`data: ${JSON.stringify({ content: text })}\n\n`);
             }
           }
 
           // 发送结束标记
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
+          safeEnqueue('data: [DONE]\n\n');
+          if (!isClosed) {
+            controller.close();
+            isClosed = true;
+          }
         } catch (error) {
           console.error('AI流式输出错误:', error);
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ error: 'AI服務暫時不可用' })}\n\n`)
-          );
-          controller.close();
+          safeEnqueue(`data: ${JSON.stringify({ error: 'AI服務暫時不可用' })}\n\n`);
+          if (!isClosed) {
+            controller.close();
+            isClosed = true;
+          }
         }
       },
     });
