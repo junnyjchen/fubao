@@ -75,6 +75,18 @@ export async function GET(request: NextRequest) {
       }
     } catch (dbErr) {
       console.error('数据库查询失败，使用 token 数据:', dbErr);
+      // 数据库不可用时，使用 token 中的数据
+    }
+
+    // 如果数据库没有返回数据，但 token 有效，使用 token 中的数据
+    if (!admin) {
+      admin = {
+        id: payload.adminId,
+        username: payload.username,
+        name: payload.username,
+        role_id: payload.roleId,
+      };
+      role = roleInfo[payload.roleId] || { name: '未知角色', code: 'unknown' };
     }
 
     // 获取权限

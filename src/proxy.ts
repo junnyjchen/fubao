@@ -1,7 +1,8 @@
 /**
- * @fileoverview 管理后台访问控制代理
- * @description 简化版本：只检查是否有 admin_token cookie存在，不做严格验证
- * 真正的验证在 API 层和前端完成
+ * @fileoverview 全局代理/中间件
+ * @description 
+ * 1. 为服务端组件提供 pathname 信息
+ * 2. 管理后台访问控制
  * @module proxy
  */
 
@@ -9,12 +10,22 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  
+  // 创建响应
+  const response = pathname.startsWith('/admin') 
+    ? handleAdminAccess(request, pathname)
+    : NextResponse.next();
+  
+  // 为所有响应添加 pathname header（供服务端组件使用）
+  response.headers.set('x-pathname', pathname);
+  
+  return response;
+}
 
-  // 只处理 /admin 路径
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next();
-  }
-
+/**
+ * 处理管理后台访问控制
+ */
+function handleAdminAccess(request: NextRequest, pathname: string) {
   // 登录页面不需要验证
   if (pathname === '/admin/login') {
     return NextResponse.next();
@@ -33,12 +44,11 @@ export default async function proxy(request: NextRequest) {
   }
 
   // Token 存在，继续请求
-  // 真正的验证在 API 层完成
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/admin/:path*',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };

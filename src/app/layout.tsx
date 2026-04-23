@@ -132,10 +132,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 检测是否是管理后台路径
+  // 检测是否是管理后台路径 - 使用 headers 获取 pathname
   const headersList = await headers();
   const pathname = headersList.get('x-pathname') || '';
-  const isAdmin = pathname.startsWith('/admin') || pathname.startsWith('/merchant') || pathname.startsWith('/user');
+  
+  // 排除管理后台、商户后台和用户后台路径
+  const isExcludedPath = 
+    pathname.startsWith('/admin') || 
+    pathname.startsWith('/merchant') || 
+    pathname.startsWith('/user');
 
   return (
     <html lang="zh-TW" suppressHydrationWarning>
@@ -185,11 +190,11 @@ export default async function RootLayout({
       </head>
       <body className="antialiased min-h-screen flex flex-col">
         <Providers>
-          {!isAdmin && <Header />}
+          {!isExcludedPath && <Header />}
           <main className="flex-1 pb-16 md:pb-0">{children}</main>
-          {!isAdmin && <Footer />}
-          {!isAdmin && <FloatingAIButton />}
-          {!isAdmin && <MobileNav />}
+          {!isExcludedPath && <Footer />}
+          {!isExcludedPath && <FloatingAIButton />}
+          {!isExcludedPath && <MobileNav />}
         </Providers>
       </body>
     </html>
