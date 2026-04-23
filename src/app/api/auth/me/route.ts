@@ -7,30 +7,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { mockUsers } from '@/lib/auth/mockStore';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-ltd-jwt-secret-key-2024';
-
-/** Mock 用户数据 */
-const mockUsers: Record<number, any> = {
-  1: {
-    id: 1,
-    name: '測試用戶',
-    email: 'test@example.com',
-    phone: '0912345678',
-    status: true,
-    avatar: null,
-    language: 'zh-TW',
-  },
-  2: {
-    id: 2,
-    name: '演示用戶',
-    email: 'demo@example.com',
-    phone: '0923456789',
-    status: true,
-    avatar: null,
-    language: 'zh-TW',
-  },
-};
 
 /**
  * 获取当前用户信息
@@ -64,12 +43,13 @@ export async function GET(request: NextRequest) {
       // 验证 JWT token
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
       
-      // 查找 mock 用户
-      const mockUser = mockUsers[decoded.userId];
-      if (mockUser && mockUser.email === decoded.email) {
+      // 使用 mockStore 查找用户
+      const mockUser = mockUsers.find(decoded.email);
+      if (mockUser) {
+        const { password: _, ...userWithoutPassword } = mockUser;
         return NextResponse.json({
           user: {
-            ...mockUser,
+            ...userWithoutPassword,
             isGuest: false,
           },
         });
