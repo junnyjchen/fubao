@@ -137,6 +137,16 @@ function LoginPageContent() {
       const data = await res.json();
 
       if (data.user) {
+        // 保存 token 和用户信息到 localStorage
+        if (data.token) {
+          localStorage.setItem('fubao_token', data.token);
+        }
+        localStorage.setItem('fubao_user', JSON.stringify(data.user));
+        
+        // 触发 auth context 更新
+        window.dispatchEvent(new Event('storage'));
+        
+        // 跳转到目标页面
         router.push(redirectParam);
       } else {
         setError(data.error || t.login.loginFailed);
