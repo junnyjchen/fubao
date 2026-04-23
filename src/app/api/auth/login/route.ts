@@ -9,31 +9,7 @@ import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { compare } from 'bcryptjs';
 import { generateToken } from '@/lib/auth/utils';
-
-// Mock 用户数据（用于数据库不可用时）
-// 密码统一为: admin123
-const mockUsers = [
-  {
-    id: 1,
-    name: '測試用戶',
-    email: 'test@example.com',
-    phone: '0912345678',
-    password: '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy',
-    status: true,
-    avatar: null,
-    language: 'zh-TW',
-  },
-  {
-    id: 2,
-    name: '演示用戶',
-    email: 'demo@example.com',
-    phone: '0923456789',
-    password: '$2b$10$MBVN7lKa4gP/htlqZP.rN.G0qrqlpx9HAbVX9y/dhK.tD4QMfVvRy',
-    status: true,
-    avatar: null,
-    language: 'zh-TW',
-  },
-];
+import { mockUsers } from '@/lib/auth/mockStore';
 
 /**
  * 用户登录
@@ -73,10 +49,8 @@ export async function POST(request: NextRequest) {
 
     // 如果数据库不可用或查询失败，使用 mock 数据
     if (fetchError || !users || users.length === 0) {
-      // 尝试 mock 数据
-      const mockUser = mockUsers.find(u => 
-        (email && u.email === email) || (phone && u.phone === phone)
-      );
+      // 尝试从 mock 用户存储中查找
+      const mockUser = mockUsers.find(email, phone);
       
       if (!mockUser) {
         return NextResponse.json(
@@ -85,7 +59,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // 验证 mock 密码
+      // 验证 mock 用户密码
       const isValidPassword = await compare(password, mockUser.password);
       if (!isValidPassword) {
         return NextResponse.json(
@@ -94,7 +68,7 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // 生成 mock JWT
+      // 生成 JWT
       const token = generateToken({
         userId: mockUser.id,
         email: mockUser.email,

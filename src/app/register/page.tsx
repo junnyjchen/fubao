@@ -187,10 +187,26 @@ function RegisterForm() {
       if (data.user || data.message) {
         // 注册成功
         setStep(3);
-        // 3秒后跳转到登录页
-        setTimeout(() => {
-          router.push('/login');
-        }, 3000);
+        
+        // 如果返回了 token，直接登录
+        if (data.token && data.user) {
+          // 保存 token 到 localStorage（使用 auth context 相同的键）
+          localStorage.setItem('fubao_token', data.token);
+          localStorage.setItem('fubao_user', JSON.stringify(data.user));
+          
+          // 触发 auth context 更新
+          window.dispatchEvent(new Event('storage'));
+          
+          // 2秒后跳转到首页
+          setTimeout(() => {
+            router.push('/');
+          }, 2000);
+        } else {
+          // 没有返回 token，3秒后跳转到登录页
+          setTimeout(() => {
+            router.push('/login');
+          }, 3000);
+        }
       } else {
         setError(data.error || t.register.registerFailed);
       }

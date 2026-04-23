@@ -7,6 +7,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { hash } from 'bcryptjs';
+import { generateToken } from '@/lib/auth/utils';
+import { cookies } from 'next/headers';
+import { mockUsers } from '@/lib/auth/mockStore';
 
 /**
  * 生成随机邀请码
@@ -57,11 +60,18 @@ export async function POST(request: NextRequest) {
     const client = getSupabaseClient();
 
     // 检查邮箱是否已注册
-    const { data: existingUser } = await client
-      .from('users')
-      .select('id')
-      .eq('email', email)
-      .single();
+    let existingUser = null;
+    try {
+      const { data } = await client
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single();
+      existingUser = data;
+    } catch {
+      // 数据库不可用，检查 mock 存储
+      existingUser = mockUsers.existsByEmail(email);
+    }
 
     if (existingUser) {
       return NextResponse.json(
@@ -73,30 +83,47 @@ export async function POST(request: NextRequest) {
     // 加密密码
     const hashedPassword = await hash(password, 10);
 
-    // 创建用户 - 字段名与数据库schema匹配
-    const { data: user, error } = await client
-      .from('users')
-      .insert({
-        name: nickname || name || email.split('@')[0], // 支持nickname和name
+    let user: any = null;
+    let isMockMode = false;
+
+    // 尝试创建用户到数据库
+    try {
+      const { data, error } = await client
+        .from('users')
+        .insert({
+          name: nickname || name || email.split('@')[0], // 支持nickname和name
+          email,
+          phone: phone || null,
+          password: hashedPassword,
+          language: 'zh-TW',
+          status: true,
+        })
+        .select('id, name, email, phone, language, status, created_at')
+        .single();
+
+      if (!error && data) {
+        user = data;
+      } else {
+        // 数据库插入失败，使用 mock 模式
+        throw new Error('Database insert failed');
+      }
+    } catch (dbErr) {
+      console.log('数据库不可用，使用本地 mock 模式注册');
+      isMockMode = true;
+      
+      // 使用 mock 模式创建用户
+      const mockId = mockUsers.getNextId();
+      user = mockUsers.add({
+        id: mockId,
+        name: nickname || name || email.split('@')[0],
         email,
         phone: phone || null,
         password: hashedPassword,
-        language: 'zh-TW',
-        status: true,
-      })
-      .select('id, name, email, phone, language, status, created_at')
-      .single();
-
-    if (error) {
-      console.error('创建用户失败:', error);
-      return NextResponse.json(
-        { error: '註冊失敗，請稍後重試' },
-        { status: 500 }
-      );
+      });
     }
 
-    // 处理邀请码，建立分销关系
-    if (invite_code && user) {
+    // 处理邀请码，建立分销关系（仅在非 mock 模式下）
+    if (invite_code && user && !isMockMode) {
       try {
         // 查找邀请人
         const { data: inviter } = await client
@@ -187,6 +214,34 @@ export async function POST(request: NextRequest) {
       } catch (distError) {
         console.error('创建分销信息失败:', distError);
       }
+    }
+
+    // 如果是 mock 模式，自动登录
+    if (isMockMode) {
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+      });
+      
+      // 设置 Cookie
+      const cookieStore = await cookies();
+      cookieStore.set('auth_token', token, {
+        httpOnly: true,
+        secure: process.env.COZE_PROJECT_ENV === 'PROD',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+        path: '/',
+      });
+      
+      return NextResponse.json({
+        message: '註冊成功',
+        mock: true,
+        token,
+        user: {
+          ...user,
+          isGuest: false,
+        },
+      });
     }
 
     return NextResponse.json({
