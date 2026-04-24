@@ -1,0 +1,379 @@
+<?php
+/**
+ * 路由配置
+ */
+
+use think\Request;
+
+// 解析请求路径和方法
+$request = Request::instance();
+$path = $request->path();
+$method = $request->method();
+
+// 移除前后斜杠
+$path = trim($path, '/');
+
+// 路由映射
+$routers = [
+    // ========== 健康检查 ==========
+    'api/health' => ['app\controller\Health::index', ['GET']],
+    
+    // ========== 会员认证 ==========
+    'api/auth/login' => ['app\controller\Auth::login', ['POST']],
+    'api/auth/register' => ['app\controller\Auth::register', ['POST']],
+    'api/auth/me' => ['app\controller\Auth::me', ['GET']],
+    'api/auth/logout' => ['app\controller\Auth::logout', ['POST']],
+    'api/auth/sendCode' => ['app\controller\Auth::sendCode', ['POST']],
+    'api/auth/loginByPhone' => ['app\controller\Auth::loginByPhone', ['POST']],
+    
+    // ========== 管理员认证 ==========
+    'api/admin/login' => ['app\controller\Admin::login', ['POST']],
+    'api/admin/logout' => ['app\controller\Admin::logout', ['POST']],
+    'api/admin/me' => ['app\controller\Admin::me', ['GET']],
+    'api/admin/changePassword' => ['app\controller\Admin::changePassword', ['POST']],
+    
+    // ========== 管理员 - 用户管理 ==========
+    'api/admin/users' => ['app\controller\admin\User::index', ['GET']],
+    'api/admin/users/detail' => ['app\controller\admin\User::detail', ['GET']],
+    'api/admin/users/updateStatus' => ['app\controller\admin\User::updateStatus', ['POST']],
+    'api/admin/users/delete' => ['app\controller\admin\User::delete', ['POST']],
+    
+    // ========== 管理员 - 商品管理 ==========
+    'api/admin/goods' => ['app\controller\admin\Goods::index', ['GET']],
+    'api/admin/goods/create' => ['app\controller\admin\Goods::create', ['POST']],
+    'api/admin/goods/update' => ['app\controller\admin\Goods::update', ['POST']],
+    'api/admin/goods/delete' => ['app\controller\admin\Goods::delete', ['POST']],
+    
+    // ========== 管理员 - 分类管理 ==========
+    'api/admin/categories' => ['app\controller\admin\Category::index', ['GET']],
+    'api/admin/categories/create' => ['app\controller\admin\Category::create', ['POST']],
+    'api/admin/categories/update' => ['app\controller\admin\Category::update', ['POST']],
+    'api/admin/categories/delete' => ['app\controller\admin\Category::delete', ['POST']],
+    
+    // ========== 管理员 - 订单管理 ==========
+    'api/admin/orders' => ['app\controller\admin\Order::index', ['GET']],
+    'api/admin/orders/detail' => ['app\controller\admin\Order::detail', ['GET']],
+    'api/admin/orders/updateStatus' => ['app\controller\admin\Order::updateStatus', ['POST']],
+    'api/admin/orders/export' => ['app\controller\admin\Order::export', ['GET']],
+    
+    // ========== 管理员 - Banner管理 ==========
+    'api/admin/banners' => ['app\controller\admin\Banner::index', ['GET']],
+    'api/admin/banners/create' => ['app\controller\admin\Banner::create', ['POST']],
+    'api/admin/banners/update' => ['app\controller\admin\Banner::update', ['POST']],
+    'api/admin/banners/delete' => ['app\controller\admin\Banner::delete', ['POST']],
+    
+    // ========== 管理员 - 统计 ==========
+    'api/admin/dashboard' => ['app\controller\admin\Dashboard::index', ['GET']],
+    'api/admin/dashboard/sales' => ['app\controller\admin\Dashboard::sales', ['GET']],
+    'api/admin/dashboard/goodsRanking' => ['app\controller\admin\Dashboard::goodsRanking', ['GET']],
+    'api/admin/dashboard/users' => ['app\controller\admin\Dashboard::users', ['GET']],
+    
+    // ========== 管理员 - 管理员管理 ==========
+    'api/admin/admins' => ['app\controller\Admin::list', ['GET']],
+    'api/admin/admins/create' => ['app\controller\Admin::create', ['POST']],
+    'api/admin/admins/update' => ['app\controller\Admin::update', ['POST']],
+    'api/admin/admins/delete' => ['app\controller\Admin::delete', ['POST']],
+    
+    // ========== 管理员 - 文章管理 ==========
+    'api/admin/articles' => ['app\controller\admin\Article::index', ['GET']],
+    'api/admin/articles/create' => ['app\controller\admin\Article::create', ['POST']],
+    'api/admin/articles/update' => ['app\controller\admin\Article::update', ['POST']],
+    'api/admin/articles/delete' => ['app\controller\admin\Article::delete', ['POST']],
+    'api/admin/articles/detail' => ['app\controller\admin\Article::detail', ['GET']],
+    'api/admin/articles/batch' => ['app\controller\admin\Article::batch', ['POST']],
+    
+    // ========== 管理员 - 优惠券管理 ==========
+    'api/admin/coupons' => ['app\controller\admin\Coupon::index', ['GET']],
+    'api/admin/coupons/create' => ['app\controller\admin\Coupon::create', ['POST']],
+    'api/admin/coupons/update' => ['app\controller\admin\Coupon::update', ['POST']],
+    'api/admin/coupons/delete' => ['app\controller\admin\Coupon::delete', ['POST']],
+    'api/admin/coupons/detail' => ['app\controller\admin\Coupon::detail', ['GET']],
+    'api/admin/coupons/claims' => ['app\controller\admin\Coupon::claims', ['GET']],
+    
+    // ========== 管理员 - 商家管理 ==========
+    'api/admin/merchants' => ['app\controller\admin\Merchant::index', ['GET']],
+    'api/admin/merchants/detail' => ['app\controller\admin\Merchant::detail', ['GET']],
+    'api/admin/merchants/review' => ['app\controller\admin\Merchant::review', ['POST']],
+    'api/admin/merchants/updateStatus' => ['app\controller\admin\Merchant::updateStatus', ['POST']],
+    'api/admin/merchants/verify' => ['app\controller\admin\Merchant::verify', ['POST']],
+    'api/admin/merchants/pending' => ['app\controller\admin\Merchant::pending', ['GET']],
+    
+    // ========== 商家 ==========
+    'api/merchants' => ['app\controller\Merchant::index', ['GET']],
+    'api/merchants/apply' => ['app\controller\Merchant::apply', ['POST']],
+    'api/merchants/mine' => ['app\controller\Merchant::mine', ['GET']],
+    'api/merchants/update' => ['app\controller\Merchant::update', ['POST']],
+    'api/merchants/review' => ['app\controller\Merchant::review', ['POST']],
+    
+    // ========== 通知 ==========
+    'api/notifications' => ['app\controller\Notification::index', ['GET']],
+    'api/notifications/markRead' => ['app\controller\Notification::markRead', ['POST']],
+    'api/notifications/markAllRead' => ['app\controller\Notification::markAllRead', ['POST']],
+    'api/notifications/delete' => ['app\controller\Notification::delete', ['POST']],
+    'api/notifications/unreadCount' => ['app\controller\Notification::unreadCount', ['GET']],
+    'api/notifications/send' => ['app\controller\Notification::send', ['POST']],
+    
+    // ========== 上传 ==========
+    'api/upload/image' => ['app\controller\Upload::image', ['POST']],
+    'api/upload/images' => ['app\controller\Upload::images', ['POST']],
+    'api/upload/goodsImage' => ['app\controller\Upload::goodsImage', ['POST']],
+    'api/upload/bannerImage' => ['app\controller\Upload::bannerImage', ['POST']],
+    'api/upload/delete' => ['app\controller\Upload::delete', ['POST']],
+    
+    // ========== 优惠券 ==========
+    'api/coupons/available' => ['app\controller\Coupon::available', ['GET']],
+    'api/coupons/my' => ['app\controller\Coupon::my', ['GET']],
+    'api/coupons/claim' => ['app\controller\Coupon::claim', ['POST']],
+    'api/coupons/check' => ['app\controller\Coupon::check', ['POST']],
+    
+    // ========== OAuth ==========
+    'api/oauth/providers' => ['app\controller\OAuth::providers', ['GET']],
+    'api/oauth/authorize' => ['app\controller\OAuth::authorize', ['GET']],
+    'api/oauth/callback' => ['app\controller\OAuth::callback', ['GET']],
+    
+    // ========== 商品 ==========
+    'api/goods' => ['app\controller\Goods::index', ['GET']],
+    'api/goods/list' => ['app\controller\Goods::index', ['GET']],
+    'api/goods/featured' => ['app\controller\Goods::featured', ['GET']],
+    'api/goods/recommended' => ['app\controller\Goods::recommended', ['GET']],
+    'api/goods/hot' => ['app\controller\Goods::hot', ['GET']],
+    
+    // ========== 分类 ==========
+    'api/categories' => ['app\controller\Category::index', ['GET']],
+    'api/categories/all' => ['app\controller\Category::all', ['GET']],
+    
+    // ========== 购物车 ==========
+    'api/cart' => ['app\controller\Cart::index', ['GET']],
+    'api/cart/add' => ['app\controller\Cart::add', ['POST']],
+    'api/cart/update' => ['app\controller\Cart::update', ['POST']],
+    'api/cart/remove' => ['app\controller\Cart::delete', ['POST']],
+    'api/cart/clear' => ['app\controller\Cart::clear', ['POST']],
+    'api/cart/count' => ['app\controller\Cart::count', ['GET']],
+    
+    // ========== 收藏 ==========
+    'api/favorites' => ['app\controller\Favorite::index', ['GET']],
+    'api/favorites/add' => ['app\controller\Favorite::add', ['POST']],
+    'api/favorites/remove' => ['app\controller\Favorite::remove', ['POST']],
+    'api/favorites/check' => ['app\controller\Favorite::check', ['GET']],
+    'api/favorites/count' => ['app\controller\Favorite::count', ['GET']],
+    
+    // ========== 订单 ==========
+    'api/orders' => ['app\controller\Order::index', ['GET']],
+    'api/orders/create' => ['app\controller\Order::create', ['POST']],
+    'api/orders/cancel' => ['app\controller\Order::cancel', ['POST']],
+    'api/orders/confirm' => ['app\controller\Order::confirm', ['POST']],
+    
+    // ========== 地址 ==========
+    'api/addresses' => ['app\controller\Address::index', ['GET']],
+    'api/addresses/create' => ['app\controller\Address::create', ['POST']],
+    'api/addresses/update' => ['app\controller\Address::update', ['POST']],
+    'api/addresses/delete' => ['app\controller\Address::delete', ['POST']],
+    'api/addresses/setDefault' => ['app\controller\Address::setDefault', ['POST']],
+    
+    // ========== 管理员 - 文章管理 ==========
+    'api/admin/articles' => ['app\controller\Article::index', ['GET']],
+    'api/admin/articles/create' => ['app\controller\Article::create', ['POST']],
+    'api/admin/articles/update' => ['app\controller\Article::update', ['POST']],
+    'api/admin/articles/delete' => ['app\controller\Article::delete', ['POST']],
+    
+    // ========== 首页 ==========
+    'api/home' => ['app\controller\Home::index', ['GET']],
+    'api/home/banners' => ['app\controller\Home::banners', ['GET']],
+    'api/home/articles' => ['app\controller\Home::articles', ['GET']],
+    
+    // ========== 文章 ==========
+    'api/articles' => ['app\controller\Home::articles', ['GET']],
+    
+    // ========== 评价 ==========
+    'api/reviews' => ['app\controller\Review::index', ['GET']],
+    'api/reviews/stats' => ['app\controller\Review::stats', ['GET']],
+    'api/reviews/create' => ['app\controller\Review::create', ['POST']],
+    'api/reviews/reply' => ['app\controller\Review::reply', ['POST']],
+    'api/reviews/like' => ['app\controller\Review::like', ['POST']],
+    'api/reviews/myList' => ['app\controller\Review::myList', ['GET']],
+    
+    // ========== 积分 ==========
+    'api/points/info' => ['app\controller\Points::info', ['GET']],
+    'api/points/logs' => ['app\controller\Points::logs', ['GET']],
+    'api/points/rules' => ['app\controller\Points::rules', ['GET']],
+    'api/points/sign' => ['app\controller\Points::sign', ['POST']],
+    'api/points/exchange' => ['app\controller\Points::exchange', ['POST']],
+    
+    // ========== 统计 ==========
+    'api/stats' => ['app\controller\Stats::index', ['GET']],
+    'api/stats/sales' => ['app\controller\Stats::sales', ['GET']],
+    'api/stats/goodsRanking' => ['app\controller\Stats::goodsRanking', ['GET']],
+    'api/stats/users' => ['app\controller\Stats::users', ['GET']],
+    'api/stats/categories' => ['app\controller\Stats::categories', ['GET']],
+    'api/stats/realtime' => ['app\controller\Stats::realtime', ['GET']],
+    
+    // ========== 消息/私信 ==========
+    'api/messages' => ['app\controller\Message::index', ['GET']],
+    'api/messages/conversations' => ['app\controller\Message::conversations', ['GET']],
+    'api/messages/chatHistory' => ['app\controller\Message::chatHistory', ['GET']],
+    'api/messages/send' => ['app\controller\Message::send', ['POST']],
+    'api/messages/detail' => ['app\controller\Message::detail', ['GET']],
+    'api/messages/markRead' => ['app\controller\Message::markRead', ['POST']],
+    'api/messages/delete' => ['app\controller\Message::delete', ['POST']],
+    'api/messages/unreadCount' => ['app\controller\Message::unreadCount', ['GET']],
+    'api/messages/templates' => ['app\controller\Message::templates', ['GET']],
+    
+    // ========== 反馈 ==========
+    'api/feedbacks' => ['app\controller\Feedback::index', ['GET']],
+    'api/feedbacks/submit' => ['app\controller\Feedback::submit', ['POST']],
+    'api/feedbacks/detail' => ['app\controller\Feedback::detail', ['GET']],
+    'api/feedbacks/reply' => ['app\controller\Feedback::reply', ['POST']],
+    'api/feedbacks/delete' => ['app\controller\Feedback::delete', ['POST']],
+    'api/feedbacks/types' => ['app\controller\Feedback::types', ['GET']],
+    'api/feedbacks/faq' => ['app\controller\Feedback::faq', ['GET']],
+    'api/feedbacks/faqDetail' => ['app\controller\Feedback::faqDetail', ['GET']],
+    'api/feedbacks/faqCategories' => ['app\controller\Feedback::faqCategories', ['GET']],
+    'api/feedbacks/searchFaq' => ['app\controller\Feedback::searchFaq', ['GET']],
+    
+    // ========== 举报 ==========
+    'api/reports' => ['app\controller\Report::index', ['GET']],
+    'api/reports/submit' => ['app\controller\Report::submit', ['POST']],
+    'api/reports/detail' => ['app\controller\Report::detail', ['GET']],
+    'api/reports/cancel' => ['app\controller\Report::cancel', ['POST']],
+    'api/reports/types' => ['app\controller\Report::types', ['GET']],
+    
+    // ========== AI配置与统计 ==========
+    'api/ai/configs' => ['app\controller\AI::configs', ['GET']],
+    'api/ai/configDetail' => ['app\controller\AI::configDetail', ['GET']],
+    'api/ai/updateConfig' => ['app\controller\AI::updateConfig', ['POST']],
+    'api/ai/usageStats' => ['app\controller\AI::usageStats', ['GET']],
+    'api/ai/logChat' => ['app\controller\AI::logChat', ['POST']],
+    'api/ai/sessionHistory' => ['app\controller\AI::sessionHistory', ['GET']],
+    'api/ai/myHistory' => ['app\controller\AI::myHistory', ['GET']],
+    'api/ai/deleteSession' => ['app\controller\AI::deleteSession', ['POST']],
+    'api/ai/capabilities' => ['app\controller\AI::capabilities', ['GET']],
+    'api/ai/models' => ['app\controller\AI::models', ['GET']],
+    'api/ai/testConnection' => ['app\controller\AI::testConnection', ['POST']],
+    'api/ai/cleanLogs' => ['app\controller\AI::cleanLogs', ['POST']],
+    'api/ai/exportLogs' => ['app\controller\AI::exportLogs', ['GET']],
+    
+    // ========== 管理员 - AI管理 ==========
+    'api/admin/ai/configs' => ['app\controller\admin\AI::configs', ['GET']],
+    'api/admin/ai/createConfig' => ['app\controller\admin\AI::createConfig', ['POST']],
+    'api/admin/ai/updateConfig' => ['app\controller\admin\AI::updateConfig', ['POST']],
+    'api/admin/ai/deleteConfig' => ['app\controller\admin\AI::deleteConfig', ['POST']],
+    'api/admin/ai/dashboard' => ['app\controller\admin\AI::dashboard', ['GET']],
+    'api/admin/ai/logs' => ['app\controller\admin\AI::logs', ['GET']],
+    'api/admin/ai/sessionDetail' => ['app\controller\admin\AI::sessionDetail', ['GET']],
+    'api/admin/ai/cleanLogs' => ['app\controller\admin\AI::cleanLogs', ['POST']],
+    'api/admin/ai/export' => ['app\controller\admin\AI::export', ['GET']],
+    'api/admin/ai/promptTemplates' => ['app\controller\admin\AI::promptTemplates', ['GET']],
+    
+    // ========== 管理员 - AI训练知识库 ==========
+    'api/admin/ai/training/knowledge' => ['app\controller\admin\AITraining::knowledgeList', ['GET']],
+    'api/admin/ai/training/knowledgeDetail' => ['app\controller\admin\AITraining::knowledgeDetail', ['GET']],
+    'api/admin/ai/training/knowledgeCreate' => ['app\controller\admin\AITraining::knowledgeCreate', ['POST']],
+    'api/admin/ai/training/knowledgeUpdate' => ['app\controller\admin\AITraining::knowledgeUpdate', ['POST']],
+    'api/admin/ai/training/knowledgeDelete' => ['app\controller\admin\AITraining::knowledgeDelete', ['POST']],
+    'api/admin/ai/training/knowledgeBatchImport' => ['app\controller\admin\AITraining::knowledgeBatchImport', ['POST']],
+    
+    // ========== 管理员 - AI问答对 ==========
+    'api/admin/ai/training/qa' => ['app\controller\admin\AITraining::qaList', ['GET']],
+    'api/admin/ai/training/qaCreate' => ['app\controller\admin\AITraining::qaCreate', ['POST']],
+    'api/admin/ai/training/qaUpdate' => ['app\controller\admin\AITraining::qaUpdate', ['POST']],
+    'api/admin/ai/training/qaDelete' => ['app\controller\admin\AITraining::qaDelete', ['POST']],
+    'api/admin/ai/training/generateQA' => ['app\controller\admin\AITraining::generateQA', ['POST']],
+    
+    // ========== 管理员 - AI训练任务 ==========
+    'api/admin/ai/training/tasks' => ['app\controller\admin\AITraining::taskList', ['GET']],
+    'api/admin/ai/training/taskCreate' => ['app\controller\admin\AITraining::taskCreate', ['POST']],
+    'api/admin/ai/training/taskStart' => ['app\controller\admin\AITraining::taskStart', ['POST']],
+    'api/admin/ai/training/taskCancel' => ['app\controller\admin\AITraining::taskCancel', ['POST']],
+    
+    // ========== 管理员 - AI训练统计 ==========
+    'api/admin/ai/training/stats' => ['app\controller\admin\AITraining::stats', ['GET']],
+    'api/admin/ai/training/search' => ['app\controller\admin\AITraining::searchKnowledge', ['GET']],
+    
+    // ========== 用户 - AI问答推荐 ==========
+    'api/ai/recommendQA' => ['app\controller\AITraining::getRecommendedQA', ['GET']], 
+];
+
+// 支持 RESTful 风格
+// /api/goods/123 -> Goods::detail(123)
+// /api/orders/456 -> Order::detail(456)
+// /api/categories/1/children -> Category::children(1)
+// /api/addresses/789 -> Address::detail(789)
+if (!isset($routers[$path])) {
+    // 尝试匹配带ID的路由
+    $parts = explode('/', $path);
+    
+    // 商品详情: api/goods/123
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'goods' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\Goods::detail', ['GET']];
+    }
+    
+    // 订单详情: api/orders/456
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'orders' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\Order::detail', ['GET']];
+    }
+    
+    // 地址详情: api/addresses/789
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'addresses' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\Address::detail', ['GET']];
+    }
+    
+    // 文章详情: api/articles/123
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'articles' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\Home::article', ['GET']];
+    }
+    
+    // 商家详情: api/merchants/123
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'merchants' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\Merchant::detail', ['GET']];
+    }
+    
+    // 分类子分类: api/categories/1/children
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'categories' && is_numeric($parts[2]) && $parts[3] === 'children') {
+        $routers[$path] = ['app\controller\Category::children', ['GET']];
+    }
+    
+    // 分类商品: api/goods/category/123
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'goods' && $parts[2] === 'category' && is_numeric($parts[3])) {
+        $routers[$path] = ['app\controller\Goods::byCategory', ['GET']];
+    }
+}
+
+// 匹配路由
+if (isset($routers[$path])) {
+    [$controllerAction, $methods] = $routers[$path];
+    
+    // 检查请求方法
+    if (in_array($method, $methods)) {
+        [$class, $action] = explode('::', $controllerAction);
+        
+        try {
+            $instance = new $class();
+            
+            // 如果是详情路由，传递ID参数
+            if (preg_match('/\/(\d+)$/', $path, $matches)) {
+                $id = (int) $matches[1];
+                $instance->$action($id);
+            } else {
+                $instance->$action();
+            }
+        } catch (\Exception $e) {
+            header('Content-Type: application/json');
+            http_response_code(500);
+            echo json_encode([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    } else {
+        header('Content-Type: application/json');
+        http_response_code(405);
+        echo json_encode(['error' => true, 'message' => 'Method Not Allowed']);
+        exit;
+    }
+}
+
+// 404
+header('Content-Type: application/json');
+http_response_code(404);
+echo json_encode(['error' => true, 'message' => 'Not Found: ' . $path]);
