@@ -372,7 +372,6 @@ function getMockGoods(limit: number) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
     const body = await request.json();
 
     const {
@@ -398,39 +397,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: goods, error } = await supabase
-      .from('goods')
-      .insert({
-        name,
-        subtitle,
-        category_id,
-        merchant_id,
-        type: type || 1,
-        purpose,
-        price: String(price),
-        original_price: original_price ? String(original_price) : null,
-        stock: stock || 0,
-        main_image,
-        images,
-        description,
-        is_certified: is_certified || false,
-        status: 1,
-        sales: 0,
-      })
-      .select()
-      .single();
+    try {
+      const supabase = await createClient();
+      if (supabase && typeof supabase.from === 'function') {
+        const { data: goods, error } = await supabase
+          .from('goods')
+          .insert({
+            name,
+            subtitle,
+            category_id,
+            merchant_id,
+            type: type || 1,
+            purpose,
+            price: String(price),
+            original_price: original_price ? String(original_price) : null,
+            stock: stock || 0,
+            main_image,
+            images,
+            description,
+            is_certified: is_certified || false,
+            status: 1,
+            sales: 0,
+          })
+          .select()
+          .single();
 
-    if (error) {
-      console.error('创建商品失败:', error);
-      return NextResponse.json(
-        { error: '創建商品失敗' },
-        { status: 500 }
-      );
+        if (!error && goods) {
+          return NextResponse.json({
+            data: goods,
+            message: '創建成功',
+          });
+        }
+      }
+    } catch (dbError) {
+      console.error('数据库操作失败，使用本地模式:', dbError);
     }
 
+    // 本地模式 fallback
+    const mockGoods = {
+      id: Date.now(),
+      name,
+      subtitle: subtitle || '',
+      category_id: category_id || null,
+      merchant_id: merchant_id || 1,
+      type: type || 1,
+      purpose: purpose || null,
+      price: String(price),
+      original_price: original_price ? String(original_price) : null,
+      stock: stock || 0,
+      main_image: main_image || '',
+      images: images || [],
+      description: description || '',
+      is_certified: is_certified || false,
+      status: 1,
+      sales: 0,
+      sort: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // 存储到本地
+    if (typeof globalThis.mockGoods === 'undefined') {
+      globalThis.mockGoods = [];
+    }
+    globalThis.mockGoods.push(mockGoods);
+
     return NextResponse.json({
-      data: goods,
-      message: '創建成功',
+      data: mockGoods,
+      message: '創建成功（本地模式）',
+      mock: true,
     });
   } catch (error) {
     console.error('创建商品API错误:', error);

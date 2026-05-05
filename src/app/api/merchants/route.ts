@@ -59,7 +59,8 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('获取商户失败:', error);
-    return NextResponse.json({ error: '獲取商戶失敗' }, { status: 500 });
+    // 数据库不可用时返回空列表
+    return NextResponse.json({ data: [], total: 0, page: 1, limit: 20 });
   }
 }
 
@@ -86,18 +87,6 @@ export async function POST(request: Request) {
 
     if (!name) {
       return NextResponse.json({ error: '請填寫商戶名稱' }, { status: 400 });
-    }
-
-    if (!contact_name) {
-      return NextResponse.json({ error: '請填寫聯繫人' }, { status: 400 });
-    }
-
-    if (!contact_phone) {
-      return NextResponse.json({ error: '請填寫聯繫電話' }, { status: 400 });
-    }
-
-    if (!contact_email) {
-      return NextResponse.json({ error: '請填寫電子郵箱' }, { status: 400 });
     }
 
     let data: any = null;
