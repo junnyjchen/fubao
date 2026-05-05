@@ -8,8 +8,9 @@ import { useI18n } from '@/lib/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Calendar, ArrowLeft, ChevronRight, Heart, Share2 } from 'lucide-react';
+import { Eye, Calendar, ArrowLeft, ChevronRight, Heart } from 'lucide-react';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
+import { SocialShare } from '@/components/share/SocialShare';
 
 interface RelatedArticle {
   id: number;
@@ -130,10 +131,10 @@ export function ArticleDetailPage() {
                       <Heart className="w-4 h-4 mr-2" />
                       {article.likes}
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Share2 className="w-4 h-4 mr-2" />
-                      分享
-                    </Button>
+                    <SocialShare
+                      title={article.title}
+                      description={article.summary || ''}
+                    />
                   </div>
 
                   <div className="h-px bg-border" />

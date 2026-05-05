@@ -18,11 +18,11 @@ import {
   BookOpen,
   Clock,
   Eye,
-  Share2,
   ChevronRight,
   Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SocialShare } from '@/components/share/SocialShare';
 
 /** 文章数据类型 */
 interface WikiArticle {
@@ -216,10 +216,10 @@ export function WikiArticlePage({ slug }: WikiArticlePageProps) {
               <ArrowLeft className="w-4 h-4 mr-2" />
               返回
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleShare}>
-              <Share2 className="w-4 h-4 mr-2" />
-              分享
-            </Button>
+            <SocialShare
+              title={article?.title || ''}
+              description={article?.summary || ''}
+            />
           </div>
         </div>
       </header>

@@ -8,8 +8,9 @@ import { useI18n } from '@/lib/i18n';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Calendar, ArrowLeft, ChevronRight, Share2 } from 'lucide-react';
+import { Eye, Calendar, ArrowLeft, ChevronRight } from 'lucide-react';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
+import { SocialShare } from '@/components/share/SocialShare';
 
 interface RelatedNews {
   id: number;
@@ -131,10 +132,10 @@ export function NewsDetailPage() {
                   </div>
 
                   <div className="flex gap-2 mb-6">
-                    <Button variant="outline" size="sm">
-                      <Share2 className="w-4 h-4 mr-2" />
-                      分享
-                    </Button>
+                    <SocialShare
+                      title={news.title}
+                      description={news.summary || ''}
+                    />
                   </div>
 
                   <div className="h-px bg-border" />

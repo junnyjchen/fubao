@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { ReviewSection } from '@/components/review/ReviewSection';
 import { SharePoster } from '@/components/share/SharePoster';
+import { SocialShare } from '@/components/share/SocialShare';
 import { OrderReminder } from '@/components/shop/OrderReminder';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { DetailRecommendations } from '@/components/shop/ProductRecommendations';
@@ -527,6 +528,10 @@ export function GoodsDetailPage() {
                   <Share2 className="w-4 h-4 me-2" />
                   {detail.share}
                 </Button>
+                <SocialShare
+                  title={detail.name || ''}
+                  description={detail.subtitle || ''}
+                />
               </div>
             </div>
 

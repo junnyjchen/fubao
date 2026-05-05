@@ -19,13 +19,13 @@ import {
   Eye,
   Clock,
   ThumbsUp,
-  Share2,
   ArrowLeft,
   Loader2,
   Calendar,
   User,
 } from 'lucide-react';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
+import { SocialShare } from '@/components/share/SocialShare';
 
 /** 视频详情类型 */
 interface VideoDetail {
@@ -279,10 +279,10 @@ export function VideoDetailPage({ videoId }: VideoDetailPageProps) {
                     <ThumbsUp className="w-4 h-4 mr-2" />
                     {liked ? '已點讚' : '點讚'} {video.like_count + (liked ? 1 : 0)}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleShare}>
-                    <Share2 className="w-4 h-4 mr-2" />
-                    分享
-                  </Button>
+                  <SocialShare
+                    title={video.title || ''}
+                    description={video.description || ''}
+                  />
                 </div>
 
                 <Separator className="my-4" />
