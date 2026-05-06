@@ -1,20 +1,21 @@
 'use client';
 
-import { useCallback, useRef, useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
+import { useCallback, useRef } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import Placeholder from '@tiptap/extension-placeholder';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
-import { Upload } from 'lucide-react';
-
-// 动态导入 ReactQuill 以避免 SSR 问题
-const ReactQuill = dynamic(() => import('react-quill'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] border rounded-md bg-muted animate-pulse flex items-center justify-center">
-      <span className="text-muted-foreground">加载编辑器...</span>
-    </div>
-  ),
-});
+import {
+  Bold, Italic, Underline as UnderlineIcon, Strikethrough,
+  List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
+  Link as LinkIcon, Image as ImageIcon, Code,
+  Heading1, Heading2, Heading3, Undo, Redo, Quote, Minus
+} from 'lucide-react';
 
 interface RichTextEditorProps {
   value: string;
@@ -36,111 +37,221 @@ export function RichTextEditor({
   onImageUpload,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isReady, setIsReady] = useState(false);
-  const quillInstanceRef = useRef<any>(null);
 
-  useEffect(() => {
-    setIsReady(true);
-    
-    // 等待 Quill 加载后尝试获取实例
-    const timer = setInterval(() => {
-      const editors = document.querySelectorAll('.rich-text-editor .ql-editor');
-      if (editors.length > 0) {
-        const container = editors[0].closest('.quill');
-        if (container?.nextSibling) {
-          const parent = container.parentElement;
-          if (parent) {
-            // Quill 实例在 ReactQuill 组件内部，我们通过事件来访问
-          }
-        }
-        clearInterval(timer);
-      }
-    }, 100);
-    
-    return () => clearInterval(timer);
-  }, []);
-
-  const modules = {
-    toolbar: {
-      container: [
-        [{ header: [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-        [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
-        ['link', 'image', 'video'],
-        [{ align: [] }],
-        [{ color: [] }, { background: [] }],
-        ['code-block'],
-        ['clean'],
-      ],
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { class: 'text-primary underline' },
+      }),
+      Image.configure({
+        HTMLAttributes: { class: 'max-w-full rounded-md' },
+      }),
+      Underline,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Placeholder.configure({
+        placeholder,
+      }),
+    ],
+    content: value || '',
+    editable: !readOnly,
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      onChange(html);
     },
-  };
-
-  const formats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike', 'blockquote',
-    'list', 'bullet', 'indent',
-    'link', 'image', 'video',
-    'align', 'color', 'background',
-    'code-block',
-  ];
-
-  const handleChange = useCallback(
-    (content: string) => {
-      onChange(content);
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[200px] px-4 py-3',
+      },
     },
-    [onChange]
-  );
+  });
 
-  const handleImageUpload = async () => {
-    if (onImageUpload && fileInputRef.current?.files?.[0]) {
-      const file = fileInputRef.current.files[0];
-      try {
-        const url = await onImageUpload(file);
-        // 通过 DOM 操作插入图片
-        const editor = document.querySelector('.rich-text-editor .ql-editor');
-        if (editor) {
-          const range = window.getSelection()?.getRangeAt(0);
-          if (range) {
-            const img = document.createElement('img');
-            img.src = url;
-            img.style.maxWidth = '100%';
-            img.className = 'ql-img-inserted';
-            range.insertNode(img);
-          } else {
-            const img = document.createElement('img');
-            img.src = url;
-            img.style.maxWidth = '100%';
-            img.className = 'ql-img-inserted';
-            editor.appendChild(img);
-          }
-        }
-      } catch (error) {
-        console.error('图片上传失败:', error);
-      }
-      fileInputRef.current.value = '';
+  const addImage = useCallback(async (url: string) => {
+    if (editor) {
+      editor.chain().focus().setImage({ src: url }).run();
     }
+  }, [editor]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImageUpload) return;
+    try {
+      const url = await onImageUpload(file);
+      addImage(url);
+    } catch (error) {
+      console.error('图片上传失败:', error);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const insertImage = () => {
-    fileInputRef.current?.click();
-  };
+  const insertLink = useCallback(() => {
+    if (!editor) return;
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('输入链接地址', previousUrl || 'https://');
+    if (url === null) return;
+    if (url === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+  }, [editor]);
+
+  if (!editor) {
+    return (
+      <div
+        className="border rounded-md bg-muted animate-pulse flex items-center justify-center"
+        style={{ minHeight: height }}
+      >
+        <span className="text-muted-foreground">加载编辑器...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className={cn('rich-text-editor', className)}>
-      {isReady && (
-        <ReactQuill
-          theme="snow"
-          value={value}
-          onChange={handleChange}
-          modules={modules}
-          formats={formats}
-          placeholder={placeholder}
-          readOnly={readOnly}
-          style={{ minHeight: height }}
-        />
+    <div className={cn('rich-text-editor border rounded-md overflow-hidden', className)}>
+      {/* 工具栏 */}
+      {!readOnly && (
+        <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1.5">
+          <ToolbarButton
+            onClick={() => editor.chain().focus().undo().run()}
+            disabled={!editor.can().undo()}
+            icon={<Undo className="h-4 w-4" />}
+            tooltip="撤销"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().redo().run()}
+            disabled={!editor.can().redo()}
+            icon={<Redo className="h-4 w-4" />}
+            tooltip="重做"
+          />
+          <div className="w-px h-6 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+            active={editor.isActive('heading', { level: 1 })}
+            icon={<Heading1 className="h-4 w-4" />}
+            tooltip="标题1"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            active={editor.isActive('heading', { level: 2 })}
+            icon={<Heading2 className="h-4 w-4" />}
+            tooltip="标题2"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            active={editor.isActive('heading', { level: 3 })}
+            icon={<Heading3 className="h-4 w-4" />}
+            tooltip="标题3"
+          />
+          <div className="w-px h-6 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBold().run()}
+            active={editor.isActive('bold')}
+            icon={<Bold className="h-4 w-4" />}
+            tooltip="加粗"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+            active={editor.isActive('italic')}
+            icon={<Italic className="h-4 w-4" />}
+            tooltip="斜体"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleUnderline().run()}
+            active={editor.isActive('underline')}
+            icon={<UnderlineIcon className="h-4 w-4" />}
+            tooltip="下划线"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            active={editor.isActive('strike')}
+            icon={<Strikethrough className="h-4 w-4" />}
+            tooltip="删除线"
+          />
+          <div className="w-px h-6 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+            active={editor.isActive('bulletList')}
+            icon={<List className="h-4 w-4" />}
+            tooltip="无序列表"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            active={editor.isActive('orderedList')}
+            icon={<ListOrdered className="h-4 w-4" />}
+            tooltip="有序列表"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            active={editor.isActive('blockquote')}
+            icon={<Quote className="h-4 w-4" />}
+            tooltip="引用"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            active={editor.isActive('codeBlock')}
+            icon={<Code className="h-4 w-4" />}
+            tooltip="代码块"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            icon={<Minus className="h-4 w-4" />}
+            tooltip="分割线"
+          />
+          <div className="w-px h-6 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            active={editor.isActive({ textAlign: 'left' })}
+            icon={<AlignLeft className="h-4 w-4" />}
+            tooltip="左对齐"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            active={editor.isActive({ textAlign: 'center' })}
+            icon={<AlignCenter className="h-4 w-4" />}
+            tooltip="居中"
+          />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            active={editor.isActive({ textAlign: 'right' })}
+            icon={<AlignRight className="h-4 w-4" />}
+            tooltip="右对齐"
+          />
+          <div className="w-px h-6 bg-border mx-1" />
+          <ToolbarButton
+            onClick={insertLink}
+            active={editor.isActive('link')}
+            icon={<LinkIcon className="h-4 w-4" />}
+            tooltip="插入链接"
+          />
+          <ToolbarButton
+            onClick={() => {
+              if (onImageUpload) {
+                fileInputRef.current?.click();
+              } else {
+                const url = window.prompt('输入图片地址');
+                if (url) addImage(url);
+              }
+            }}
+            icon={<ImageIcon className="h-4 w-4" />}
+            tooltip="插入图片"
+          />
+        </div>
       )}
-      
-      {/* 隐藏的文件输入框用于图片上传 */}
+
+      {/* 编辑区域 */}
+      <EditorContent
+        editor={editor}
+        style={{ minHeight: height }}
+        className="tiptap-editor-content"
+      />
+
+      {/* 隐藏的文件输入 */}
       <input
         type="file"
         ref={fileInputRef}
@@ -148,182 +259,105 @@ export function RichTextEditor({
         className="hidden"
         onChange={handleImageUpload}
       />
-      
-      {/* 自定义图片上传按钮（当有onImageUpload时显示） */}
-      {onImageUpload && (
-        <div className="mt-2 flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={insertImage}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            上传图片
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            支持 JPG、PNG、GIF、WebP 格式
-          </span>
-        </div>
-      )}
-      
+
+      {/* Tiptap 样式 */}
       <style jsx global>{`
-        .rich-text-editor .quill {
-          background: white;
-          border-radius: 0.5rem;
+        .tiptap-editor-content .tiptap {
+          min-height: ${height}px;
+          padding: 12px 16px;
+          outline: none;
         }
-        .rich-text-editor .ql-toolbar.ql-snow {
-          border-top-left-radius: 0.5rem;
-          border-top-right-radius: 0.5rem;
-          border-color: hsl(var(--border)) !important;
-          background: hsl(var(--muted));
-        }
-        .rich-text-editor .ql-container.ql-snow {
-          border-bottom-left-radius: 0.5rem;
-          border-bottom-right-radius: 0.5rem;
-          border-color: hsl(var(--border)) !important;
-          font-size: 0.95rem;
-        }
-        .rich-text-editor .ql-editor {
-          min-height: ${height - 60}px;
-          max-height: ${height}px;
-          padding: 1rem;
-          line-height: 1.8;
-        }
-        .rich-text-editor .ql-editor.ql-blank::before {
+        .tiptap-editor-content .tiptap p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
           color: hsl(var(--muted-foreground));
-          font-style: normal;
+          pointer-events: none;
+          height: 0;
         }
-        .rich-text-editor .ql-editor h1 {
+        .tiptap-editor-content .tiptap h1 {
           font-size: 1.75rem;
           font-weight: 700;
-          margin-bottom: 0.75rem;
+          margin: 0.5em 0;
         }
-        .rich-text-editor .ql-editor h2 {
+        .tiptap-editor-content .tiptap h2 {
           font-size: 1.5rem;
           font-weight: 600;
-          margin-bottom: 0.5rem;
+          margin: 0.5em 0;
         }
-        .rich-text-editor .ql-editor h3 {
+        .tiptap-editor-content .tiptap h3 {
           font-size: 1.25rem;
           font-weight: 600;
-          margin-bottom: 0.5rem;
+          margin: 0.5em 0;
         }
-        .rich-text-editor .ql-editor p {
-          margin-bottom: 0.75rem;
+        .tiptap-editor-content .tiptap p {
+          margin: 0.5em 0;
         }
-        .rich-text-editor .ql-editor img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 0.5rem;
-          margin: 0.75rem 0;
+        .tiptap-editor-content .tiptap ul,
+        .tiptap-editor-content .tiptap ol {
+          padding-left: 1.5em;
+          margin: 0.5em 0;
         }
-        .rich-text-editor .ql-snow .ql-stroke {
-          stroke: hsl(var(--foreground));
+        .tiptap-editor-content .tiptap blockquote {
+          border-left: 3px solid hsl(var(--border));
+          padding-left: 1em;
+          margin: 0.5em 0;
+          color: hsl(var(--muted-foreground));
         }
-        .rich-text-editor .ql-snow .ql-fill {
-          fill: hsl(var(--foreground));
-        }
-        .rich-text-editor .ql-snow .ql-picker {
-          color: hsl(var(--foreground));
-        }
-        .rich-text-editor .ql-snow.ql-toolbar button:hover,
-        .rich-text-editor .ql-snow .ql-toolbar button:hover,
-        .rich-text-editor .ql-snow.ql-toolbar button.ql-active,
-        .rich-text-editor .ql-snow .ql-toolbar button.ql-active {
-          color: hsl(var(--primary));
-        }
-        .rich-text-editor .ql-snow.ql-toolbar button:hover .ql-stroke,
-        .rich-text-editor .ql-snow .ql-toolbar button:hover .ql-stroke,
-        .rich-text-editor .ql-snow.ql-toolbar button.ql-active .ql-stroke,
-        .rich-text-editor .ql-snow .ql-toolbar button.ql-active .ql-stroke {
-          stroke: hsl(var(--primary));
-        }
-        .rich-text-editor .ql-snow .ql-tooltip {
-          background: hsl(var(--background));
-          border: 1px solid hsl(var(--border));
-          border-radius: 0.375rem;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-          color: hsl(var(--foreground));
-        }
-        .rich-text-editor .ql-snow .ql-tooltip input[type=text] {
-          background: hsl(var(--background));
-          border: 1px solid hsl(var(--border));
-          border-radius: 0.25rem;
-          color: hsl(var(--foreground));
-        }
-        .rich-text-editor .ql-snow .ql-tooltip a.ql-action::after,
-        .rich-text-editor .ql-snow .ql-tooltip a.ql-remove::before {
-          color: hsl(var(--primary));
-        }
-        .rich-text-editor .ql-snow .ql-tooltip a.ql-remove {
-          color: hsl(var(--destructive));
-        }
-        
-        /* 代码块样式 */
-        .rich-text-editor .ql-editor pre {
+        .tiptap-editor-content .tiptap pre {
           background: hsl(var(--muted));
-          border-radius: 0.375rem;
-          padding: 0.75rem 1rem;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-          font-size: 0.875rem;
+          border-radius: 6px;
+          padding: 0.75em 1em;
+          margin: 0.5em 0;
           overflow-x: auto;
         }
-        .rich-text-editor .ql-editor code {
-          background: hsl(var(--muted));
-          border-radius: 0.25rem;
-          padding: 0.125rem 0.375rem;
-          font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-          font-size: 0.875rem;
+        .tiptap-editor-content .tiptap pre code {
+          background: none;
+          font-size: 0.9em;
         }
-        
-        /* 引用块样式 */
-        .rich-text-editor .ql-editor blockquote {
-          border-left: 4px solid hsl(var(--primary));
-          padding-left: 1rem;
-          margin: 1rem 0;
-          color: hsl(var(--muted-foreground));
-          font-style: italic;
+        .tiptap-editor-content .tiptap img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 6px;
+          margin: 0.5em 0;
         }
-        
-        .dark .rich-text-editor .ql-toolbar.ql-snow {
-          background: hsl(var(--muted)/0.5);
+        .tiptap-editor-content .tiptap a {
+          color: hsl(var(--primary));
+          text-decoration: underline;
         }
-        .dark .rich-text-editor .ql-container.ql-snow {
-          background: hsl(var(--card));
-        }
-        .dark .rich-text-editor .ql-editor {
-          color: hsl(var(--foreground));
-        }
-        .dark .rich-text-editor .ql-editor.ql-blank::before {
-          color: hsl(var(--muted-foreground));
-        }
-        .dark .rich-text-editor .ql-editor pre {
-          background: hsl(var(--muted));
-        }
-        .dark .rich-text-editor .ql-editor code {
-          background: hsl(var(--muted));
+        .tiptap-editor-content .tiptap hr {
+          border: none;
+          border-top: 1px solid hsl(var(--border));
+          margin: 1em 0;
         }
       `}</style>
     </div>
   );
 }
 
-// 简化版本（不带图片上传）
-export function SimpleRichTextEditor({
-  value,
-  onChange,
-  placeholder = '请输入内容...',
-  className,
-  height = 200,
-}: Omit<RichTextEditorProps, 'onImageUpload'>) {
+function ToolbarButton({
+  onClick,
+  active,
+  disabled,
+  icon,
+  tooltip,
+}: {
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  tooltip: string;
+}) {
   return (
-    <RichTextEditor
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className={className}
-      height={height}
-    />
+    <Button
+      type="button"
+      variant={active ? 'secondary' : 'ghost'}
+      size="sm"
+      className="h-7 w-7 p-0"
+      onClick={onClick}
+      disabled={disabled}
+      title={tooltip}
+    >
+      {icon}
+    </Button>
   );
 }
