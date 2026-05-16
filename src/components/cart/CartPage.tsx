@@ -8,6 +8,12 @@
 
 import { useState, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
+
+// 获取认证 header
+const getAuthHeaders = () => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -214,7 +220,7 @@ export function CartPage() {
   const loadCart = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/cart');
+      const res = await fetch('/api/cart', { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.data) {
         setMerchantGroups(data.data);
@@ -237,7 +243,7 @@ export function CartPage() {
     try {
       const res = await fetch('/api/cart', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ cartItemId, quantity }),
       });
 
@@ -288,7 +294,7 @@ export function CartPage() {
     try {
       const res = await fetch('/api/cart', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ cartItemId, selected }),
       });
 
@@ -316,7 +322,7 @@ export function CartPage() {
     for (const item of items) {
       await fetch('/api/cart', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ cartItemId: item.id, selected }),
       });
     }
@@ -340,7 +346,7 @@ export function CartPage() {
       for (const item of group.items) {
         await fetch('/api/cart', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ cartItemId: item.id, selected: newSelected }),
         });
       }
@@ -360,7 +366,7 @@ export function CartPage() {
     if (!confirm(cart.clearConfirm)) return;
 
     try {
-      const res = await fetch('/api/cart?clearAll=true', { method: 'DELETE' });
+      const res = await fetch('/api/cart?clearAll=true', { method: 'DELETE', headers: getAuthHeaders() });
       if (res.ok) {
         setMerchantGroups([]);
         toast.success(cart.cleared);

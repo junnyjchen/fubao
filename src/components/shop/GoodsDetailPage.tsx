@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,7 +43,6 @@ import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { DetailRecommendations } from '@/components/shop/ProductRecommendations';
 import { GoodsDetailSkeleton } from '@/components/shop/GoodsDetailSkeleton';
 import { useI18n } from '@/lib/i18n';
-import { toast } from 'sonner';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 interface Goods {
@@ -208,9 +208,13 @@ export function GoodsDetailPage() {
     if (!goods) return;
     setAddingToCart(true);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ goodsId: goods.id, quantity }),
       });
       const data = await res.json();
@@ -230,9 +234,13 @@ export function GoodsDetailPage() {
     if (!goods) return;
     setAddingToCart(true);
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const res = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ goodsId: goods.id, quantity }),
       });
       const data = await res.json();

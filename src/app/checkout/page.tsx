@@ -134,6 +134,15 @@ function CheckoutPageContent() {
 
   const checkout = t.checkoutPage;
 
+  const getAuthHeaders = useCallback(() => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('fubao_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [cartItemIds]);
@@ -141,8 +150,9 @@ function CheckoutPageContent() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       // 加载地址
-      const addrRes = await fetch('/api/addresses');
+      const addrRes = await fetch('/api/addresses', { headers });
       const addrData = await addrRes.json();
       if (addrData.data) {
         setAddresses(addrData.data);
@@ -156,7 +166,7 @@ function CheckoutPageContent() {
 
       // 加载购物车商品
       if (cartItemIds.length > 0) {
-        const cartRes = await fetch('/api/cart');
+        const cartRes = await fetch('/api/cart', { headers });
         const cartData = await cartRes.json();
         if (cartData.data) {
           const allItems = cartData.data.flatMap((g: { merchant: { id: number; name: string }; items: CartItem[] }) =>
@@ -220,7 +230,7 @@ function CheckoutPageContent() {
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           address_id: selectedAddressId,
           cart_item_ids: cartItemIds,

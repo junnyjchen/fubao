@@ -1,55 +1,63 @@
 /* @ts-nocheck */
 /**
  * @fileoverview 购物车API
- * @description 购物车CRUD操作
- * @module app/api/cart/route
+ * @description 购物车CRUD操作 - 支持本地模式
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import type { DbRecord } from '@/types/common';
 
-interface CartItem {
-  id: number;
-  quantity: number;
-  selected: boolean;
-  created_at: string;
-  goods_id: number;
-  goods?: {
-    id: number;
-    name: string;
-    price: string;
-    original_price: string | null;
-    images: string[] | null;
-    stock: number;
-    status: boolean;
-    merchant_id: number | null;
-    merchants?: { id: number; name: string; logo: string | null; verified: boolean } | null;
-  };
-}
+// 本地模式购物车存储
+const getMockCart = () => {
+  if (!globalThis.mockCart) {
+    globalThis.mockCart = [];
+  }
+  return globalThis.mockCart;
+};
 
-interface MerchantGroup {
-  merchant: {
-    id: number;
-    name: string;
-    logo: string | null;
-    verified: boolean;
-  };
-  items: Array<{
-    id: number;
-    quantity: number;
-    selected: boolean;
-    goods: {
-      id: number;
-      name: string;
-      price: number;
-      original_price: number | null;
-      image: string | null;
-      stock: number;
-      status: boolean;
-    };
-  }>;
-  selectedAll: boolean;
+const getMockGoods = () => {
+  if (!globalThis.mockGoods) {
+    globalThis.mockGoods = [
+      { id: 1, name: '五行開運符', price: 99, original_price: 199, images: ['/placeholder.svg'], stock: 100, status: true, merchant_id: 1 },
+      { id: 2, name: '桃木劍', price: 299, original_price: 599, images: ['/placeholder.svg'], stock: 50, status: true, merchant_id: 1 },
+      { id: 3, name: '風水羅盤', price: 599, original_price: 999, images: ['/placeholder.svg'], stock: 30, status: true, merchant_id: 1 },
+    ];
+  }
+  return globalThis.mockGoods;
+};
+
+const getMockMerchants = () => {
+  if (!globalThis.mockMerchants) {
+    globalThis.mockMerchants = [
+      { id: 1, name: '符寶官方店', logo: null, verified: true },
+    ];
+  }
+  return globalThis.mockMerchants;
+};
+
+function getUserId(request?: NextRequest, body?: any) {
+  // 尝试从 Authorization header 获取用户信息
+  if (request) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+          if (payload.userId) return payload.userId;
+        }
+      } catch (e) {}
+    }
+  }
+  // 从 body 获取
+  if (body?.user_id) return body.user_id;
+  // 从 query 获取
+  if (request) {
+    const { searchParams } = new URL(request.url);
+    const uid = searchParams.get('user_id');
+    if (uid) return parseInt(uid);
+  }
+  return 1;
 }
 
 /**
@@ -57,140 +65,72 @@ interface MerchantGroup {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id') || '1'; // TODO: 从认证获取
+    const userId = getUserId(request);
+    const cart = getMockCart();
+    const goods = getMockGoods();
+    const merchants = getMockMerchants();
 
-    const client = getSupabaseClient();
-
-    // 获取购物车商品 - 不使用嵌入查询
-    const { data: cartItems, error } = await client
-      .from('cart_items')
-      .select(`
-        id,
-        quantity,
-        selected,
-        created_at,
-        goods_id
-      `)
-      .eq('user_id', parseInt(userId))
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
-    }
-
-    // 分开查询商品和商户信息
-    let enrichedCartItems: CartItem[] = [];
-    if (cartItems && cartItems.length > 0) {
-      const goodsIds = [...new Set(cartItems.map(item => item.goods_id).filter(Boolean))];
-      
-      if (goodsIds.length > 0) {
-        // 查询商品信息
-        const { data: goodsData } = await client
-          .from('goods')
-          .select('id, name, price, original_price, images, stock, status, merchant_id')
-          .in('id', goodsIds);
-
-        if (goodsData && goodsData.length > 0) {
-          // 获取商户ID
-          const merchantIds = [...new Set(goodsData.map(g => g.merchant_id).filter(Boolean))];
-          
-          // 查询商户信息
-          const { data: merchantsData } = merchantIds.length > 0
-            ? await client.from('merchants').select('id, name, logo, verified').in('id', merchantIds)
-            : { data: [] };
-
-          // 创建映射表
-          const goodsMap = new Map(goodsData.map(g => [g.id, g]));
-          const merchantsMap = new Map((merchantsData || []).map(m => [m.id, m]));
-
-          // 合并数据
-          enrichedCartItems = cartItems.map(item => {
-            const goods = goodsMap.get(item.goods_id);
-            if (!goods) return null;
-            return {
-              ...item,
-              goods: {
-                ...goods,
-                merchants: goods.merchant_id ? (merchantsMap.get(goods.merchant_id) || null) : null
-              }
-            };
-          }).filter((item): item is NonNullable<typeof item> => item !== null);
-        }
-      }
-    }
+    // 过滤当前用户的购物车
+    const userCart = cart.filter(item => item.user_id === userId);
 
     // 按商户分组
-    const groupedByMerchant = enrichedCartItems.reduce((acc: Record<number, MerchantGroup>, item: CartItem) => {
-      const merchant = item.goods?.merchants;
-      if (!merchant || !item.goods) return acc;
+    const groupedByMerchant = {};
+    for (const item of userCart) {
+      const g = goods.find(g => g.id === item.goods_id);
+      if (!g) continue;
 
-      const merchantId = merchant.id;
-      if (!acc[merchantId]) {
-        acc[merchantId] = {
-          merchant: {
-            id: merchant.id,
-            name: merchant.name,
-            logo: merchant.logo,
-            verified: merchant.verified,
-          },
+      const m = g.merchant_id ? merchants.find(m => m.id === g.merchant_id) : { id: 0, name: '自營', logo: null, verified: true };
+      if (!m) continue;
+
+      const merchantId = m.id;
+      if (!groupedByMerchant[merchantId]) {
+        groupedByMerchant[merchantId] = {
+          merchant: { id: m.id, name: m.name, logo: m.logo, verified: m.verified },
           items: [],
           selectedAll: true,
         };
       }
 
-      const cartItem = {
+      groupedByMerchant[merchantId].items.push({
         id: item.id,
         quantity: item.quantity,
         selected: item.selected,
         goods: {
-          id: item.goods.id,
-          name: item.goods.name,
-          price: parseFloat(item.goods.price),
-          original_price: item.goods.original_price ? parseFloat(item.goods.original_price) : null,
-          image: item.goods.images?.[0] || null,
-          stock: item.goods.stock,
-          status: item.goods.status,
+          id: g.id,
+          name: g.name,
+          price: g.price,
+          original_price: g.original_price,
+          image: g.images?.[0] || null,
+          stock: g.stock,
+          status: g.status,
         },
-      };
+      });
 
-      acc[merchantId].items.push(cartItem);
-      if (!cartItem.selected) {
-        acc[merchantId].selectedAll = false;
+      if (!item.selected) {
+        groupedByMerchant[merchantId].selectedAll = false;
       }
+    }
 
-      return acc;
-    }, {});
-
-    // 计算汇总信息
-    let totalItems = 0;
-    let selectedItems = 0;
-    let totalPrice = 0;
-    let selectedPrice = 0;
-
-    Object.values(groupedByMerchant).forEach((group: MerchantGroup) => {
-      group.items.forEach((item) => {
+    // 计算汇总
+    let totalItems = 0, selectedItems = 0, totalPrice = 0, selectedPrice = 0;
+    Object.values(groupedByMerchant).forEach((group: any) => {
+      group.items.forEach((item: any) => {
         totalItems++;
+        totalPrice += item.goods.price * item.quantity;
         if (item.selected) {
           selectedItems++;
           selectedPrice += item.goods.price * item.quantity;
         }
-        totalPrice += item.goods.price * item.quantity;
       });
     });
 
     return NextResponse.json({
       data: Object.values(groupedByMerchant),
-      summary: {
-        totalItems,
-        selectedItems,
-        totalPrice,
-        selectedPrice,
-      },
+      summary: { totalItems, selectedItems, totalPrice, selectedPrice },
     });
   } catch (error) {
     console.error('获取购物车失败:', error);
-    return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
+    return NextResponse.json({ data: [], summary: { totalItems: 0, selectedItems: 0, totalPrice: 0, selectedPrice: 0 } });
   }
 }
 
@@ -200,80 +140,52 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const userId = body.user_id || 1; // TODO: 从认证获取
+    const userId = getUserId(request, body);
     const { goodsId, quantity = 1 } = body;
 
     if (!goodsId) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    const client = getSupabaseClient();
+    const cart = getMockCart();
+    const goods = getMockGoods();
+    const g = goods.find(g => g.id === goodsId);
 
-    // 检查商品是否存在且在售
-    const { data: goods, error: goodsError } = await client
-      .from('goods')
-      .select('id, name, price, stock, status')
-      .eq('id', goodsId)
-      .single();
-
-    if (goodsError || !goods) {
+    if (!g) {
       return NextResponse.json({ error: '商品不存在' }, { status: 404 });
     }
 
-    if (!goods.status) {
+    if (!g.status) {
       return NextResponse.json({ error: '商品已下架' }, { status: 400 });
     }
 
     // 检查是否已在购物车中
-    const { data: existingItem } = await client
-      .from('cart_items')
-      .select('id, quantity')
-      .eq('user_id', userId)
-      .eq('goods_id', goodsId)
-      .single();
+    const existing = cart.find(item => item.user_id === userId && item.goods_id === goodsId);
 
-    if (existingItem) {
-      // 更新数量
-      const newQuantity = existingItem.quantity + quantity;
-      if (newQuantity > goods.stock) {
+    if (existing) {
+      const newQuantity = existing.quantity + quantity;
+      if (newQuantity > g.stock) {
         return NextResponse.json({ error: '庫存不足' }, { status: 400 });
       }
-
-      const { error: updateError } = await client
-        .from('cart_items')
-        .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
-        .eq('id', existingItem.id);
-
-      if (updateError) {
-        return NextResponse.json({ error: '更新失敗' }, { status: 500 });
-      }
-
-      return NextResponse.json({
-        message: '已更新購物車',
-        data: { quantity: newQuantity },
-      });
+      existing.quantity = newQuantity;
+      return NextResponse.json({ message: '已更新購物車', data: { quantity: newQuantity } });
     }
 
-    // 添加新商品
-    if (quantity > goods.stock) {
+    if (quantity > g.stock) {
       return NextResponse.json({ error: '庫存不足' }, { status: 400 });
     }
 
-    const { error: insertError } = await client.from('cart_items').insert({
+    // 添加新商品
+    cart.push({
+      id: Date.now(),
       user_id: userId,
       goods_id: goodsId,
       quantity,
       selected: true,
+      created_at: new Date().toISOString(),
     });
 
-    if (insertError) {
-      return NextResponse.json({ error: '添加失敗' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      message: '已添加到購物車',
-      data: { quantity },
-    });
+    return NextResponse.json({ message: '已添加到購物車', data: { quantity } });
   } catch (error) {
     console.error('添加到购物车失败:', error);
     return NextResponse.json({ error: '添加失敗' }, { status: 500 });
@@ -286,48 +198,30 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const userId = body.user_id || 1; // TODO: 从认证获取
+    const userId = getUserId(request, body);
     const { cartItemId, quantity, selected } = body;
 
     if (!cartItemId) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    const client = getSupabaseClient();
+    const cart = getMockCart();
+    const item = cart.find(item => item.id === cartItemId && item.user_id === userId);
 
-    // 验证购物车项属于当前用户
-    const { data: cartItem, error: itemError } = await client
-      .from('cart_items')
-      .select('id, goods_id, goods(stock)')
-      .eq('id', cartItemId)
-      .eq('user_id', userId)
-      .single();
-
-    if (itemError || !cartItem) {
+    if (!item) {
       return NextResponse.json({ error: '購物車項不存在' }, { status: 404 });
     }
 
-    // 更新
-    const updateData: DbRecord = { updated_at: new Date().toISOString() };
     if (quantity !== undefined) {
-      const goodsData = cartItem.goods as { stock: number } | { stock: number }[] | null;
-      const goodsStock = Array.isArray(goodsData) ? goodsData[0]?.stock ?? 0 : goodsData?.stock ?? 0;
-      if (quantity > goodsStock) {
+      const goods = getMockGoods();
+      const g = goods.find(g => g.id === item.goods_id);
+      if (g && quantity > g.stock) {
         return NextResponse.json({ error: '庫存不足' }, { status: 400 });
       }
-      updateData.quantity = quantity;
+      item.quantity = quantity;
     }
     if (selected !== undefined) {
-      updateData.selected = selected;
-    }
-
-    const { error: updateError } = await client
-      .from('cart_items')
-      .update(updateData)
-      .eq('id', cartItemId);
-
-    if (updateError) {
-      return NextResponse.json({ error: '更新失敗' }, { status: 500 });
+      item.selected = selected;
     }
 
     return NextResponse.json({ message: '更新成功' });
@@ -342,24 +236,19 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const userId = getUserId(request);
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('user_id') || '1'; // TODO: 从认证获取
     const cartItemId = searchParams.get('cartItemId');
     const clearAll = searchParams.get('clearAll');
-
-    const client = getSupabaseClient();
+    const cart = getMockCart();
 
     if (clearAll === 'true') {
-      // 清空购物车
-      const { error: deleteError } = await client
-        .from('cart_items')
-        .delete()
-        .eq('user_id', parseInt(userId));
-
-      if (deleteError) {
-        return NextResponse.json({ error: '清空失敗' }, { status: 500 });
-      }
-
+      // 清空当前用户的购物车
+      const indices = cart.reduce((acc, item, idx) => {
+        if (item.user_id === userId) acc.push(idx);
+        return acc;
+      }, [] as number[]);
+      indices.reverse().forEach(idx => cart.splice(idx, 1));
       return NextResponse.json({ message: '購物車已清空' });
     }
 
@@ -367,17 +256,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    // 删除单个商品
-    const { error: deleteError } = await client
-      .from('cart_items')
-      .delete()
-      .eq('id', parseInt(cartItemId))
-      .eq('user_id', parseInt(userId));
-
-    if (deleteError) {
-      return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
+    const idx = cart.findIndex(item => item.id === parseInt(cartItemId) && item.user_id === userId);
+    if (idx === -1) {
+      return NextResponse.json({ error: '購物車項不存在' }, { status: 404 });
     }
 
+    cart.splice(idx, 1);
     return NextResponse.json({ message: '已刪除' });
   } catch (error) {
     console.error('删除购物车商品失败:', error);
