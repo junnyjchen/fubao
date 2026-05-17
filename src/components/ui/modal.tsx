@@ -104,7 +104,7 @@ export function Modal({
 interface ConfirmOptions {
   title?: string;
   message: string;
-  type?: 'default' | 'danger' | 'warning';
+  type?: 'danger' | 'warning' | 'info';
   confirmText?: string;
   cancelText?: string;
 }
@@ -112,13 +112,13 @@ interface ConfirmOptions {
 export function useConfirm() {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmOptions>({
-    type: 'default',
+    type: 'info',
     confirmText: '確認',
     cancelText: '取消',
   });
   const [resolve, setResolve] = useState<((value: boolean) => void) | null>(null);
 
-  const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
+  const confirm = useCallback((opts: Partial<ConfirmOptions>): Promise<boolean> => {
     return new Promise((resolve) => {
       setOptions({
         ...options,
