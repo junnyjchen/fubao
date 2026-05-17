@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/lib/format';
@@ -24,7 +24,7 @@ import {
 
 interface Notification {
   id: number;
-  type: 'system' | 'order' | 'promotion' | 'activity';
+  type: 'system' | 'order' | 'promotion' | 'activity' | 'goods' | 'article';
   title: string;
   content: string;
   is_read: boolean;
@@ -117,7 +117,6 @@ interface NotificationCardProps {
 
 function NotificationCard({ notification, onMarkRead, onDelete }: NotificationCardProps) {
   const [loading, setLoading] = useState(false);
-  const { success } = useToast();
 
   const handleMarkRead = async () => {
     if (!onMarkRead || notification.is_read) return;
@@ -134,7 +133,7 @@ function NotificationCard({ notification, onMarkRead, onDelete }: NotificationCa
     try {
       setLoading(true);
       await onDelete(notification.id);
-      success('删除成功');
+      toast.success('删除成功');
     } finally {
       setLoading(false);
     }

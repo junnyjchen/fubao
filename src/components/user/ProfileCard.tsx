@@ -15,8 +15,7 @@ import {
   Mail, 
   Phone,
   Calendar,
-  Male,
-  Female,
+  UserCircle,
   Save,
   Loader2,
 } from 'lucide-react';
@@ -145,8 +144,8 @@ interface ProfileInfoCardProps {
 
 export function ProfileInfoCard({ user }: ProfileInfoCardProps) {
   const genderIcon = {
-    male: <Male className="w-4 h-4 text-blue-500" />,
-    female: <Female className="w-4 h-4 text-pink-500" />,
+    male: <User className="w-4 h-4 text-blue-500" />,
+    female: <UserCircle className="w-4 h-4 text-pink-500" />,
     unknown: null,
   };
 
@@ -323,8 +322,8 @@ export function EditProfileModal({
           <label className="text-sm font-medium mb-2 block">性别</label>
           <div className="flex gap-4">
             {[
-              { value: 'male', label: '男', icon: Male },
-              { value: 'female', label: '女', icon: Female },
+              { value: 'male', label: '男', icon: User },
+              { value: 'female', label: '女', icon: UserCircle },
               { value: 'unknown', label: '保密', icon: User },
             ].map((option) => (
               <label

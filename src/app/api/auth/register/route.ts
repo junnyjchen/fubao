@@ -1,15 +1,14 @@
 /**
  * @fileoverview 用户注册API
- * @description 处理用户注册请求，支持邀请码建立分销关系
+ * @description 处理用户注册请求，支持邀请码建立分销关系 - MySQL 实现
  * @module app/api/auth/register/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { hash } from 'bcryptjs';
 import { generateToken } from '@/lib/auth/utils';
 import { cookies } from 'next/headers';
-import { mockUsers } from '@/lib/auth/mockStore';
+import { queryOne, insert as dbInsert } from '@/lib/db';
 
 /**
  * 生成随机邀请码
@@ -25,8 +24,6 @@ function generateInviteCode(): string {
 
 /**
  * 用户注册
- * @param request - 请求对象
- * @returns 注册结果
  */
 export async function POST(request: NextRequest) {
   try {
@@ -35,224 +32,93 @@ export async function POST(request: NextRequest) {
 
     // 验证必填字段
     if (!email || !password) {
-      return NextResponse.json(
-        { error: '請填寫郵箱和密碼' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '請填寫郵箱和密碼' }, { status: 400 });
     }
 
     // 验证邮箱格式
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { error: '請輸入有效的郵箱地址' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '請輸入有效的郵箱地址' }, { status: 400 });
     }
 
     // 验证密码长度
     if (password.length < 6) {
-      return NextResponse.json(
-        { error: '密碼長度至少6位' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '密碼長度至少6位' }, { status: 400 });
     }
-
-    const client = getSupabaseClient();
 
     // 检查邮箱是否已注册
-    let existingUser = null;
-    try {
-      const { data } = await client
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .single();
-      existingUser = data;
-    } catch {
-      // 数据库不可用，检查 mock 存储
-      existingUser = mockUsers.existsByEmail(email);
+    const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email]);
+    if (existing) {
+      return NextResponse.json({ error: '該郵箱已被註冊' }, { status: 400 });
     }
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: '該郵箱已被註冊' },
-        { status: 400 }
-      );
+    // 检查手机号是否已注册
+    if (phone) {
+      const phoneExisting = await queryOne('SELECT id FROM users WHERE phone = ?', [phone]);
+      if (phoneExisting) {
+        return NextResponse.json({ error: '該手機號已被註冊' }, { status: 400 });
+      }
     }
 
     // 加密密码
     const hashedPassword = await hash(password, 10);
 
-    let user: any = null;
-    let isMockMode = false;
+    const displayName = nickname || name || email.split('@')[0];
 
-    // 尝试创建用户到数据库
-    try {
-      const { data, error } = await client
-        .from('users')
-        .insert({
-          name: nickname || name || email.split('@')[0], // 支持nickname和name
-          email,
-          phone: phone || null,
-          password: hashedPassword,
-          language: 'zh-TW',
-          status: true,
-        })
-        .select('id, name, email, phone, language, status, created_at')
-        .single();
-
-      if (!error && data) {
-        user = data;
-      } else {
-        // 数据库插入失败，使用 mock 模式
-        throw new Error('Database insert failed');
-      }
-    } catch (dbErr) {
-      console.log('数据库不可用，使用本地 mock 模式注册');
-      isMockMode = true;
-      
-      // 使用 mock 模式创建用户
-      const mockId = mockUsers.getNextId();
-      user = mockUsers.add({
-        id: mockId,
-        name: nickname || name || email.split('@')[0],
-        email,
-        phone: phone || null,
-        password: hashedPassword,
-      });
-    }
-
-    // 处理邀请码，建立分销关系（仅在非 mock 模式下）
-    if (invite_code && user && !isMockMode) {
-      try {
-        // 查找邀请人
-        const { data: inviter } = await client
-          .from('user_distribution')
-          .select('user_id, parent_id, parent_level_2_id, team_leader_id')
-          .eq('invite_code', invite_code.toUpperCase())
-          .single();
-
-        if (inviter) {
-          // 为新用户生成邀请码
-          const newInviteCode = generateInviteCode();
-
-          // 建立分销关系
-          await client.from('user_distribution').insert({
-            user_id: user.id,
-            invite_code: newInviteCode,
-            parent_id: inviter.user_id,
-            parent_level_2_id: inviter.parent_id || null,
-            parent_level_3_id: inviter.parent_level_2_id || null,
-            team_leader_id: inviter.team_leader_id || inviter.user_id,
-            total_commission: 0,
-            available_commission: 0,
-            frozen_commission: 0,
-            withdrawn_commission: 0,
-            team_count: 0,
-            direct_count: 0,
-            level_2_count: 0,
-            level_3_count: 0,
-            total_team_sales: 0,
-            is_team_leader: false,
-          });
-
-          // 更新邀请人的直推人数
-          await client
-            .from('user_distribution')
-            .update({
-              direct_count: client.rpc('increment', { x: 1 }),
-              team_count: client.rpc('increment', { x: 1 }),
-            })
-            .eq('user_id', inviter.user_id);
-
-          // 更新上上级的二级人数
-          if (inviter.parent_id) {
-            await client
-              .from('user_distribution')
-              .update({
-                level_2_count: client.rpc('increment', { x: 1 }),
-                team_count: client.rpc('increment', { x: 1 }),
-              })
-              .eq('user_id', inviter.parent_id);
-          }
-
-          // 更新上上上级的三级人数
-          if (inviter.parent_level_2_id) {
-            await client
-              .from('user_distribution')
-              .update({
-                level_3_count: client.rpc('increment', { x: 1 }),
-                team_count: client.rpc('increment', { x: 1 }),
-              })
-              .eq('user_id', inviter.parent_level_2_id);
-          }
-
-          console.log(`分销关系建立成功: 用户 ${user.id} 的上级是 ${inviter.user_id}`);
-        }
-      } catch (distError) {
-        // 分销关系建立失败不影响注册
-        console.error('建立分销关系失败:', distError);
-      }
-    } else if (user) {
-      // 没有邀请码，也要为新用户生成邀请码
-      try {
-        const newInviteCode = generateInviteCode();
-        await client.from('user_distribution').insert({
-          user_id: user.id,
-          invite_code: newInviteCode,
-          total_commission: 0,
-          available_commission: 0,
-          frozen_commission: 0,
-          withdrawn_commission: 0,
-          team_count: 0,
-          direct_count: 0,
-          level_2_count: 0,
-          level_3_count: 0,
-          total_team_sales: 0,
-          is_team_leader: false,
-        });
-      } catch (distError) {
-        console.error('创建分销信息失败:', distError);
+    // 查找邀请人
+    let invitedBy: number | null = null;
+    if (invite_code) {
+      const inviter = await queryOne<{ id: number }>('SELECT id FROM users WHERE invite_code = ?', [invite_code]);
+      if (inviter) {
+        invitedBy = inviter.id;
       }
     }
 
-    // 如果是 mock 模式，自动登录
-    if (isMockMode) {
-      const token = generateToken({
-        userId: user.id,
-        email: user.email,
-      });
-      
-      // 设置 Cookie
-      const cookieStore = await cookies();
-      cookieStore.set('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.COZE_PROJECT_ENV === 'PROD',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
-        path: '/',
-      });
-      
-      return NextResponse.json({
-        message: '註冊成功',
-        mock: true,
-        token,
-        user: {
-          ...user,
-          isGuest: false,
-        },
-      });
-    }
+    // 插入用户
+    const userId = await dbInsert('users', {
+      email,
+      phone: phone || null,
+      nickname: displayName,
+      password: hashedPassword,
+      role: 'user',
+      language: 'zh-TW',
+      status: 1,
+      invite_code: generateInviteCode(),
+      invited_by: invitedBy,
+    });
+
+    // 生成 JWT
+    const token = generateToken({
+      userId: String(userId),
+      email,
+    });
+
+    // 设置 Cookie
+    const cookieStore = await cookies();
+    cookieStore.set('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.COZE_PROJECT_ENV === 'PROD',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
 
     return NextResponse.json({
       message: '註冊成功',
-      user,
+      token,
+      user: {
+        id: userId,
+        name: displayName,
+        email,
+        phone: phone || null,
+        avatar: null,
+        language: 'zh-TW',
+        role: 'user',
+        points: 0,
+        isGuest: false,
+      },
     });
   } catch (error) {
     console.error('注册失败:', error);
-    return NextResponse.json(
-      { error: '註冊失敗，請稍後重試' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '註冊失敗，請稍後重試' }, { status: 500 });
   }
 }

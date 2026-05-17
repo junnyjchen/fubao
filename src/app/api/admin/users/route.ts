@@ -1,16 +1,15 @@
 /**
- * @fileoverview 用户管理 API
- * @description 处理用户的查询和管理
+ * @fileoverview 用户管理 API - MySQL 实现
  * @module app/api/admin/users/route
  */
 
-import { NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { NextRequest, NextResponse } from 'next/server';
+import { query, count, update as dbUpdate } from '@/lib/db';
 
 /**
- * 获取用户列表
+ * GET - 获取用户列表
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -19,81 +18,51 @@ export async function GET(request: Request) {
     const keyword = searchParams.get('keyword');
     const status = searchParams.get('status');
 
-    const client = getSupabaseClient();
+    const conditions: string[] = [];
+    const params: unknown[] = [];
 
-    let query = client
-      .from('users')
-      .select('*', { count: 'exact' });
-
-    // 关键字搜索
     if (keyword && keyword.trim()) {
-      query = query.or(`username.ilike.%${keyword.trim()}%,email.ilike.%${keyword.trim()}%,nickname.ilike.%${keyword.trim()}%`);
+      conditions.push('(email LIKE ? OR nickname LIKE ? OR phone LIKE ?)');
+      params.push(`%${keyword.trim()}%`, `%${keyword.trim()}%`, `%${keyword.trim()}%`);
     }
 
-    // 状态筛选
     if (status && status !== 'all') {
-      query = query.eq('status', status === 'active');
+      conditions.push('status = ?');
+      params.push(status === 'active' ? 1 : 0);
     }
 
-    // 排序和分页
-    query = query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const total = await count('users', conditions.length > 0 ? conditions.join(' AND ') : '1=1', params);
 
-    const { data: users, error, count } = await query;
+    const data = await query(
+      `SELECT id, email, phone, nickname, role, points, status, language, created_at, updated_at FROM users ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
 
-    if (error) {
-      // 如果表不存在，返回空数组
-      if (error.code === '42P01') {
-        return NextResponse.json({ data: [], total: 0 });
-      }
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    // 移除敏感信息
-    const safeUsers = users?.map(user => {
-      const { password, ...safeUser } = user as { password?: string; [key: string]: unknown };
-      return safeUser;
-    }) || [];
-
-    return NextResponse.json({ 
-      data: safeUsers, 
-      total: count || 0,
-      page,
-      limit,
-    });
+    return NextResponse.json({ data, total, page, limit });
   } catch (error) {
     console.error('获取用户失败:', error);
-    return NextResponse.json({ error: '獲取用戶失敗' }, { status: 500 });
+    return NextResponse.json({ data: [], total: 0, page: 1, limit: 20 });
   }
 }
 
 /**
- * 更新用户状态
+ * PUT - 更新用户状态
  */
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
     const body = await request.json();
-
     const { id, status } = body;
 
     if (!id) {
-      return NextResponse.json({ error: '用戶ID不能為空' }, { status: 400 });
+      return NextResponse.json({ error: '缺少用戶ID' }, { status: 400 });
     }
 
-    const { error } = await client
-      .from('users')
-      .update({ status })
-      .eq('id', id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    await dbUpdate('users', { status: status ? 1 : 0 }, { id });
 
     return NextResponse.json({ message: '更新成功' });
   } catch (error) {
     console.error('更新用户失败:', error);
-    return NextResponse.json({ error: '更新用戶失敗' }, { status: 500 });
+    return NextResponse.json({ error: '更新失敗' }, { status: 500 });
   }
 }

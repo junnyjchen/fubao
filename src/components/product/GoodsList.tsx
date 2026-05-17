@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Modal } from '@/components/ui/modal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -63,14 +63,13 @@ export function GoodsList({
 }: GoodsListProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [favoriting, setFavoriting] = useState<number | null>(null);
-  const { success } = useToast();
 
   const handleFavorite = async (id: number) => {
     if (!onFavorite) return;
     setFavoriting(id);
     try {
       await onFavorite(id);
-      success('已添加到收藏');
+      toast.success('已添加到收藏');
     } catch (err) {
       // handled by toast
     } finally {

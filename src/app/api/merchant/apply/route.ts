@@ -1,94 +1,55 @@
-/* @ts-nocheck */
 /**
- * @fileoverview 商户申请 API
+ * @fileoverview 商户申请 API - MySQL 实现
+ * @module app/api/merchant/apply/route
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { query, insert as dbInsert } from '@/lib/db';
+import { verifyToken } from '@/lib/auth/utils';
 
-// 确保 globalThis 上有 mockApplications
-if (!globalThis.mockMerchantApplications) {
-  globalThis.mockMerchantApplications = [];
+function getUserId(request: NextRequest): number | null {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = verifyToken(token);
+    if (payload?.userId) return parseInt(String(payload.userId));
+  }
+  return null;
 }
 
 /**
- * 提交商户入驻申请
+ * POST - 提交商户入驻申请
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const userId = getUserId(request);
     const body = await request.json();
-    const { 
-      shop_name, 
-      contact_name, 
-      contact_phone, 
-      contact_email,
-      description,
-      business_license,
-      address 
-    } = body;
+    const { shop_name, contact_name, contact_phone, contact_email, description, business_license, address } = body;
 
     if (!shop_name) {
       return NextResponse.json({ error: '請填寫商戶名稱' }, { status: 400 });
     }
-
     if (!contact_name) {
       return NextResponse.json({ error: '請填寫聯繫人姓名' }, { status: 400 });
     }
-
     if (!contact_phone) {
       return NextResponse.json({ error: '請填寫聯繫電話' }, { status: 400 });
     }
 
-    // 尝试写入数据库
-    try {
-      const { getSupabaseClient } = await import('@/storage/database/supabase-client');
-      const client = getSupabaseClient();
-      
-      const { data, error } = await client
-        .from('merchant_applications')
-        .insert({
-          shop_name,
-          contact_name,
-          contact_phone,
-          contact_email: contact_email || null,
-          description: description || null,
-          business_license: business_license || null,
-          address: address || null,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+    const id = await dbInsert('merchant_applications', {
+      user_id: userId,
+      name: shop_name,
+      type: body.shop_type || 'individual',
+      contact_name,
+      contact_phone,
+      contact_email: contact_email || null,
+      description: description || null,
+      address: address || null,
+      license_number: business_license || null,
+      status: 'pending',
+    });
 
-      if (error) throw error;
-
-      return NextResponse.json({ 
-        message: '申請提交成功，請等待審核',
-        data 
-      });
-    } catch (dbErr) {
-      console.error('商户申请数据库错误，使用本地模式:', dbErr);
-      // 数据库不可用，保存到 mock
-      const mockApplication = {
-        id: Date.now(),
-        shop_name,
-        contact_name,
-        contact_phone,
-        contact_email: contact_email || null,
-        description: description || null,
-        business_license: business_license || null,
-        address: address || null,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      };
-      
-      globalThis.mockMerchantApplications.push(mockApplication);
-      
-      return NextResponse.json({ 
-        message: '申請提交成功，請等待審核（本地模式）',
-        data: mockApplication,
-        mock: true,
-      });
-    }
+    return NextResponse.json({ message: '申請提交成功，請等待審核', data: { id } });
   } catch (error) {
     console.error('商户申请失败:', error);
     return NextResponse.json({ error: '申請提交失敗' }, { status: 500 });
@@ -96,26 +57,23 @@ export async function POST(request: Request) {
 }
 
 /**
- * 获取商户申请列表（当前用户）
+ * GET - 获取当前用户的商户申请
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { getSupabaseClient } = await import('@/storage/database/supabase-client');
-    const client = getSupabaseClient();
-    
-    const { data, error } = await client
-      .from('merchant_applications')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
-    if (error) throw error;
+    const data = await query(
+      'SELECT * FROM merchant_applications WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
+    );
 
-    return NextResponse.json({ data: data || [] });
+    return NextResponse.json({ data });
   } catch (error) {
-    console.error('获取商户申请失败，使用本地模式:', error);
-    return NextResponse.json({ 
-      data: globalThis.mockMerchantApplications || [],
-      mock: true,
-    });
+    console.error('获取商户申请失败:', error);
+    return NextResponse.json({ data: [] });
   }
 }

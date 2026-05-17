@@ -13,7 +13,8 @@ interface AdminPermissions {
   admin: {
     id: number;
     username: string;
-    name: string;
+    name?: string;
+    email?: string;
     role: {
       id: number;
       name: string;

@@ -53,7 +53,6 @@ export function CartList({
   onCheckout,
 }: CartListProps) {
   const [removingId, setRemovingId] = useState<number | null>(null);
-  const { success, error } = useToast();
 
   const selectedItems = items.filter((item) => selectedIds.includes(item.id));
   const totalAmount = selectedItems.reduce(
@@ -84,9 +83,9 @@ export function CartList({
     try {
       setRemovingId(id);
       await onRemove(id);
-      success('已删除');
+      toast.success('已删除');
     } catch (err) {
-      error('删除失败');
+      toast.error('删除失败');
     } finally {
       setRemovingId(null);
     }
@@ -187,7 +186,6 @@ function CartItemCard({
 }: CartItemCardProps) {
   const [quantity, setQuantity] = useState(item.quantity);
   const [updating, setUpdating] = useState(false);
-  const { error } = useToast();
 
   const handleQuantityChange = async (newQuantity: number) => {
     if (newQuantity < 1 || newQuantity > item.stock) return;
@@ -198,7 +196,7 @@ function CartItemCard({
       await onUpdateQuantity(item.id, newQuantity);
     } catch (err) {
       setQuantity(item.quantity);
-      error('更新失败');
+      toast.error('更新失败');
     } finally {
       setUpdating(false);
     }
@@ -367,19 +365,18 @@ export function AddToCartButton({
 }: AddToCartButtonProps) {
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const { success, error } = useToast();
 
   const handleAddToCart = async () => {
     try {
       setLoading(true);
       // API call would go here
       await new Promise((resolve) => setTimeout(resolve, 500));
-      success('已加入购物车');
+      toast.success('已加入购物车');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       onSuccess?.();
     } catch (err) {
-      error('加入购物车失败');
+      toast.error('加入购物车失败');
     } finally {
       setLoading(false);
     }

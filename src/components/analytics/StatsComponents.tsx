@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabPanel } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { formatPrice, formatCount, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import {
@@ -19,7 +19,7 @@ import {
   Star,
   Activity,
   BarChart3,
-  PieChart,
+  PieChart as PieChartIcon,
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';

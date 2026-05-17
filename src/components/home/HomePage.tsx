@@ -32,6 +32,13 @@ interface Banner {
   link: string | null;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string;
+}
+
 interface Merchant {
   id: number;
   name: string;

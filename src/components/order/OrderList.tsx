@@ -75,15 +75,14 @@ export function OrderList({
   const [cancelId, setCancelId] = useState<number | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const { success, error } = useToast();
 
   const handleCancel = async () => {
     if (!onCancel || cancelId === null) return;
     try {
       await onCancel(cancelId);
-      success('订单已取消');
+      toast.success('订单已取消');
     } catch (err) {
-      error('取消失败');
+      toast.error('取消失败');
     } finally {
       setCancelId(null);
     }
@@ -93,9 +92,9 @@ export function OrderList({
     if (!onConfirm || confirmId === null) return;
     try {
       await onConfirm(confirmId);
-      success('已确认收货');
+      toast.success('已确认收货');
     } catch (err) {
-      error('操作失败');
+      toast.error('操作失败');
     } finally {
       setConfirmId(null);
     }

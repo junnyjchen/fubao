@@ -52,7 +52,7 @@ export function VideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const [buffered, setBuffered] = useState(0);
   
-  const hideControlsTimer = useRef<NodeJS.Timeout>();
+  const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Format time
   const formatTime = (seconds: number): string => {

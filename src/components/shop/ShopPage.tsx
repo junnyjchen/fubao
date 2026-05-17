@@ -28,6 +28,13 @@ interface Merchant {
   certification_level: number | null;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  icon?: string;
+}
+
 interface Goods {
   id: number;
   name: string;

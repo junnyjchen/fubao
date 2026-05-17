@@ -26,7 +26,7 @@ interface TabsProps {
   onValueChange?: (value: string) => void;
   className?: string;
   variant?: 'line' | 'pill' | 'segmented';
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 export function Tabs({

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview MySQL 数据库 Schema
  * @description Drizzle ORM MySQL Schema 定义

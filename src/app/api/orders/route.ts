@@ -1,38 +1,32 @@
-/* @ts-nocheck */
 /**
  * @fileoverview 订单API
- * @description 订单创建和管理 - 支持本地模式
+ * @description 订单创建和管理 - MySQL 实现
+ * @module app/api/orders/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { query, queryOne, insert as dbInsert, update as dbUpdate } from '@/lib/db';
+import { verifyToken } from '@/lib/auth/utils';
 
-// 本地模式订单存储
-const getMockOrders = () => {
-  if (!globalThis.mockOrders) {
-    globalThis.mockOrders = [];
+/** 从请求获取用户ID */
+function getUserId(request: NextRequest): number | null {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = verifyToken(token);
+    if (payload?.userId) return parseInt(String(payload.userId));
   }
-  return globalThis.mockOrders;
-};
+  return null;
+}
 
-const getMockCart = () => globalThis.mockCart || [];
-const getMockGoods = () => globalThis.mockGoods || [];
-
-function getUserId(request?: NextRequest, body?: any) {
-  if (request) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-          if (payload.userId) return payload.userId;
-        }
-      } catch (e) {}
-    }
-  }
-  if (body?.user_id) return body.user_id;
-  return 1;
+/** 生成订单号 */
+function generateOrderNo(): string {
+  const now = new Date();
+  const dateStr = now.getFullYear().toString() +
+    (now.getMonth() + 1).toString().padStart(2, '0') +
+    now.getDate().toString().padStart(2, '0');
+  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+  return `FB${dateStr}${random}`;
 }
 
 /**
@@ -41,31 +35,51 @@ function getUserId(request?: NextRequest, body?: any) {
 export async function GET(request: NextRequest) {
   try {
     const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('page_size') || '10');
+    const offset = (page - 1) * pageSize;
 
-    const orders = getMockOrders();
-    const goods = getMockGoods();
+    // 构建查询条件
+    const conditions: string[] = ['o.user_id = ?'];
+    const params: unknown[] = [userId];
 
-    // 过滤当前用户的订单
-    let userOrders = orders.filter(o => o.user_id === userId);
     if (status) {
-      userOrders = userOrders.filter(o => o.status === status);
+      conditions.push('o.status = ?');
+      params.push(status);
     }
 
-    // 分页
-    const total = userOrders.length;
-    const start = (page - 1) * pageSize;
-    const pagedOrders = userOrders.slice(start, start + pageSize);
+    const whereClause = conditions.join(' AND ');
 
-    return NextResponse.json({
-      data: pagedOrders,
-      total,
-      page,
-      page_size: pageSize,
-    });
+    // 查询总数
+    const totalRow = await queryOne<{ cnt: number }>(
+      `SELECT COUNT(*) as cnt FROM orders o WHERE ${whereClause}`,
+      params
+    );
+    const total = totalRow?.cnt || 0;
+
+    // 查询订单
+    const orders = await query(
+      `SELECT o.* FROM orders o WHERE ${whereClause} ORDER BY o.created_at DESC LIMIT ? OFFSET ?`,
+      [...params, pageSize, offset]
+    );
+
+    // 为每个订单查询商品项
+    const ordersWithItems = [];
+    for (const order of orders as any[]) {
+      const items = await query(
+        'SELECT * FROM order_items WHERE order_id = ?',
+        [order.id]
+      );
+      ordersWithItems.push({ ...order, items });
+    }
+
+    return NextResponse.json({ data: ordersWithItems, total, page, page_size: pageSize });
   } catch (error) {
     console.error('获取订单失败:', error);
     return NextResponse.json({ data: [], total: 0, page: 1, page_size: 10 });
@@ -73,141 +87,108 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * POST - 创建订单（从购物车结算）
+ * POST - 创建订单
  */
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const userId = getUserId(request, body);
     const { address_id, items, remark } = body;
 
     if (!items || items.length === 0) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    const orders = getMockOrders();
-    const goods = getMockGoods();
-    const cart = getMockCart();
+    // 获取地址
+    const address = await queryOne('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [address_id, userId]);
+    if (!address) {
+      return NextResponse.json({ error: '請選擇收貨地址' }, { status: 400 });
+    }
 
     // 计算订单金额
     let totalAmount = 0;
     const orderItems = [];
 
     for (const item of items) {
-      const g = goods.find(g => g.id === item.goods_id);
-      if (!g) {
+      const goods = await queryOne('SELECT id, name, main_image, price, stock, status FROM goods WHERE id = ?', [item.goods_id]);
+      if (!goods) {
         return NextResponse.json({ error: `商品ID ${item.goods_id} 不存在` }, { status: 404 });
       }
-      if (!g.status) {
-        return NextResponse.json({ error: `商品「${g.name}」已下架` }, { status: 400 });
+      if (!goods.status) {
+        return NextResponse.json({ error: `商品「${goods.name}」已下架` }, { status: 400 });
       }
-      if (item.quantity > g.stock) {
-        return NextResponse.json({ error: `商品「${g.name}」庫存不足` }, { status: 400 });
+      if (item.quantity > goods.stock) {
+        return NextResponse.json({ error: `商品「${goods.name}」庫存不足` }, { status: 400 });
       }
 
-      const itemTotal = g.price * item.quantity;
+      const itemTotal = parseFloat(goods.price) * item.quantity;
       totalAmount += itemTotal;
-      orderItems.push({
-        goods_id: g.id,
-        goods_name: g.name,
-        price: g.price,
-        quantity: item.quantity,
-        image: g.images?.[0] || null,
-        total: itemTotal,
-      });
 
-      // 减库存
-      g.stock -= item.quantity;
+      orderItems.push({
+        goods_id: goods.id,
+        goods_name: goods.name,
+        goods_image: goods.main_image,
+        price: goods.price,
+        quantity: item.quantity,
+        total: itemTotal.toFixed(2),
+      });
     }
 
+    // 运费
+    const shippingFee = totalAmount >= 99 ? 0 : 10;
+    const payAmount = totalAmount + shippingFee;
+
+    const orderNo = generateOrderNo();
+
     // 创建订单
-    const order = {
-      id: Date.now(),
-      order_no: `FX${Date.now()}${Math.floor(Math.random() * 1000)}`,
+    const orderId = await dbInsert('orders', {
+      order_no: orderNo,
       user_id: userId,
+      total_amount: totalAmount.toFixed(2),
+      pay_amount: payAmount.toFixed(2),
+      shipping_fee: shippingFee.toFixed(2),
+      discount_amount: '0.00',
       status: 'pending',
-      total_amount: totalAmount,
-      items: orderItems,
-      address_id: address_id || 1,
-      remark: remark || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+      address_snapshot: JSON.stringify(address),
+      remark: remark || null,
+    });
 
-    orders.unshift(order);
+    // 创建订单项
+    for (const oi of orderItems) {
+      await dbInsert('order_items', {
+        order_id: orderId,
+        goods_id: oi.goods_id,
+        goods_name: oi.goods_name,
+        goods_image: oi.goods_image,
+        price: oi.price,
+        quantity: oi.quantity,
+        total: oi.total,
+      });
 
-    // 从购物车中移除已购买的商品
+      // 减库存、增销量 - 使用原始SQL
+      await query('UPDATE goods SET stock = GREATEST(stock - ?, 0), sales = sales + ? WHERE id = ?', [oi.quantity, oi.quantity, oi.goods_id]);
+    }
+
+    // 清除已购买的购物车项
     for (const item of items) {
-      const idx = cart.findIndex(c => c.user_id === userId && c.goods_id === item.goods_id);
-      if (idx !== -1) {
-        cart.splice(idx, 1);
+      try {
+        const { remove: dbRemove } = await import('@/lib/db');
+        await dbRemove('cart_items', { user_id: userId, goods_id: item.goods_id });
+      } catch {
+        // 忽略
       }
     }
 
     return NextResponse.json({
+      data: { id: orderId, order_no: orderNo, total_amount: totalAmount, pay_amount: payAmount, status: 'pending' },
       message: '下單成功',
-      data: order,
     });
   } catch (error) {
     console.error('创建订单失败:', error);
-    return NextResponse.json({ error: '下單失敗' }, { status: 500 });
-  }
-}
-
-/**
- * PUT - 更新订单状态
- */
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { order_id, status } = body;
-
-    if (!order_id) {
-      return NextResponse.json({ error: '請提供訂單ID' }, { status: 400 });
-    }
-
-    const orders = getMockOrders();
-    const order = orders.find(o => o.id === order_id);
-
-    if (!order) {
-      return NextResponse.json({ error: '訂單不存在' }, { status: 404 });
-    }
-
-    order.status = status || order.status;
-    order.updated_at = new Date().toISOString();
-
-    return NextResponse.json({ message: '更新成功', data: order });
-  } catch (error) {
-    console.error('更新订单失败:', error);
-    return NextResponse.json({ error: '更新失敗' }, { status: 500 });
-  }
-}
-
-/**
- * DELETE - 取消订单
- */
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const orderId = searchParams.get('order_id');
-
-    if (!orderId) {
-      return NextResponse.json({ error: '請提供訂單ID' }, { status: 400 });
-    }
-
-    const orders = getMockOrders();
-    const order = orders.find(o => o.id === parseInt(orderId));
-
-    if (!order) {
-      return NextResponse.json({ error: '訂單不存在' }, { status: 404 });
-    }
-
-    order.status = 'cancelled';
-    order.updated_at = new Date().toISOString();
-
-    return NextResponse.json({ message: '訂單已取消' });
-  } catch (error) {
-    console.error('取消订单失败:', error);
-    return NextResponse.json({ error: '取消失敗' }, { status: 500 });
+    return NextResponse.json({ error: '創建訂單失敗' }, { status: 500 });
   }
 }

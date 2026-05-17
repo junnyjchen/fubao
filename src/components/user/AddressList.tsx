@@ -51,16 +51,15 @@ export function AddressList({
 }: AddressListProps) {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const { success, error } = useToast();
 
   const handleDelete = async () => {
     if (!onDelete || deleteId === null) return;
     try {
       setDeleting(true);
       await onDelete(deleteId);
-      success('删除成功');
+      toast.success('删除成功');
     } catch (err) {
-      error('删除失败');
+      toast.error('删除失败');
     } finally {
       setDeleting(false);
       setDeleteId(null);

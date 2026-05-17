@@ -1,142 +1,103 @@
 /**
  * @fileoverview 用户登录 API
- * @description 处理用户登录、登出
+ * @description 处理用户登录、注册、登出 - MySQL 实现
  * @module app/api/auth/login/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { compare } from 'bcryptjs';
+import { compare, hash } from 'bcryptjs';
 import { generateToken } from '@/lib/auth/utils';
-import { mockUsers } from '@/lib/auth/mockStore';
+import { queryOne, insert as dbInsert } from '@/lib/db';
+
+interface UserRow {
+  id: number;
+  email: string | null;
+  phone: string | null;
+  nickname: string | null;
+  password: string;
+  status: number;
+  avatar: string | null;
+  language: string;
+  role: string;
+  points: number;
+  invite_code: string | null;
+}
 
 /**
  * 用户登录
- * @param request - 请求对象
- * @returns 登录结果
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, phone, password, action } = body;
-    
+
     // 处理注册
     if (action === 'register') {
       return handleRegister(body);
     }
-    
-    const supabase = getSupabaseClient();
-    
-    // 查找用户
-    let query = supabase
-      .from('users')
-      .select('id, name, email, phone, password, status, avatar, language')
-      .eq('status', true);
 
+    // 验证必填
+    if (!password) {
+      return NextResponse.json({ error: '請輸入密碼' }, { status: 400 });
+    }
+
+    if (!email && !phone) {
+      return NextResponse.json({ error: '請輸入郵箱或手機號碼' }, { status: 400 });
+    }
+
+    // 从 MySQL 查找用户
+    let user: UserRow | null = null;
     if (email) {
-      query = query.eq('email', email);
+      user = await queryOne<UserRow>(
+        'SELECT id, email, phone, nickname, password, status, avatar, language, role, points, invite_code FROM users WHERE email = ? AND status = 1',
+        [email]
+      );
     } else if (phone) {
-      query = query.eq('phone', phone);
-    } else {
-      return NextResponse.json(
-        { error: '請輸入郵箱或手機號碼' },
-        { status: 400 }
+      user = await queryOne<UserRow>(
+        'SELECT id, email, phone, nickname, password, status, avatar, language, role, points, invite_code FROM users WHERE phone = ? AND status = 1',
+        [phone]
       );
     }
 
-    const { data: users, error: fetchError } = await query.limit(1);
-
-    // 如果数据库不可用或查询失败，使用 mock 数据
-    if (fetchError || !users || users.length === 0) {
-      // 尝试从 mock 用户存储中查找
-      const mockUser = mockUsers.find(email, phone);
-      
-      if (!mockUser) {
-        return NextResponse.json(
-          { error: '賬號不存在或已被禁用' },
-          { status: 401 }
-        );
-      }
-      
-      // 验证 mock 用户密码
-      const isValidPassword = await compare(password, mockUser.password);
-      if (!isValidPassword) {
-        return NextResponse.json(
-          { error: '密碼錯誤' },
-          { status: 401 }
-        );
-      }
-      
-      // 生成 JWT
-      const token = generateToken({
-        userId: mockUser.id,
-        email: mockUser.email,
-      });
-      
-      const cookieStore = await cookies();
-      cookieStore.set('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.COZE_PROJECT_ENV === 'PROD',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
-        path: '/',
-      });
-      
-      const { password: _, ...userWithoutPassword } = mockUser;
-      return NextResponse.json({
-        message: '登錄成功',
-        token, // 返回 token 给前端使用
-        user: {
-          ...userWithoutPassword,
-          isGuest: false,
-        },
-      });
+    if (!user) {
+      return NextResponse.json({ error: '賬號不存在或已被禁用' }, { status: 401 });
     }
-
-    const user = users[0];
 
     // 验证密码
-    if (!user.password) {
-      return NextResponse.json(
-        { error: '賬號異常，請聯繫客服' },
-        { status: 401 }
-      );
-    }
-
     const isValidPassword = await compare(password, user.password);
-
     if (!isValidPassword) {
-      return NextResponse.json(
-        { error: '密碼錯誤' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: '密碼錯誤' }, { status: 401 });
     }
 
-    // 生成JWT令牌
+    // 生成 JWT
     const token = generateToken({
-      userId: user.id,
+      userId: String(user.id),
       email: user.email || '',
     });
 
-    // 设置HTTP-only Cookie
+    // 设置 Cookie
     const cookieStore = await cookies();
     cookieStore.set('auth_token', token, {
       httpOnly: true,
       secure: process.env.COZE_PROJECT_ENV === 'PROD',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7天
+      maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
 
-    // 返回用户信息（不包含密码）
-    const { password: _, ...userWithoutPassword } = user;
-
     return NextResponse.json({
       message: '登錄成功',
-      token, // 返回 token 给前端使用
+      token,
       user: {
-        ...userWithoutPassword,
+        id: user.id,
+        name: user.nickname,
+        email: user.email,
+        phone: user.phone,
+        avatar: user.avatar,
+        language: user.language,
+        role: user.role,
+        points: user.points,
         isGuest: false,
       },
     });
@@ -153,151 +114,63 @@ async function handleRegister(body: {
   email: string;
   password: string;
   name?: string;
+  nickname?: string;
   phone?: string;
+  invite_code?: string;
 }) {
   try {
-    const { email, password, name, phone } = body;
-    
-    // 基本验证
+    const { email, password, name, nickname, phone, invite_code } = body;
+
+    // 验证必填
     if (!email || !password) {
-      return NextResponse.json(
-        { error: '郵箱和密碼不能為空' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '請填寫郵箱和密碼' }, { status: 400 });
     }
-    
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: '請輸入有效的郵箱地址' }, { status: 400 });
+    }
+
     if (password.length < 6) {
-      return NextResponse.json(
-        { error: '密碼至少需要6個字符' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '密碼長度至少6位' }, { status: 400 });
     }
-    
-    // 生成密码哈希
-    const bcrypt = require('bcryptjs');
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    const supabase = getSupabaseClient();
-    
-    // 检查邮箱是否已存在
-    let existingUsers: any[] = [];
-    let dbAvailable = true;
-    
-    try {
-      const result = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .limit(1);
-      
-      existingUsers = result.data || [];
-    } catch (dbError) {
-      console.error('数据库查询失败，使用 mock 模式:', dbError);
-      dbAvailable = false;
+
+    // 检查邮箱是否已注册
+    const existing = await queryOne('SELECT id FROM users WHERE email = ?', [email]);
+    if (existing) {
+      return NextResponse.json({ error: '該郵箱已被註冊' }, { status: 400 });
     }
-    
-    if (existingUsers && existingUsers.length > 0) {
-      return NextResponse.json(
-        { error: '該郵箱已被註冊' },
-        { status: 400 }
-      );
-    }
-    
-    // 如果数据库不可用，使用 mock 模式
-    if (!dbAvailable) {
-      const mockId = Date.now();
-      const token = generateToken({
-        userId: mockId,
-        email,
-      });
-      
-      const cookieStore = await cookies();
-      cookieStore.set('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.COZE_PROJECT_ENV === 'PROD',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
-        path: '/',
-      });
-      
-      return NextResponse.json({
-        message: '註冊成功',
-        token,
-        user: {
-          id: mockId,
-          name: name || email.split('@')[0],
-          email,
-          phone: phone || null,
-          avatar: null,
-          language: 'zh-TW',
-          isGuest: false,
-        },
-      });
-    }
-    
-    // 创建用户
-    let newUser: any = null;
-    let insertError: any = null;
-    
-    try {
-      const result = await supabase
-        .from('users')
-        .insert({
-          email,
-          phone: phone || null,
-          name: name || email.split('@')[0],
-          password: hashedPassword,
-          nickname: name || email.split('@')[0],
-          status: true,
-        })
-        .select('id, name, email, phone, avatar, language')
-        .single();
-      
-      newUser = result.data;
-      insertError = result.error;
-    } catch (insertErr) {
-      console.error('创建用户失败，使用 mock 模式:', insertErr);
-      dbAvailable = false;
-    }
-    
-    // 如果数据库不可用，返回成功（mock）
-    if (!dbAvailable || insertError || !newUser) {
-      const mockId = Date.now();
-      const token = generateToken({
-        userId: mockId,
-        email,
-      });
-      
-      const cookieStore = await cookies();
-      cookieStore.set('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.COZE_PROJECT_ENV === 'PROD',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7,
-        path: '/',
-      });
-      
-      return NextResponse.json({
-        message: '註冊成功',
-        token,
-        user: {
-          id: mockId,
-          name: name || email.split('@')[0],
-          email,
-          phone: phone || null,
-          avatar: null,
-          language: 'zh-TW',
-          isGuest: false,
-        },
-      });
-    }
-    
+
+    // 加密密码
+    const hashedPassword = await hash(password, 10);
+
+    // 生成邀请码
+    const generateInviteCode = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      return code;
+    };
+
+    const displayName = nickname || name || email.split('@')[0];
+
+    // 插入用户
+    const userId = await dbInsert('users', {
+      email,
+      phone: phone || null,
+      nickname: displayName,
+      password: hashedPassword,
+      role: 'user',
+      status: 1,
+      language: 'zh-TW',
+      invite_code: generateInviteCode(),
+    });
+
     // 生成 JWT
     const token = generateToken({
-      userId: newUser.id,
-      email: newUser.email,
+      userId: String(userId),
+      email,
     });
-    
+
     // 设置 Cookie
     const cookieStore = await cookies();
     cookieStore.set('auth_token', token, {
@@ -307,12 +180,19 @@ async function handleRegister(body: {
       maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
-    
+
     return NextResponse.json({
       message: '註冊成功',
       token,
       user: {
-        ...newUser,
+        id: userId,
+        name: displayName,
+        email,
+        phone: phone || null,
+        avatar: null,
+        language: 'zh-TW',
+        role: 'user',
+        points: 0,
         isGuest: false,
       },
     });
@@ -324,11 +204,9 @@ async function handleRegister(body: {
 
 /**
  * 用户登出
- * @returns 登出结果
  */
 export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete('auth_token');
-  
   return NextResponse.json({ message: '登出成功' });
 }

@@ -93,14 +93,13 @@ interface ReviewCardProps {
 export function ReviewCard({ review, showGoods = false }: ReviewCardProps) {
   const [showAllImages, setShowAllImages] = useState(false);
   const [showReply, setShowReply] = useState(false);
-  const { success, error } = useToast();
 
   const handleLike = async () => {
     try {
       // API call would go here
-      success(review.is_liked ? '取消点赞' : '点赞成功');
+      toast.success(review.is_liked ? '取消点赞' : '点赞成功');
     } catch (err) {
-      error('操作失败');
+      toast.error('操作失败');
     }
   };
 
@@ -358,23 +357,22 @@ export function ReviewForm({
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState('');
   const [hoverRating, setHoverRating] = useState(0);
-  const { success, error } = useToast();
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      error('请选择评分');
+      toast.error('请选择评分');
       return;
     }
     if (!content.trim()) {
-      error('请输入评价内容');
+      toast.error('请输入评价内容');
       return;
     }
     try {
       await onSubmit({ rating, content, images: [] });
-      success('评价成功');
+      toast.success('评价成功');
       onClose();
     } catch (err) {
-      error('评价失败');
+      toast.error('评价失败');
     }
   };
 

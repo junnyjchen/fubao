@@ -264,28 +264,27 @@ interface PointsExchangeProps {
 
 export function PointsExchange({ goods, userPoints, onExchange }: PointsExchangeProps) {
   const [exchangeId, setExchangeId] = useState<number | null>(null);
-  const { success, error } = useToast();
 
   const handleExchange = async (goodsId: number) => {
     const item = goods.find((g) => g.id === goodsId);
     if (!item) return;
 
     if (item.points > userPoints) {
-      error('积分不足');
+      toast.error('积分不足');
       return;
     }
 
     if (item.stock <= 0) {
-      error('库存不足');
+      toast.error('库存不足');
       return;
     }
 
     try {
       setExchangeId(goodsId);
       await onExchange(goodsId);
-      success('兑换成功');
+      toast.success('兑换成功');
     } catch (err) {
-      error('兑换失败');
+      toast.error('兑换失败');
     } finally {
       setExchangeId(null);
     }
@@ -340,7 +339,6 @@ interface SignCalendarProps {
 
 export function SignCalendar({ signedDays, onSign, canSign }: SignCalendarProps) {
   const [loading, setLoading] = useState(false);
-  const { success, error } = useToast();
 
   const today = new Date();
   const currentMonth = today.getMonth();
@@ -352,9 +350,9 @@ export function SignCalendar({ signedDays, onSign, canSign }: SignCalendarProps)
     try {
       setLoading(true);
       await onSign();
-      success('签到成功');
+      toast.success('签到成功');
     } catch (err) {
-      error('签到失败');
+      toast.error('签到失败');
     } finally {
       setLoading(false);
     }

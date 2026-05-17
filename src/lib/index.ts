@@ -23,7 +23,8 @@ export type {
 
 // 工具函数
 export * from './utils';
-export * from './format';
+// format re-exports some functions already in utils, skip duplicates
+export { formatPrice, formatPriceSimple, formatPercent, formatFileSize, formatRelativeTime, formatDuration } from './format';
 export * from './validation';
 export * from './constants';
 

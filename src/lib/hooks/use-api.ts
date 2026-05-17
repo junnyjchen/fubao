@@ -172,7 +172,7 @@ export function useSubmit<T = unknown>(
         setLoading(true);
         setError(null);
         const method = options?.method || 'POST';
-        const response = await api.request<T>(url, {
+        const response = await api.post<T>(url, {
           method,
           body: method !== 'DELETE' ? body : undefined,
         });
@@ -207,7 +207,7 @@ export function useSearch<T>(
   const [results, setResults] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const search = useCallback(
     async (q: string) => {

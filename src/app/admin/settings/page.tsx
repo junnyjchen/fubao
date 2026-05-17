@@ -124,23 +124,12 @@ export default function SettingsPage() {
       const data = await res.json();
       console.log('保存设置响应:', data);
       if (data.message) {
-        toast({
-          title: '保存成功',
-          description: data.mock ? '設置已更新（本地模式）' : '設置已更新',
-        });
+        toast.success('保存成功', { description: data.mock ? '設置已更新（本地模式）' : '設置已更新' });
       } else if (data.error) {
-        toast({
-          variant: 'destructive',
-          title: '保存失敗',
-          description: data.error,
-        });
+        toast.error('保存失敗', { description: data.error });
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '保存失敗',
-        description: '網絡錯誤，請重試',
-      });
+      toast.error('保存失敗', { description: '網絡錯誤，請重試' });
     } finally {
       setSaving(false);
     }

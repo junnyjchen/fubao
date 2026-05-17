@@ -1,13 +1,12 @@
 /**
- * @fileoverview 获取当前用户信息 API
- * @description 获取当前登录用户的详细信息
+ * @fileoverview 获取当前用户信息 API - MySQL 实现
  * @module app/api/auth/me/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
-import { mockUsers } from '@/lib/auth/mockStore';
+import { queryOne } from '@/lib/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-ltd-jwt-secret-key-2024';
 
@@ -42,11 +41,12 @@ export async function GET(request: NextRequest) {
     try {
       // 验证 JWT token
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; email: string };
-      
-      // 使用 mockStore 查找用户
-      const mockUser = mockUsers.find(decoded.email);
-      if (mockUser) {
-        const { password: _, ...userWithoutPassword } = mockUser;
+
+      // 从 MySQL 查找用户
+      const user = await queryOne('SELECT * FROM users WHERE id = ?', [decoded.userId]);
+
+      if (user) {
+        const { password: _, ...userWithoutPassword } = user as Record<string, unknown>;
         return NextResponse.json({
           user: {
             ...userWithoutPassword,
@@ -65,9 +65,7 @@ export async function GET(request: NextRequest) {
           isGuest: false,
         },
       });
-
     } catch (jwtError) {
-      // Token 无效或过期
       console.error('JWT 验证失败:', jwtError);
       return NextResponse.json({
         user: {

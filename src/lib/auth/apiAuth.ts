@@ -4,7 +4,7 @@
  */
 
 import { verifyToken } from './utils';
-import { mockStore } from './mockStore';
+// mockStore is no longer needed - using MySQL directly
 
 export interface AuthUser {
   userId: string;
@@ -23,12 +23,11 @@ export async function getAuthUser(request: Request): Promise<AuthUser | null> {
     const token = authHeader.slice(7);
     const payload = verifyToken(token);
     if (payload?.userId) {
-      // 从 mockStore 查找用户信息
-      const user = mockStore.find(payload.email);
+      // 直接使用 token 信息，不查找 mockStore
       return {
         userId: String(payload.userId),
         email: payload.email,
-        name: user?.name || payload.email.split('@')[0],
+        name: payload.email.split('@')[0],
       };
     }
   }
@@ -39,11 +38,10 @@ export async function getAuthUser(request: Request): Promise<AuthUser | null> {
   if (tokenMatch) {
     const payload = verifyToken(tokenMatch[1]);
     if (payload?.userId) {
-      const user = mockStore.find(payload.email);
       return {
         userId: String(payload.userId),
         email: payload.email,
-        name: user?.name || payload.email.split('@')[0],
+        name: payload.email.split('@')[0],
       };
     }
   }

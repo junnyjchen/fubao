@@ -1,63 +1,22 @@
-/* @ts-nocheck */
 /**
  * @fileoverview 购物车API
- * @description 购物车CRUD操作 - 支持本地模式
+ * @description 购物车CRUD操作 - MySQL 实现
+ * @module app/api/cart/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { query, queryOne, insert as dbInsert, update as dbUpdate, remove as dbRemove } from '@/lib/db';
+import { verifyToken } from '@/lib/auth/utils';
 
-// 本地模式购物车存储
-const getMockCart = () => {
-  if (!globalThis.mockCart) {
-    globalThis.mockCart = [];
+/** 从请求获取用户ID */
+function getUserId(request: NextRequest): number | null {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const payload = verifyToken(token);
+    if (payload?.userId) return parseInt(String(payload.userId));
   }
-  return globalThis.mockCart;
-};
-
-const getMockGoods = () => {
-  if (!globalThis.mockGoods) {
-    globalThis.mockGoods = [
-      { id: 1, name: '五行開運符', price: 99, original_price: 199, images: ['/placeholder.svg'], stock: 100, status: true, merchant_id: 1 },
-      { id: 2, name: '桃木劍', price: 299, original_price: 599, images: ['/placeholder.svg'], stock: 50, status: true, merchant_id: 1 },
-      { id: 3, name: '風水羅盤', price: 599, original_price: 999, images: ['/placeholder.svg'], stock: 30, status: true, merchant_id: 1 },
-    ];
-  }
-  return globalThis.mockGoods;
-};
-
-const getMockMerchants = () => {
-  if (!globalThis.mockMerchants) {
-    globalThis.mockMerchants = [
-      { id: 1, name: '符寶官方店', logo: null, verified: true },
-    ];
-  }
-  return globalThis.mockMerchants;
-};
-
-function getUserId(request?: NextRequest, body?: any) {
-  // 尝试从 Authorization header 获取用户信息
-  if (request) {
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-          if (payload.userId) return payload.userId;
-        }
-      } catch (e) {}
-    }
-  }
-  // 从 body 获取
-  if (body?.user_id) return body.user_id;
-  // 从 query 获取
-  if (request) {
-    const { searchParams } = new URL(request.url);
-    const uid = searchParams.get('user_id');
-    if (uid) return parseInt(uid);
-  }
-  return 1;
+  return null;
 }
 
 /**
@@ -66,66 +25,66 @@ function getUserId(request?: NextRequest, body?: any) {
 export async function GET(request: NextRequest) {
   try {
     const userId = getUserId(request);
-    const cart = getMockCart();
-    const goods = getMockGoods();
-    const merchants = getMockMerchants();
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
-    // 过滤当前用户的购物车
-    const userCart = cart.filter(item => item.user_id === userId);
+    const items = await query(
+      `SELECT ci.id, ci.goods_id, ci.quantity, ci.selected,
+              g.name as goods_name, g.price, g.original_price, g.main_image, g.stock, g.status,
+              m.id as merchant_id, m.name as merchant_name, m.logo as merchant_logo, m.verified as merchant_verified
+       FROM cart_items ci
+       LEFT JOIN goods g ON ci.goods_id = g.id
+       LEFT JOIN merchants m ON g.merchant_id = m.id
+       WHERE ci.user_id = ?
+       ORDER BY ci.created_at DESC`,
+      [userId]
+    );
 
     // 按商户分组
-    const groupedByMerchant = {};
-    for (const item of userCart) {
-      const g = goods.find(g => g.id === item.goods_id);
-      if (!g) continue;
+    const grouped: Record<number, { merchant: { id: number; name: string; logo: string | null; verified: number }; items: unknown[]; selectedAll: boolean }> = {};
+    let totalItems = 0;
+    let selectedItems = 0;
+    let totalPrice = 0;
+    let selectedPrice = 0;
 
-      const m = g.merchant_id ? merchants.find(m => m.id === g.merchant_id) : { id: 0, name: '自營', logo: null, verified: true };
-      if (!m) continue;
-
-      const merchantId = m.id;
-      if (!groupedByMerchant[merchantId]) {
-        groupedByMerchant[merchantId] = {
-          merchant: { id: m.id, name: m.name, logo: m.logo, verified: m.verified },
+    for (const item of items as any[]) {
+      const mid = item.merchant_id || 0;
+      if (!grouped[mid]) {
+        grouped[mid] = {
+          merchant: { id: mid, name: item.merchant_name || '自營', logo: item.merchant_logo, verified: item.merchant_verified || 0 },
           items: [],
           selectedAll: true,
         };
       }
 
-      groupedByMerchant[merchantId].items.push({
+      grouped[mid].items.push({
         id: item.id,
         quantity: item.quantity,
-        selected: item.selected,
+        selected: !!item.selected,
         goods: {
-          id: g.id,
-          name: g.name,
-          price: g.price,
-          original_price: g.original_price,
-          image: g.images?.[0] || null,
-          stock: g.stock,
-          status: g.status,
+          id: item.goods_id,
+          name: item.goods_name,
+          price: parseFloat(item.price),
+          original_price: parseFloat(item.original_price),
+          image: item.main_image,
+          stock: item.stock,
+          status: item.status,
         },
       });
 
-      if (!item.selected) {
-        groupedByMerchant[merchantId].selectedAll = false;
+      totalItems++;
+      totalPrice += parseFloat(item.price) * item.quantity;
+      if (item.selected) {
+        selectedItems++;
+        selectedPrice += parseFloat(item.price) * item.quantity;
+      } else {
+        grouped[mid].selectedAll = false;
       }
     }
 
-    // 计算汇总
-    let totalItems = 0, selectedItems = 0, totalPrice = 0, selectedPrice = 0;
-    Object.values(groupedByMerchant).forEach((group: any) => {
-      group.items.forEach((item: any) => {
-        totalItems++;
-        totalPrice += item.goods.price * item.quantity;
-        if (item.selected) {
-          selectedItems++;
-          selectedPrice += item.goods.price * item.quantity;
-        }
-      });
-    });
-
     return NextResponse.json({
-      data: Object.values(groupedByMerchant),
+      data: Object.values(grouped),
       summary: { totalItems, selectedItems, totalPrice, selectedPrice },
     });
   } catch (error) {
@@ -139,132 +98,92 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const userId = getUserId(request, body);
-    const { goodsId, quantity = 1 } = body;
+    const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
-    if (!goodsId) {
+    const { goods_id, quantity = 1 } = await request.json();
+    if (!goods_id) {
       return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
     }
 
-    const cart = getMockCart();
-    const goods = getMockGoods();
-    const g = goods.find(g => g.id === goodsId);
-
-    if (!g) {
-      return NextResponse.json({ error: '商品不存在' }, { status: 404 });
+    // 检查商品是否存在
+    const goods = await queryOne('SELECT id, stock, status FROM goods WHERE id = ?', [goods_id]);
+    if (!goods || !goods.status) {
+      return NextResponse.json({ error: '商品不存在或已下架' }, { status: 404 });
     }
 
-    if (!g.status) {
-      return NextResponse.json({ error: '商品已下架' }, { status: 400 });
-    }
-
-    // 检查是否已在购物车中
-    const existing = cart.find(item => item.user_id === userId && item.goods_id === goodsId);
+    // 检查是否已在购物车
+    const existing = await queryOne('SELECT id, quantity FROM cart_items WHERE user_id = ? AND goods_id = ?', [userId, goods_id]);
 
     if (existing) {
-      const newQuantity = existing.quantity + quantity;
-      if (newQuantity > g.stock) {
-        return NextResponse.json({ error: '庫存不足' }, { status: 400 });
-      }
-      existing.quantity = newQuantity;
-      return NextResponse.json({ message: '已更新購物車', data: { quantity: newQuantity } });
+      // 更新数量
+      await dbUpdate('cart_items', { quantity: (existing as any).quantity + quantity }, { id: (existing as any).id });
+    } else {
+      // 新增
+      await dbInsert('cart_items', { user_id: userId, goods_id, quantity, selected: 1 });
     }
 
-    if (quantity > g.stock) {
-      return NextResponse.json({ error: '庫存不足' }, { status: 400 });
-    }
-
-    // 添加新商品
-    cart.push({
-      id: Date.now(),
-      user_id: userId,
-      goods_id: goodsId,
-      quantity,
-      selected: true,
-      created_at: new Date().toISOString(),
-    });
-
-    return NextResponse.json({ message: '已添加到購物車', data: { quantity } });
+    return NextResponse.json({ message: '已添加到購物車' });
   } catch (error) {
-    console.error('添加到购物车失败:', error);
-    return NextResponse.json({ error: '添加失敗' }, { status: 500 });
+    console.error('添加购物车失败:', error);
+    return NextResponse.json({ error: '添加購物車失敗' }, { status: 500 });
   }
 }
 
 /**
- * PUT - 更新购物车商品
+ * PUT - 更新购物车项
  */
 export async function PUT(request: NextRequest) {
   try {
-    const body = await request.json();
-    const userId = getUserId(request, body);
-    const { cartItemId, quantity, selected } = body;
-
-    if (!cartItemId) {
-      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
+    const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
 
-    const cart = getMockCart();
-    const item = cart.find(item => item.id === cartItemId && item.user_id === userId);
+    const { id, quantity, selected } = await request.json();
 
-    if (!item) {
-      return NextResponse.json({ error: '購物車項不存在' }, { status: 404 });
+    if (!id) {
+      return NextResponse.json({ error: '缺少購物車項ID' }, { status: 400 });
     }
 
-    if (quantity !== undefined) {
-      const goods = getMockGoods();
-      const g = goods.find(g => g.id === item.goods_id);
-      if (g && quantity > g.stock) {
-        return NextResponse.json({ error: '庫存不足' }, { status: 400 });
-      }
-      item.quantity = quantity;
-    }
-    if (selected !== undefined) {
-      item.selected = selected;
-    }
+    const updateData: Record<string, unknown> = {};
+    if (quantity !== undefined) updateData.quantity = quantity;
+    if (selected !== undefined) updateData.selected = selected ? 1 : 0;
+
+    await dbUpdate('cart_items', updateData, { id, user_id: userId });
 
     return NextResponse.json({ message: '更新成功' });
   } catch (error) {
     console.error('更新购物车失败:', error);
-    return NextResponse.json({ error: '更新失敗' }, { status: 500 });
+    return NextResponse.json({ error: '更新購物車失敗' }, { status: 500 });
   }
 }
 
 /**
- * DELETE - 删除购物车商品
+ * DELETE - 删除购物车项
  */
 export async function DELETE(request: NextRequest) {
   try {
     const userId = getUserId(request);
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const cartItemId = searchParams.get('cartItemId');
-    const clearAll = searchParams.get('clearAll');
-    const cart = getMockCart();
+    const id = searchParams.get('id');
 
-    if (clearAll === 'true') {
-      // 清空当前用户的购物车
-      const indices = cart.reduce((acc, item, idx) => {
-        if (item.user_id === userId) acc.push(idx);
-        return acc;
-      }, [] as number[]);
-      indices.reverse().forEach(idx => cart.splice(idx, 1));
-      return NextResponse.json({ message: '購物車已清空' });
+    if (id) {
+      await dbRemove('cart_items', { id: parseInt(id), user_id: userId });
+    } else {
+      // 清空购物车
+      await dbRemove('cart_items', { user_id: userId });
     }
 
-    if (!cartItemId) {
-      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
-    }
-
-    const idx = cart.findIndex(item => item.id === parseInt(cartItemId) && item.user_id === userId);
-    if (idx === -1) {
-      return NextResponse.json({ error: '購物車項不存在' }, { status: 404 });
-    }
-
-    cart.splice(idx, 1);
-    return NextResponse.json({ message: '已刪除' });
+    return NextResponse.json({ message: '刪除成功' });
   } catch (error) {
-    console.error('删除购物车商品失败:', error);
-    return NextResponse.json({ error: '刪除失敗' }, { status: 500 });
+    console.error('删除购物车失败:', error);
+    return NextResponse.json({ error: '刪除購物車失敗' }, { status: 500 });
   }
 }

@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { cn } from '@/lib/utils';
 import {
   BookOpen,
@@ -108,6 +108,8 @@ interface TrainingStats {
     total?: number;
     completed?: number;
   };
+  top?: { title: string; count: number }[];
+  categories?: { name: string; count: number }[];
 }
 
 interface KnowledgeItem {
@@ -119,6 +121,8 @@ interface KnowledgeItem {
   usage_count?: number;
   created_at: string;
   tags?: string[];
+  source_type?: string;
+  source_url?: string;
 }
 
 interface QAItem {
@@ -129,6 +133,8 @@ interface QAItem {
   accuracy?: number;
   is_active?: boolean;
   knowledge_id?: number;
+  keywords?: string[];
+  usage_count?: number;
   created_at: string;
 }
 
@@ -138,6 +144,11 @@ interface TrainingTask {
   type: string;
   status: string;
   progress?: number;
+  description?: string;
+  processed_records?: number;
+  total_records?: number;
+  failed_records?: number;
+  started_at?: string;
   created_at: string;
   completed_at?: string;
 }
@@ -350,7 +361,6 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
   const [editItem, setEditItem] = useState<KnowledgeItem | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showPreview, setShowPreview] = useState<KnowledgeItem | null>(null);
-  const { success, error } = useToast();
   const { confirm } = useConfirm();
 
   const loadData = async () => {
@@ -386,11 +396,11 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
 
     try {
       await deleteKnowledge(id);
-      success('删除成功');
+      toast.success('删除成功');
       loadData();
       onRefresh?.();
     } catch (err) {
-      error('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -398,16 +408,16 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
     try {
       if (editItem) {
         await updateKnowledge({ id: editItem.id, ...data });
-        success('更新成功');
+        toast.success('更新成功');
       } else {
         await createKnowledge(data);
-        success('创建成功');
+        toast.success('创建成功');
       }
       setShowModal(false);
       loadData();
       onRefresh?.();
     } catch (err) {
-      error(editItem ? '更新失败' : '创建失败');
+      toast.error(editItem ? '更新失败' : '创建失败');
     }
   };
 
@@ -596,12 +606,12 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
         <BatchImportForm onSubmit={async (data) => {
           try {
             const res = await batchImportKnowledge(data);
-            success(`导入完成：成功 ${res.data.imported} 条，失败 ${res.data.failed} 条`);
+            toast.success(`导入完成：成功 ${res.data.imported} 条，失败 ${res.data.failed} 条`);
             setShowImport(false);
             loadData();
             onRefresh?.();
           } catch (err) {
-            error('导入失败');
+            toast.error('导入失败');
           }
         }} onCancel={() => setShowImport(false)} />
       </Modal>
@@ -790,7 +800,6 @@ function QATab() {
   const [total, setTotal] = useState(0);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<QAItem | null>(null);
-  const { success, error } = useToast();
   const { confirm } = useConfirm();
 
   const loadData = async () => {
@@ -815,10 +824,10 @@ function QATab() {
     if (!ok) return;
     try {
       await deleteQA(id);
-      success('删除成功');
+      toast.success('删除成功');
       loadData();
     } catch (err) {
-      error('删除失败');
+      toast.error('删除失败');
     }
   };
 
@@ -826,15 +835,15 @@ function QATab() {
     try {
       if (editItem) {
         await updateQA({ id: editItem.id, ...data });
-        success('更新成功');
+        toast.success('更新成功');
       } else {
         await createQA(data);
-        success('创建成功');
+        toast.success('创建成功');
       }
       setShowModal(false);
       loadData();
     } catch (err) {
-      error(editItem ? '更新失败' : '创建失败');
+      toast.error(editItem ? '更新失败' : '创建失败');
     }
   };
 
@@ -948,7 +957,6 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [knowledgeIds, setKnowledgeIds] = useState<number[]>([]);
-  const { success, error } = useToast();
   const { confirm } = useConfirm();
 
   const loadData = async () => {
@@ -970,23 +978,23 @@ function TrainingTab({ onRefresh }: { onRefresh?: () => void }) {
   const handleStart = async (id: number) => {
     try {
       await startTrainingTask(id);
-      success('任务已启动');
+      toast.success('任务已启动');
       loadData();
       onRefresh?.();
     } catch (err) {
-      error('启动失败');
+      toast.error('启动失败');
     }
   };
 
   const handleCreate = async (data: { name: string; description?: string; type?: string; knowledge_ids?: number[] }) => {
     try {
       await createTrainingTask(data);
-      success('任务创建成功');
+      toast.success('任务创建成功');
       setShowModal(false);
       loadData();
       onRefresh?.();
     } catch (err) {
-      error('创建失败');
+      toast.error('创建失败');
     }
   };
 
@@ -1141,7 +1149,6 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
   const [showKnowledgeSelect, setShowKnowledgeSelect] = useState(false);
   const [availableKnowledge, setAvailableKnowledge] = useState<KnowledgeItem[]>([]);
   const [generatedCount, setGeneratedCount] = useState(0);
-  const { success, error } = useToast();
 
   const loadKnowledge = async () => {
     try {
@@ -1163,7 +1170,7 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
 
   const handleGenerateQA = async () => {
     if (selectedKnowledge.length === 0) {
-      error('请先选择知识库');
+      toast.error('请先选择知识库');
       return;
     }
     setGenerating(true);
@@ -1174,10 +1181,10 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
         total += res.data.count || 0;
       }
       setGeneratedCount(total);
-      success(`成功生成 ${total} 个问答对`);
+      toast.success(`成功生成 ${total} 个问答对`);
       onRefresh?.();
     } catch (err) {
-      error('生成失败');
+      toast.error('生成失败');
     } finally {
       setGenerating(false);
     }
@@ -1239,10 +1246,10 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
       a.download = `AI訓練報告_${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      success('報告導出成功');
+      toast.success('報告導出成功');
     } catch (err) {
       console.error('導出失敗:', err);
-      error('導出失敗');
+      toast.error('導出失敗');
     }
   };
 
@@ -1270,9 +1277,9 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
       a.download = `知識庫_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      success('CSV導出成功');
+      toast.success('CSV導出成功');
     } catch (err) {
-      error('導出失敗');
+      toast.error('導出失敗');
     }
   };
 
@@ -1299,9 +1306,9 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
       a.download = `問答對_${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      success('CSV導出成功');
+      toast.success('CSV導出成功');
     } catch (err) {
-      error('導出失敗');
+      toast.error('導出失敗');
     }
   };
 

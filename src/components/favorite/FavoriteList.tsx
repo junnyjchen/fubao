@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Image } from '@/components/ui/image';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { 
@@ -42,32 +42,31 @@ export function FavoriteList({
 }: FavoriteListProps) {
   const [removingId, setRemovingId] = useState<number | null>(null);
   const [addingCartId, setAddingCartId] = useState<number | null>(null);
-  const { success, error } = useToast();
 
   const handleRemove = useCallback(async (id: number) => {
     try {
       setRemovingId(id);
       await onRemove(id);
-      success('已取消收藏');
+      toast.success('已取消收藏');
     } catch (err) {
-      error('取消收藏失败');
+      toast.error('取消收藏失败');
     } finally {
       setRemovingId(null);
     }
-  }, [onRemove, success, error]);
+  }, [onRemove]);
 
   const handleAddToCart = useCallback(async (item: FavoriteItem) => {
     if (!onAddToCart) return;
     try {
       setAddingCartId(item.id);
       await onAddToCart(item);
-      success('已加入购物车');
+      toast.success('已加入购物车');
     } catch (err) {
-      error('加入购物车失败');
+      toast.error('加入购物车失败');
     } finally {
       setAddingCartId(null);
     }
-  }, [onAddToCart, success, error]);
+  }, [onAddToCart]);
 
   if (loading) {
     return <FavoriteListSkeleton count={6} />;
@@ -238,15 +237,14 @@ export function FavoriteButton({
   showText = false,
 }: FavoriteButtonProps) {
   const [loading, setLoading] = useState(false);
-  const { success, error } = useToast();
 
   const handleClick = async () => {
     try {
       setLoading(true);
       await onToggle(!isFavorited);
-      success(isFavorited ? '已取消收藏' : '已添加收藏');
+      toast.success(isFavorited ? '已取消收藏' : '已添加收藏');
     } catch (err) {
-      error('操作失败，请重试');
+      toast.error('操作失败，请重试');
     } finally {
       setLoading(false);
     }

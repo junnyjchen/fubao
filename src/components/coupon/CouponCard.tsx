@@ -37,16 +37,15 @@ interface CouponCardProps {
 
 export function CouponCard({ coupon, onClaim, size = 'normal' }: CouponCardProps) {
   const [loading, setLoading] = useState(false);
-  const { success, error } = useToast();
 
   const handleClaim = async () => {
     if (coupon.is_claimed) return;
     try {
       setLoading(true);
       await onClaim(coupon.id);
-      success('领取成功');
+      toast.success('领取成功');
     } catch (err) {
-      error('领取失败，请重试');
+      toast.error('领取失败，请重试');
     } finally {
       setLoading(false);
     }

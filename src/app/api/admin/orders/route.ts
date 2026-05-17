@@ -1,13 +1,14 @@
 /**
- * @fileoverview 管理后台订单列表API
- * @description 获取订单列表和统计数据
+ * @fileoverview 管理后台订单列表API - MySQL 实现
  * @module app/api/admin/orders/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { query, count, update as dbUpdate } from '@/lib/db';
 
-// GET - 获取订单列表
+/**
+ * GET - 获取订单列表
+ */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,87 +16,83 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
     const keyword = searchParams.get('keyword');
-
     const offset = (page - 1) * limit;
 
-    const client = getSupabaseClient();
-    
-    // 构建查询
-    let query = client
-      .from('orders')
-      .select(`
-        id,
-        order_no,
-        status,
-        payment_status,
-        shipping_status,
-        total_amount,
-        shipping_fee,
-        discount_amount,
-        payment_method,
-        shipping_address,
-        shipping_name,
-        shipping_phone,
-        tracking_no,
-        remark,
-        created_at,
-        paid_at,
-        shipped_at,
-        user:users (
-          id,
-          nickname,
-          email
-        )
-      `, { count: 'exact' });
+    const conditions: string[] = [];
+    const params: unknown[] = [];
 
-    // 状态筛选
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      conditions.push('o.status = ?');
+      params.push(status);
     }
 
-    // 关键词搜索
     if (keyword) {
-      query = query.or(`order_no.ilike.%${keyword}%,shipping_name.ilike.%${keyword}%`);
+      conditions.push('(o.order_no LIKE ? OR o.remark LIKE ?)');
+      params.push(`%${keyword}%`, `%${keyword}%`);
     }
 
-    // 排序和分页
-    const { data: orders, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const total = await count('orders o', conditions.length > 0 ? conditions.join(' AND ') : '1=1', params);
 
-    if (error) {
-      console.error('查询订单失败:', error);
-      return NextResponse.json({ error: '查詢失敗' }, { status: 500 });
+    const orders = await query(
+      `SELECT o.*, u.nickname as user_nickname, u.email as user_email 
+       FROM orders o 
+       LEFT JOIN users u ON o.user_id = u.id 
+       ${whereClause} 
+       ORDER BY o.created_at DESC 
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    // 获取订单项
+    const orderIds = orders.map((o: Record<string, unknown>) => o.id);
+    let orderItems: Record<string, unknown>[] = [];
+    if (orderIds.length > 0) {
+      orderItems = await query(
+        `SELECT * FROM order_items WHERE order_id IN (${orderIds.map(() => '?').join(',')})`,
+        orderIds
+      );
     }
-
-    // 获取订单商品
-    const orderIds = orders?.map(o => o.id) || [];
-    const { data: orderItems } = await client
-      .from('order_items')
-      .select(`
-        id,
-        order_id,
-        goods_name,
-        quantity,
-        price,
-        goods_id
-      `)
-      .in('order_id', orderIds);
 
     // 组装数据
-    const ordersWithItems = orders?.map(order => ({
+    const data = orders.map((order: Record<string, unknown>) => ({
       ...order,
-      items: orderItems?.filter(item => item.order_id === order.id) || [],
+      items: orderItems.filter((item: Record<string, unknown>) => item.order_id === order.id),
     }));
 
-    return NextResponse.json({
-      orders: ordersWithItems,
-      total: count,
-      totalPages: Math.ceil((count || 0) / limit),
-      currentPage: page,
-    });
+    return NextResponse.json({ data, total, page, limit });
   } catch (error) {
     console.error('获取订单列表失败:', error);
-    return NextResponse.json({ error: '獲取失敗' }, { status: 500 });
+    return NextResponse.json({ data: [], total: 0, page: 1, limit: 10 });
+  }
+}
+
+/**
+ * PUT - 更新订单
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, status, tracking_no, remark } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: '缺少訂單ID' }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (status !== undefined) {
+      updateData.status = status;
+      if (status === 'shipped') updateData.shipped_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      if (status === 'delivered') updateData.delivered_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    }
+    if (tracking_no !== undefined) updateData.payment_no = tracking_no;
+    if (remark !== undefined) updateData.remark = remark;
+
+    await dbUpdate('orders', updateData, { id });
+
+    return NextResponse.json({ message: '訂單更新成功' });
+  } catch (error) {
+    console.error('更新订单失败:', error);
+    return NextResponse.json({ error: '更新訂單失敗' }, { status: 500 });
   }
 }

@@ -10,7 +10,7 @@
 
 export const API_CONFIG = {
   // API 模式: 'local' | 'remote'
-  mode: process.env.NEXT_PUBLIC_API_MODE || 'local',
+  mode: (process.env.NEXT_PUBLIC_API_MODE || 'local') as 'local' | 'remote',
   
   // 远程 PHP API 地址
   // 在 .env.local 中设置: NEXT_PUBLIC_API_URL=https://api.your-domain.com
