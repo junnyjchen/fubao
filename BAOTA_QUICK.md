@@ -52,6 +52,11 @@ git clone https://github.com/junnyjchen/fubao.git .
 
 ### 第四步：安装依赖和构建
 
+> ⚠️ **如果提示 `pnpm: command not found`，先回到第二步安装 pnpm！**
+> ```bash
+> npm install -g pnpm
+> ```
+
 ```bash
 cd /www/wwwroot/116.204.135.69
 
