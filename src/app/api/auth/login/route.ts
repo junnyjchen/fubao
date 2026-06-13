@@ -108,7 +108,6 @@ export async function POST(request: NextRequest) {
         language: user.language,
         role: user.role,
         points: user.points,
-        isGuest: false,
       },
     });
   } catch (error) {

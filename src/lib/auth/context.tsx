@@ -17,7 +17,6 @@ interface User {
   phone?: string;
   language?: string;
   role?: string;
-  isGuest?: boolean;
 }
 
 /** 认证上下文类型 */
@@ -85,6 +84,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data.user) {
             setUser(data.user);
             localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user));
+          } else {
+            // 未登录，清除本地存储
+            setUser(null);
+            localStorage.removeItem(USER_STORAGE_KEY);
+            localStorage.removeItem(TOKEN_STORAGE_KEY);
           }
         }
       } catch (error) {

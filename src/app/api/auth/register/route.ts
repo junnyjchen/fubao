@@ -114,7 +114,6 @@ export async function POST(request: NextRequest) {
         language: 'zh-TW',
         role: 'user',
         points: 0,
-        isGuest: false,
       },
     });
   } catch (error) {

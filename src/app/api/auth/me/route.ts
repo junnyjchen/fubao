@@ -26,16 +26,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!token) {
-      // 没有登录，返回访客
-      return NextResponse.json({
-        user: {
-          id: 'guest-user-001',
-          email: 'guest@fubao.ltd',
-          name: '訪客用戶',
-          language: 'zh-TW',
-          isGuest: true,
-        },
-      });
+      // 未登录，返回 null
+      return NextResponse.json({ user: null });
     }
 
     try {
@@ -67,26 +59,10 @@ export async function GET(request: NextRequest) {
       });
     } catch (jwtError) {
       console.error('JWT 验证失败:', jwtError);
-      return NextResponse.json({
-        user: {
-          id: 'guest-user-001',
-          email: 'guest@fubao.ltd',
-          name: '訪客用戶',
-          language: 'zh-TW',
-          isGuest: true,
-        },
-      });
+      return NextResponse.json({ user: null });
     }
   } catch (error) {
     console.error('获取用户信息失败:', error);
-    return NextResponse.json({
-      user: {
-        id: 'guest-user-001',
-        email: 'guest@fubao.ltd',
-        name: '訪客用戶',
-        language: 'zh-TW',
-        isGuest: true,
-      },
-    });
+    return NextResponse.json({ user: null });
   }
 }

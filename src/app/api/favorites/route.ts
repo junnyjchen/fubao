@@ -13,7 +13,10 @@ import { getSupabaseClient } from '@/storage/database/supabase-client';
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId') || 'guest-user-001';
+  const userId = searchParams.get('userId');
+  if (!userId) {
+    return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+  }
   const targetType = searchParams.get('targetType') || 'goods';
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '20');
@@ -88,7 +91,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { userId = 'guest-user-001', targetType, targetId } = body;
+    const { userId, targetType, targetId } = body;
+
+    if (!userId) {
+      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    }
 
     if (!targetType || !targetId) {
       return NextResponse.json({ error: '參數不完整' }, { status: 400 });
@@ -136,7 +143,10 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get('userId') || 'guest-user-001';
+  const userId = searchParams.get('userId');
+  if (!userId) {
+    return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+  }
   const targetType = searchParams.get('targetType');
   const targetId = searchParams.get('targetId');
 
