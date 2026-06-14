@@ -37,6 +37,8 @@ import {
   LogOut,
   User,
   Brain,
+  Cpu,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -104,6 +106,17 @@ const navItems: NavItem[] = [
   { key: 'users', label: '用戶管理', icon: Users, href: '/admin/users', permission: 'user.view' },
   { key: 'finance', label: '財務管理', icon: Wallet, href: '/admin/finance', permission: 'data.stats' },
   { key: 'database', label: '數據管理', icon: Database, href: '/admin/database', permission: 'system.settings' },
+  {
+    key: 'ai-config',
+    label: 'AI 配置',
+    icon: Brain,
+    href: '/admin/ai-models',
+    permission: 'system.settings',
+    children: [
+      { key: 'ai-models', label: '大模型配置', icon: Cpu, href: '/admin/ai-models', permission: 'system.settings' },
+      { key: 'ai-knowledge', label: '知识库管理', icon: BookOpen, href: '/admin/ai-knowledge', permission: 'system.settings' },
+    ],
+  },
   {
     key: 'system',
     label: '系統管理',

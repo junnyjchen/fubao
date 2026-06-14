@@ -285,6 +285,9 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
   const [isMuted, setIsMuted] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [showScrollButton, setShowScrollButton] = useState(false);
+  // 模型选择
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [availableModels, setAvailableModels] = useState<Array<{ id: string; name: string; provider: string }>>([]);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; messageId: string } | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showContextTags, setShowContextTags] = useState(true);
@@ -350,6 +353,19 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
   }, [currentConversation?.messages]);
 
   // 键盘快捷键处理
+  // 加载可用模型列表
+  useEffect(() => {
+    fetch('/api/ai/models')
+      .then(res => res.json())
+      .then(data => {
+        if (data.models?.length > 0) {
+          setAvailableModels(data.models);
+          setSelectedModelId(data.models[0].id);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + K: 打开设置
@@ -567,6 +583,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
             role: m.role,
             content: m.content,
           })),
+          modelId: selectedModelId || undefined,
         }),
       });
 
@@ -768,6 +785,21 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            {/* Model Selector */}
+            {availableModels.length > 0 && (
+              <select
+                value={selectedModelId || ''}
+                onChange={(e) => setSelectedModelId(e.target.value || null)}
+                className="h-8 px-2 text-xs rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">默認模型</option>
+                {availableModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <Button
               variant="ghost"
               size="icon"
