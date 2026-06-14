@@ -1,6 +1,5 @@
 # 符寶網 Docker 部署
 
-# 使用 Node.js 20 Alpine（轻量，自带 glibc，不受宿主机限制）
 FROM node:20-alpine
 
 WORKDIR /app
