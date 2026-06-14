@@ -1,196 +1,182 @@
-/**
- * @fileoverview 商户商品API路由
- * @description 商户商品的增删改查接口，支持数据隔离
- * @module app/api/merchant/goods/route
- */
+import { NextResponse } from 'next/server';
+import { query, queryOne } from '@/lib/db';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
-
-// 验证商户身份中间件
-async function verifyMerchant(request: NextRequest): Promise<{ userId: string; merchantId: string } | null> {
-  const token = request.cookies.get('auth_token')?.value;
-
-  if (!token) {
-    return null;
-  }
-
+// 验证商家身份
+function verifyMerchant(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader?.startsWith('Bearer ')) return null;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    
-    // 查询用户关联的商户信息
-    const { data: merchant, error } = await supabase
-      .from('merchants')
-      .select('id, user_id')
-      .eq('user_id', decoded.userId)
-      .eq('status', 1)
-      .single();
-
-    if (error || !merchant) {
-      return null;
-    }
-
-    return { userId: decoded.userId, merchantId: merchant.id };
+    const jwt = require('jsonwebtoken');
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fubao-secret-key-2025');
+    if (decoded.type !== 'merchant') return null;
+    return decoded;
   } catch {
     return null;
   }
 }
 
-/**
- * GET /api/merchant/goods - 获取商户商品列表
- */
-export async function GET(request: NextRequest) {
-  const merchant = await verifyMerchant(request);
+// GET: 获取商家自己的商品列表
+export async function GET(request: Request) {
+  const merchant = verifyMerchant(request);
   if (!merchant) {
-    return NextResponse.json({ error: '未授權' }, { status: 401 });
+    return NextResponse.json({ error: '请先登录商家后台' }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '10');
-  const keyword = searchParams.get('keyword') || '';
-  const status = searchParams.get('status');
-  const categoryId = searchParams.get('categoryId');
-
   try {
-    // 构建查询条件
-    let query = supabase
-      .from('goods')
-      .select(`
-        id,
-        name,
-        category_id,
-        price,
-        original_price,
-        stock,
-        sales,
-        status,
-        images,
-        has_cert,
-        created_at,
-        categories (id, name)
-      `, { count: 'exact' })
-      .eq('merchant_id', merchant.merchantId);
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const status = searchParams.get('status');
+    const keyword = searchParams.get('keyword');
+    const offset = (page - 1) * limit;
 
-    // 关键词搜索
+    let whereConditions = ['merchant_id = ?'];
+    let params: any[] = [merchant.merchantId];
+
+    if (status !== null && status !== undefined && status !== '') {
+      whereConditions.push('status = ?');
+      params.push(parseInt(status));
+    }
+
     if (keyword) {
-      query = query.or(`name.ilike.%${keyword}%,keywords.ilike.%${keyword}%`);
+      whereConditions.push('name LIKE ?');
+      params.push(`%${keyword}%`);
     }
 
-    // 状态筛选
-    if (status !== null && status !== undefined) {
-      query = query.eq('status', parseInt(status));
-    }
+    const whereClause = whereConditions.join(' AND ');
 
-    // 分类筛选
-    if (categoryId) {
-      query = query.eq('category_id', parseInt(categoryId));
-    }
+    const goods = await query(
+      `SELECT * FROM goods WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
 
-    // 排序和分页
-    const { data: goods, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range((page - 1) * pageSize, page * pageSize - 1);
+    const countResult = await query(
+      `SELECT COUNT(*) as total FROM goods WHERE ${whereClause}`,
+      params
+    );
+    const total = countResult[0]?.total || 0;
 
-    if (error) {
-      console.error('获取商品列表失败:', error);
-      return NextResponse.json({ error: '獲取商品列表失敗' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        list: goods || [],
-        total: count || 0,
-        page,
-        pageSize,
-      },
-    });
-  } catch (error) {
-    console.error('获取商品列表失败:', error);
-    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
+    return NextResponse.json({ success: true, data: goods, total, page, limit });
+  } catch (error: any) {
+    console.error('获取商家商品失败:', error);
+    return NextResponse.json({ error: '获取商品列表失败' }, { status: 500 });
   }
 }
 
-/**
- * POST /api/merchant/goods - 创建商品
- */
-export async function POST(request: NextRequest) {
-  const merchant = await verifyMerchant(request);
+// POST: 商家发布商品
+export async function POST(request: Request) {
+  const merchant = verifyMerchant(request);
   if (!merchant) {
-    return NextResponse.json({ error: '未授權' }, { status: 401 });
+    return NextResponse.json({ error: '请先登录商家后台' }, { status: 401 });
   }
 
   try {
     const body = await request.json();
     const {
-      name,
-      category_id,
-      price,
-      original_price,
-      stock,
-      unit = '件',
-      description,
-      content,
-      images = [],
-      video_url,
-      has_cert = false,
-      cert_type,
-      keywords,
+      name, subtitle, price, original_price, stock, category_id,
+      type, purpose, description, main_image, images, is_certified,
+      specifications
     } = body;
 
-    // 表单验证
-    if (!name || !name.trim()) {
-      return NextResponse.json({ error: '請填寫商品名稱' }, { status: 400 });
-    }
-    if (!category_id) {
-      return NextResponse.json({ error: '請選擇商品分類' }, { status: 400 });
-    }
-    if (!price || price <= 0) {
-      return NextResponse.json({ error: '請填寫有效的售價' }, { status: 400 });
+    if (!name || !price || !stock) {
+      return NextResponse.json({ error: '商品名称、价格和库存为必填项' }, { status: 400 });
     }
 
-    // 创建商品
-    const { data: goods, error } = await supabase
-      .from('goods')
-      .insert({
-        merchant_id: merchant.merchantId,
-        name: name.trim(),
-        category_id,
-        price,
-        original_price: original_price || price,
-        stock: stock || 0,
-        unit,
-        description: description?.trim() || '',
-        content: content?.trim() || '',
-        images,
-        video_url: video_url?.trim() || '',
-        has_cert,
-        cert_type: has_cert ? cert_type : null,
-        keywords: keywords?.trim() || '',
-        status: 0, // 默认草稿状态
-        sales: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+    const result = await query(
+      `INSERT INTO goods (name, subtitle, price, original_price, stock, category_id, merchant_id, type, purpose, description, main_image, images, is_certified, specifications, status, sales, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, NOW(), NOW())`,
+      [
+        name, subtitle || '', parseFloat(price), original_price ? parseFloat(original_price) : null,
+        parseInt(stock), category_id || null, merchant.merchantId,
+        type || 1, purpose || '', description || '',
+        main_image || '', images || '', is_certified ? 1 : 0,
+        specifications ? JSON.stringify(specifications) : null
+      ]
+    );
 
-    if (error) {
-      console.error('创建商品失败:', error);
-      return NextResponse.json({ error: '創建商品失敗' }, { status: 500 });
+    return NextResponse.json({ success: true, id: result.insertId, message: '商品发布成功' });
+  } catch (error: any) {
+    console.error('商家发布商品失败:', error);
+    return NextResponse.json({ error: '发布商品失败' }, { status: 500 });
+  }
+}
+
+// PUT: 商家更新商品
+export async function PUT(request: Request) {
+  const merchant = verifyMerchant(request);
+  if (!merchant) {
+    return NextResponse.json({ error: '请先登录商家后台' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { id, name, subtitle, price, original_price, stock, category_id,
+      type, purpose, description, main_image, images, is_certified, status, specifications } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: '缺少商品ID' }, { status: 400 });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: goods,
-      message: '商品創建成功',
-    });
-  } catch (error) {
-    console.error('创建商品失败:', error);
-    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
+    // 验证商品属于该商家
+    const existing = await queryOne('SELECT * FROM goods WHERE id = ? AND merchant_id = ?', [id, merchant.merchantId]);
+    if (!existing) {
+      return NextResponse.json({ error: '商品不存在或不属于该商家' }, { status: 403 });
+    }
+
+    await query(
+      `UPDATE goods SET name=?, subtitle=?, price=?, original_price=?, stock=?, category_id=?, type=?, purpose=?, description=?, main_image=?, images=?, is_certified=?, status=?, specifications=?, updated_at=NOW() WHERE id=? AND merchant_id=?`,
+      [
+        name || existing.name, subtitle !== undefined ? subtitle : existing.subtitle,
+        price !== undefined ? parseFloat(price) : existing.price,
+        original_price !== undefined ? (original_price ? parseFloat(original_price) : null) : existing.original_price,
+        stock !== undefined ? parseInt(stock) : existing.stock,
+        category_id !== undefined ? category_id : existing.category_id,
+        type !== undefined ? type : existing.type,
+        purpose !== undefined ? purpose : existing.purpose,
+        description !== undefined ? description : existing.description,
+        main_image !== undefined ? main_image : existing.main_image,
+        images !== undefined ? images : existing.images,
+        is_certified !== undefined ? (is_certified ? 1 : 0) : existing.is_certified,
+        status !== undefined ? parseInt(status) : existing.status,
+        specifications ? JSON.stringify(specifications) : existing.specifications,
+        id, merchant.merchantId
+      ]
+    );
+
+    return NextResponse.json({ success: true, message: '商品更新成功' });
+  } catch (error: any) {
+    console.error('商家更新商品失败:', error);
+    return NextResponse.json({ error: '更新商品失败' }, { status: 500 });
+  }
+}
+
+// DELETE: 商家删除商品
+export async function DELETE(request: Request) {
+  const merchant = verifyMerchant(request);
+  if (!merchant) {
+    return NextResponse.json({ error: '请先登录商家后台' }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: '缺少商品ID' }, { status: 400 });
+    }
+
+    // 验证商品属于该商家
+    const existing = await queryOne('SELECT * FROM goods WHERE id = ? AND merchant_id = ?', [id, merchant.merchantId]);
+    if (!existing) {
+      return NextResponse.json({ error: '商品不存在或不属于该商家' }, { status: 403 });
+    }
+
+    await query('DELETE FROM goods WHERE id = ? AND merchant_id = ?', [id, merchant.merchantId]);
+
+    return NextResponse.json({ success: true, message: '商品已删除' });
+  } catch (error: any) {
+    console.error('商家删除商品失败:', error);
+    return NextResponse.json({ error: '删除商品失败' }, { status: 500 });
   }
 }

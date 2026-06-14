@@ -36,7 +36,7 @@ const initialData: Record<string, any[]> = {
     { id: 6, name: '黑曜石觀音吊墜', subtitle: '天然黑曜石·觀音庇佑', main_image: '/images/products/obsidian.jpg', price: 128, original_price: 228, stock: 120, sales: 67, is_certified: 0, category_id: 6, merchant_id: 1, type: 1, purpose: '開運護身', status: 1, description: '天然黑曜石精雕觀音像，黑曜石具有強大的辟邪化煞能力。', created_at: '2025-01-20T00:00:00.000Z', updated_at: '2025-01-20T00:00:00.000Z' }
   ],
   merchants: [
-    { id: 1, name: '符寶網官方旗艦店', type: 'enterprise', contact_name: '陳道長', contact_phone: '13800138000', contact_email: 'shop@fubao.com', description: '符寶網官方旗艦店，提供正宗道門法器與符咒', address: '台北市松山區八德路四段', license_number: 'FUBAO-001', verified: 1, status: 1, user_id: 1, created_at: '2025-01-01T00:00:00.000Z', updated_at: '2025-01-01T00:00:00.000Z' }
+    { id: 1, name: '符寶網官方旗艦店', type: 'enterprise', contact_name: '陳道長', contact_phone: '13800138000', contact_email: 'shop@fubao.com', description: '符寶網官方旗艦店，提供正宗道門法器與符咒', address: '台北市松山區八德路四段', license_number: 'FUBAO-001', verified: 1, status: 1, user_id: 1, password: 'admin123', created_at: '2025-01-01T00:00:00.000Z', updated_at: '2025-01-01T00:00:00.000Z' }
   ],
   merchant_applications: [],
   banners: [
