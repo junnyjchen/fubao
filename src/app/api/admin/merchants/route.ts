@@ -1,10 +1,10 @@
 /**
- * @fileoverview 商家 API
- * @module app/api/merchants/route
+ * @fileoverview 管理后台 - 商家管理 API
+ * @module app/api/admin/merchants/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { query, queryOne, insert, update, count } from '@/lib/db';
+import { query, queryOne, insert, update, remove, count } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -57,14 +57,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name, type = 'enterprise', contact_name, contact_phone, contact_email,
-      description = '', address = '', license_number = '', user_id
+      description = '', address = '', license_number = '', verified = 0, status = 1
     } = body;
 
     if (!name || !contact_name) {
       return NextResponse.json({ error: '商家名稱和聯繫人姓名為必填項' }, { status: 400 });
     }
 
-    // 检查是否已存在同名商家
     const existing = await queryOne('SELECT id FROM merchants WHERE name = ?', [name]);
     if (existing) {
       return NextResponse.json({ error: '該商家名稱已存在' }, { status: 400 });
@@ -79,13 +78,12 @@ export async function POST(request: NextRequest) {
       description,
       address,
       license_number,
-      verified: 0,
-      status: 1,
-      user_id: user_id || null,
+      verified,
+      status,
+      user_id: null,
     });
 
     const merchant = await queryOne('SELECT * FROM merchants WHERE id = ?', [id]);
-
     return NextResponse.json({ data: merchant, message: '商家創建成功' }, { status: 201 });
   } catch (error) {
     console.error('创建商家失败:', error);
@@ -107,7 +105,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: '商家不存在' }, { status: 404 });
     }
 
-    // 只更新提供的字段
     const fields: Record<string, unknown> = {};
     const allowedFields = ['name', 'type', 'contact_name', 'contact_phone', 'contact_email', 'description', 'address', 'license_number', 'verified', 'status'];
     for (const field of allowedFields) {
@@ -125,5 +122,21 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     console.error('更新商家失败:', error);
     return NextResponse.json({ error: '更新商家失敗' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { id } = await request.json();
+
+    if (!id) {
+      return NextResponse.json({ error: '缺少商家ID' }, { status: 400 });
+    }
+
+    await remove('merchants', { id });
+    return NextResponse.json({ message: '商家刪除成功' });
+  } catch (error) {
+    console.error('删除商家失败:', error);
+    return NextResponse.json({ error: '刪除商家失敗' }, { status: 500 });
   }
 }
