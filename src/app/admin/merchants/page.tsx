@@ -78,6 +78,8 @@ interface MerchantForm {
   description: string;
   logo: string;
   status: boolean;
+  login_account: string;
+  login_password: string;
 }
 
 const initialForm: MerchantForm = {
@@ -90,6 +92,8 @@ const initialForm: MerchantForm = {
   description: '',
   logo: '',
   status: true,
+  login_account: '',
+  login_password: '',
 };
 
 const typeLabels: Record<number, string> = {
@@ -154,6 +158,8 @@ export default function MerchantsManagePage() {
         description: item.description || '',
         logo: item.logo || '',
         status: item.status,
+        login_account: (item as any).login_account || item.contact_email || '',
+        login_password: '',
       });
     } else {
       setEditingId(null);
@@ -500,6 +506,28 @@ export default function MerchantsManagePage() {
                 onChange={e => setForm(prev => ({ ...prev, contact_email: e.target.value }))}
                 placeholder="請輸入電子郵箱"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="login_account">登錄賬號 *</Label>
+                <Input
+                  id="login_account"
+                  value={form.login_account}
+                  onChange={e => setForm(prev => ({ ...prev, login_account: e.target.value }))}
+                  placeholder="商家後台登錄賬號"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="login_password">{editingId ? '重置密碼' : '登錄密碼 *'}</Label>
+                <Input
+                  id="login_password"
+                  type="password"
+                  value={form.login_password}
+                  onChange={e => setForm(prev => ({ ...prev, login_password: e.target.value }))}
+                  placeholder={editingId ? '不修改請留空' : '請設置登錄密碼'}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

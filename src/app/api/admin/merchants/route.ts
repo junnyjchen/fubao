@@ -58,16 +58,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       name, type = 'enterprise', contact_name, contact_phone, contact_email,
-      description = '', address = '', license_number = '', verified = 0, status = 1
+      description = '', address = '', license_number = '', verified = 0, status = 1,
+      login_account, login_password
     } = body;
 
     if (!name || !contact_name) {
       return NextResponse.json({ error: '商家名稱和聯繫人姓名為必填項' }, { status: 400 });
     }
 
+    if (!login_account || !login_password) {
+      return NextResponse.json({ error: '登錄賬號和密碼為必填項' }, { status: 400 });
+    }
+
     const existing = await queryOne('SELECT id FROM merchants WHERE name = ?', [name]);
     if (existing) {
       return NextResponse.json({ error: '該商家名稱已存在' }, { status: 400 });
+    }
+
+    // Check login_account uniqueness
+    const existingAccount = await queryOne('SELECT id FROM merchants WHERE login_account = ?', [login_account]);
+    if (existingAccount) {
+      return NextResponse.json({ error: '該登錄賬號已存在' }, { status: 400 });
     }
 
     const id = await insert('merchants', {
@@ -82,6 +93,8 @@ export async function POST(request: NextRequest) {
       verified,
       status,
       user_id: null,
+      login_account,
+      login_password,
     });
 
     const merchant = await queryOne('SELECT * FROM merchants WHERE id = ?', [id]);
@@ -107,11 +120,16 @@ export async function PUT(request: NextRequest) {
     }
 
     const fields: Record<string, unknown> = {};
-    const allowedFields = ['name', 'type', 'contact_name', 'contact_phone', 'contact_email', 'description', 'address', 'license_number', 'verified', 'status'];
+    const allowedFields = ['name', 'type', 'contact_name', 'contact_phone', 'contact_email', 'description', 'address', 'license_number', 'verified', 'status', 'login_account'];
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
         fields[field] = updateData[field];
       }
+    }
+
+    // Handle password update separately (only if provided)
+    if (updateData.login_password && String(updateData.login_password).trim() !== '') {
+      fields['login_password'] = updateData.login_password;
     }
 
     if (Object.keys(fields).length > 0) {
