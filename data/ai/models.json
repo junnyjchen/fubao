@@ -10,22 +10,22 @@
     "priority": 1,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:06:23.690Z",
-    "updatedAt": "2026-06-15T16:06:23.690Z"
+    "createdAt": "2026-06-15T16:47:56.188Z",
+    "updatedAt": "2026-06-15T16:47:56.188Z"
   },
   {
     "id": "openai-default",
     "name": "OpenAI GPT-4o",
     "provider": "openai",
-    "apiKey": "",
+    "apiKey": """",
     "baseUrl": "https://api.openai.com/v1",
     "model": "gpt-4o",
-    "isActive": false,
+    "isActive": true,
     "priority": 2,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:06:23.690Z",
-    "updatedAt": "2026-06-15T16:06:23.690Z"
+    "createdAt": "2026-06-15T16:47:56.188Z",
+    "updatedAt": "2026-06-15T16:47:56.188Z"
   },
   {
     "id": "kimi-default",
@@ -38,8 +38,8 @@
     "priority": 3,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:06:23.690Z",
-    "updatedAt": "2026-06-15T16:06:23.690Z"
+    "createdAt": "2026-06-15T16:47:56.188Z",
+    "updatedAt": "2026-06-15T16:47:56.188Z"
   },
   {
     "id": "doubao-default",
@@ -52,8 +52,8 @@
     "priority": 4,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:06:23.690Z",
-    "updatedAt": "2026-06-15T16:06:23.690Z"
+    "createdAt": "2026-06-15T16:47:56.188Z",
+    "updatedAt": "2026-06-15T16:47:56.188Z"
   },
   {
     "id": "qwen-default",
@@ -66,8 +66,8 @@
     "priority": 5,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:06:23.690Z",
-    "updatedAt": "2026-06-15T16:06:23.690Z"
+    "createdAt": "2026-06-15T16:47:56.188Z",
+    "updatedAt": "2026-06-15T16:47:56.188Z"
   },
   {
     "id": "glm-default",
@@ -80,7 +80,7 @@
     "priority": 6,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:06:23.690Z",
-    "updatedAt": "2026-06-15T16:06:23.690Z"
+    "createdAt": "2026-06-15T16:47:56.188Z",
+    "updatedAt": "2026-06-15T16:47:56.188Z"
   }
 ]
