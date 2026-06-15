@@ -248,10 +248,10 @@ export async function GET(request: NextRequest) {
           .select('id, name')
           .in('id', merchantIds);
 
-        const merchantsMap = new Map((merchantsData || []).map(m => [m.id, m]));
+        const merchantsMap = new Map((merchantsData || []).map((m: any) => [m.id, m]));
 
         // 格式化数据并合并商户信息
-        enrichedGoods = goods.map(g => ({
+        enrichedGoods = goods.map((g: any) => ({
           id: g.id,
           name: g.name,
           main_image: g.main_image,
@@ -260,8 +260,8 @@ export async function GET(request: NextRequest) {
           is_certified: g.is_certified,
           sales: g.sales,
           merchant: g.merchant_id ? {
-            id: merchantsMap.get(g.merchant_id)?.id,
-            name: merchantsMap.get(g.merchant_id)?.name,
+            id: (merchantsMap.get(g.merchant_id) as any)?.id,
+            name: (merchantsMap.get(g.merchant_id) as any)?.name,
           } : null,
         }));
       } else {

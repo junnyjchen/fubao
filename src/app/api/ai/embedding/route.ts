@@ -8,7 +8,7 @@ import { EmbeddingClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 // 初始化Embedding客户端
 const getEmbeddingClient = (request: NextRequest) => {
-  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers) as any;
   return new EmbeddingClient(customHeaders);
 };
 

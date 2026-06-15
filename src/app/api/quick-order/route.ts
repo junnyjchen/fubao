@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       quantity: number;
       total_price: number;
     }>>();
-    (orderItems || []).forEach((item) => {
+    (orderItems as any[] || []).forEach((item: any) => {
       if (!orderItemsMap.has(item.order_id)) {
         orderItemsMap.set(item.order_id, []);
       }

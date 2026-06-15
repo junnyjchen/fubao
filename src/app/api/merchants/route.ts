@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
 
     const total = await count(
       `SELECT COUNT(*) as cnt FROM merchants ${whereClause}`,
+      undefined,
       params
     );
 

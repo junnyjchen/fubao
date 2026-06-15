@@ -75,7 +75,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const direction = getLanguageDirection(lang);
 
   return (
-    <I18nContext.Provider value={{ lang, setLang: handleSetLang, t: translations[lang], isRTL, direction }}>
+    <I18nContext.Provider value={{ lang, setLang: handleSetLang, t: translations[lang] as any, isRTL, direction }}>
       {children}
     </I18nContext.Provider>
   );

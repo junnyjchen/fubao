@@ -351,8 +351,8 @@ export async function GET(request: NextRequest) {
           .from('wiki_categories')
           .select('id, name, slug');
         
-        const categoryMap = new Map(categories?.map((c: { id: number }) => [c.id, c]) || []);
-        data.forEach((article: ArticleRecord) => {
+        const categoryMap = new Map((categories as any[])?.map((c: any) => [c.id, c]) || []);
+        (data as any[]).forEach((article: any) => {
           article.category = categoryMap.get(article.category_id) || null;
         });
       }

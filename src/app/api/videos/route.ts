@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
       let filteredVideos = mockVideos;
       
       if (categoryId) {
-        filteredVideos = filteredVideos.filter(v => v.category_id === parseInt(categoryId));
+        filteredVideos = filteredVideos.filter((v: any) => v.category?.id === parseInt(categoryId));
       }
       
       if (isFeatured === 'true') {
@@ -238,8 +238,8 @@ export async function GET(request: NextRequest) {
           .select('id, name, slug')
           .in('id', categoryIds);
         
-        const categoryMap = new Map(categories?.map(c => [c.id, c]) || []);
-        data.forEach((video: VideoRecord) => {
+        const categoryMap = new Map((categories as any[])?.map((c: any) => [c.id, c]) || []);
+        (data as any[]).forEach((video: any) => {
           video.category = categoryMap.get(video.category_id) || null;
         });
       }
@@ -325,7 +325,7 @@ export async function GET(request: NextRequest) {
       // 应用过滤条件到 mock 数据
       let filteredVideos = mockVideos;
       if (categoryId) {
-        filteredVideos = filteredVideos.filter(v => v.category_id === parseInt(categoryId));
+        filteredVideos = filteredVideos.filter((v: any) => v.category?.id === parseInt(categoryId));
       }
       if (isFeatured === 'true') {
         filteredVideos = filteredVideos.filter(v => v.is_featured);

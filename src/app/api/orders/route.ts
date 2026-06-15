@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `商品「${goods.name}」庫存不足` }, { status: 400 });
       }
 
-      const itemTotal = parseFloat(goods.price) * item.quantity;
+      const itemTotal = parseFloat(String(goods.price)) * item.quantity;
       totalAmount += itemTotal;
 
       orderItems.push({

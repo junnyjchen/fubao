@@ -205,7 +205,7 @@ function generateInviteCode(): string {
   return code;
 }
 
-function formatDistributionData(data: DistributionData) {
+function formatDistributionData(data: any) {
   return {
     invite_code: data.invite_code,
     invite_link: `${process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'https://fubao.ltd'}/register?ref=${data.invite_code}`,

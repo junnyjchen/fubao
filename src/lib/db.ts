@@ -87,7 +87,7 @@ const getIds = (): Record<string, number> => (globalThis as any).__nextIds || ne
 
 /** 从 SQL 中提取表别名映射，如 `goods g` → { g: 'goods' } */
 function parseTableAliases(sql: string): Record<string, string> {
-  const aliases: Record<string, string> = [];
+  const aliases: Record<string, string> = {};
   // 匹配 FROM/JOIN 后的 table [alias]
   const regex = /(?:FROM|JOIN)\s+`?(\w+)`?\s+(?:AS\s+)?(\w+)/gi;
   let m;
@@ -212,7 +212,7 @@ function matchesConditions(
 /**
  * 执行 SQL 查询（支持 SELECT with WHERE/ORDER BY/LIMIT/OFFSET）
  */
-export async function query<T = Record<string, unknown>>(
+export async function query<T = any>(
   sql: string,
   params: unknown[] = []
 ): Promise<T[]> {
@@ -283,7 +283,7 @@ export async function query<T = Record<string, unknown>>(
 /**
  * 查询单条记录
  */
-export async function queryOne<T = Record<string, unknown>>(
+export async function queryOne<T = any>(
   sql: string,
   params: unknown[] = []
 ): Promise<T | null> {
@@ -296,7 +296,7 @@ export async function queryOne<T = Record<string, unknown>>(
  */
 export async function insert(
   table: string,
-  data: Record<string, unknown>
+  data: Record<string, any>
 ): Promise<number> {
   const ids = getIds();
   const id = ids[table] || 1;
@@ -317,33 +317,52 @@ export async function insert(
 
 /**
  * 更新记录
+ * 支持两种调用方式：
+ * 1. update(table, data, whereObj) - 按条件更新
+ * 2. update(table, id, data) - 按ID更新
  */
 export async function update(
   table: string,
-  data: Record<string, unknown>,
-  where: Record<string, unknown>
+  dataOrId: Record<string, any> | number,
+  whereOrData: Record<string, any>
 ): Promise<number> {
   const mockData = getData();
   const tableData = mockData[table] || [];
-  let count = 0;
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  let updateCount = 0;
 
-  for (let i = 0; i < tableData.length; i++) {
-    let match = true;
-    for (const [key, value] of Object.entries(where)) {
-      if (tableData[i][key] !== value) {
-        match = false;
+  if (typeof dataOrId === 'number') {
+    // 模式2: update(table, id, data)
+    const id = dataOrId;
+    const data = whereOrData;
+    for (let i = 0; i < tableData.length; i++) {
+      if (tableData[i].id === id) {
+        tableData[i] = { ...tableData[i], ...data, updated_at: now };
+        updateCount++;
         break;
       }
     }
-    if (match) {
-      tableData[i] = { ...tableData[i], ...data, updated_at: now };
-      count++;
+  } else {
+    // 模式1: update(table, data, where)
+    const data = dataOrId;
+    const where = whereOrData;
+    for (let i = 0; i < tableData.length; i++) {
+      let match = true;
+      for (const [key, value] of Object.entries(where)) {
+        if (tableData[i][key] !== value) {
+          match = false;
+          break;
+        }
+      }
+      if (match) {
+        tableData[i] = { ...tableData[i], ...data, updated_at: now };
+        updateCount++;
+      }
     }
   }
 
-  console.log('[Mock DB] Update', table, 'where:', where, 'count:', count);
-  return count;
+  console.log('[Mock DB] Update', table, 'count:', updateCount);
+  return updateCount;
 }
 
 /**
@@ -398,7 +417,7 @@ export async function count(
   // 如果只是表名
   const tableName = tableOrSql.split(/\s+/)[0]; // 去掉别名
   const data = mockData[tableName] || [];
-  if (!where || where === '1=1') return data.length;
+  if (!where || where === '1=1' || typeof where !== 'string') return data.length;
 
   // 尝试解析条件
   const conditions: WhereCondition[] = [];

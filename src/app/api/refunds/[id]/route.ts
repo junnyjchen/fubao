@@ -68,7 +68,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .from('order_items')
         .select('goods_id, goods_name, goods_image, price, quantity')
         .eq('order_id', refund.order_id);
-      orderItems = items || [];
+      orderItems = (items as any[]) || [];
     }
 
     // 合并数据

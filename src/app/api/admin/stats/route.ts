@@ -1,58 +1,56 @@
 /**
- * @fileoverview 管理后台统计API - MySQL 实现
- * @module app/api/admin/stats/route
+ * @fileoverview 管理后台统计API - Mock DB 兼容实现
  */
 
 import { NextResponse } from 'next/server';
-import { queryOne } from '@/lib/db';
+import { query, count } from '@/lib/db';
 
 export async function GET() {
   try {
-    // 订单统计
-    const orderStats = await queryOne(`
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid,
-        SUM(CASE WHEN status = 'shipped' THEN 1 ELSE 0 END) as shipped,
-        SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
-        COALESCE(SUM(CASE WHEN status IN ('paid','shipped','delivered') THEN pay_amount ELSE 0 END), 0) as total_revenue
-      FROM orders
-    `);
+    // 订单统计 - 使用简单查询后 JS 计算
+    const orders = await query('SELECT * FROM orders') as any[];
+    const orderStats = {
+      total: orders.length,
+      pending: orders.filter(o => o.status === 'pending').length,
+      paid: orders.filter(o => o.status === 'paid').length,
+      shipped: orders.filter(o => o.status === 'shipped').length,
+      completed: orders.filter(o => o.status === 'delivered').length,
+      cancelled: orders.filter(o => o.status === 'cancelled').length,
+      total_revenue: orders
+        .filter(o => ['paid', 'shipped', 'delivered'].includes(o.status))
+        .reduce((sum: number, o: any) => sum + (Number(o.pay_amount) || 0), 0),
+    };
 
     // 商品统计
-    const goodsStats = await queryOne(`
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN stock < 10 THEN 1 ELSE 0 END) as low_stock,
-        COALESCE(SUM(sales), 0) as total_sales
-      FROM goods WHERE status = 1
-    `);
+    const goods = await query('SELECT * FROM goods WHERE status = 1') as any[];
+    const goodsStats = {
+      total: goods.length,
+      low_stock: goods.filter(g => Number(g.stock) < 10).length,
+      total_sales: goods.reduce((sum: number, g: any) => sum + (Number(g.sales) || 0), 0),
+    };
 
     // 用户统计
-    const userStats = await queryOne('SELECT COUNT(*) as total FROM users');
-
-    // 商户统计
-    const merchantStats = await queryOne('SELECT COUNT(*) as total FROM merchants WHERE status = 1');
+    const userTotal = await count('users');
+    const merchantTotal = await count('merchants', 'status = 1');
 
     // 今日订单
-    const todayStats = await queryOne(`
-      SELECT 
-        COUNT(*) as total,
-        COALESCE(SUM(pay_amount), 0) as revenue
-      FROM orders 
-      WHERE status IN ('paid','shipped','delivered') 
-        AND DATE(created_at) = CURDATE()
-    `);
+    const today = new Date().toISOString().split('T')[0];
+    const todayOrders = orders.filter(o => {
+      const orderDate = new Date(o.created_at).toISOString().split('T')[0];
+      return orderDate === today && ['paid', 'shipped', 'delivered'].includes(o.status);
+    });
+    const todayStats = {
+      total: todayOrders.length,
+      revenue: todayOrders.reduce((sum: number, o: any) => sum + (Number(o.pay_amount) || 0), 0),
+    };
 
     return NextResponse.json({
       data: {
-        orders: orderStats || { total: 0, pending: 0, paid: 0, shipped: 0, completed: 0, cancelled: 0, total_revenue: 0 },
-        goods: goodsStats || { total: 0, low_stock: 0, total_sales: 0 },
-        users: userStats || { total: 0 },
-        merchants: merchantStats || { total: 0 },
-        today: todayStats || { total: 0, revenue: 0 },
+        orders: orderStats,
+        goods: goodsStats,
+        users: { total: userTotal },
+        merchants: { total: merchantTotal },
+        today: todayStats,
       },
     });
   } catch (error) {

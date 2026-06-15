@@ -104,7 +104,7 @@ export function Modal({
 interface ConfirmOptions {
   title?: string;
   message: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: 'default' | 'danger' | 'warning' | 'info';
   confirmText?: string;
   cancelText?: string;
 }
@@ -113,6 +113,7 @@ export function useConfirm() {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmOptions>({
     type: 'info',
+    message: '',
     confirmText: '確認',
     cancelText: '取消',
   });
@@ -172,7 +173,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
+  type?: 'default' | 'danger' | 'warning' | 'info';
   loading?: boolean;
 }
 

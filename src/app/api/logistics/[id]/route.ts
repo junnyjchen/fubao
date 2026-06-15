@@ -82,7 +82,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 /**
  * 生成模拟物流轨迹
  */
-function generateMockLogistics(order: OrderRecord) {
+function generateMockLogistics(order: any) {
   const tracks = [];
   const now = new Date();
 

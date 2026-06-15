@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     // 方法1：使用向量搜索
     if (useEmbedding) {
       try {
-        const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+        const customHeaders = HeaderUtils.extractForwardHeaders(request.headers) as any;
         const embeddingClient = new EmbeddingClient(customHeaders);
         
         // 获取查询向量

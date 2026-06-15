@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, queryOne } from '@/lib/db';
+import { query, queryOne, insert, update, remove } from '@/lib/db';
 
 // 验证商家身份
 function verifyMerchant(request: Request) {
@@ -83,19 +83,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '商品名称、价格和库存为必填项' }, { status: 400 });
     }
 
-    const result = await query(
-      `INSERT INTO goods (name, subtitle, price, original_price, stock, category_id, merchant_id, type, purpose, description, main_image, images, is_certified, specifications, status, sales, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, NOW(), NOW())`,
-      [
-        name, subtitle || '', parseFloat(price), original_price ? parseFloat(original_price) : null,
-        parseInt(stock), category_id || null, merchant.merchantId,
-        type || 1, purpose || '', description || '',
-        main_image || '', images || '', is_certified ? 1 : 0,
-        specifications ? JSON.stringify(specifications) : null
-      ]
-    );
+    const id = await insert('goods', {
+      name, subtitle: subtitle || '', price: parseFloat(price),
+      original_price: original_price ? parseFloat(original_price) : null,
+      stock: parseInt(stock), category_id: category_id || null,
+      merchant_id: merchant.merchantId,
+      type: type || 1, purpose: purpose || '',
+      description: description || '',
+      main_image: main_image || '', images: images || '',
+      is_certified: is_certified ? 1 : 0,
+      specifications: specifications ? JSON.stringify(specifications) : null,
+      status: 1, sales: 0
+    });
 
-    return NextResponse.json({ success: true, id: result.insertId, message: '商品发布成功' });
+    return NextResponse.json({ success: true, id, message: '商品发布成功' });
   } catch (error: any) {
     console.error('商家发布商品失败:', error);
     return NextResponse.json({ error: '发布商品失败' }, { status: 500 });

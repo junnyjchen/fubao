@@ -537,8 +537,8 @@ export function GoodsDetailPage() {
                   {detail.share}
                 </Button>
                 <SocialShare
-                  title={detail.name || ''}
-                  description={detail.subtitle || ''}
+                  title={goods?.name || ''}
+                  description={goods?.subtitle || ''}
                 />
               </div>
             </div>

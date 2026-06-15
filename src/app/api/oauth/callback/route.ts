@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
 
       if (existingUser) {
         // 邮箱已存在，绑定账号
-        userId = existingUser.id;
+        userId = String(existingUser.id);
         await client.from('user_oauth_accounts').insert({
           user_id: userId,
           provider,

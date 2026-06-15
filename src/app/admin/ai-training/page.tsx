@@ -108,8 +108,8 @@ interface TrainingStats {
     total?: number;
     completed?: number;
   };
-  top?: { title: string; count: number }[];
-  categories?: { name: string; count: number }[];
+  top?: { title: string; count: number; type?: string }[];
+  categories?: { name: string; count: number; category?: string }[];
 }
 
 interface KnowledgeItem {
@@ -293,7 +293,7 @@ function StatsCards({ stats }: { stats: TrainingStats }) {
       </div>
 
       {/* 热门知识排行 */}
-      {stats.top?.knowledge?.length > 0 && (
+      {stats.top && stats.top.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -303,7 +303,7 @@ function StatsCards({ stats }: { stats: TrainingStats }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {stats.top.knowledge.slice(0, 5).map((item: any, index: number) => (
+              {stats.top.slice(0, 5).map((item: any, index: number) => (
                 <div key={index} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-muted-foreground w-4">{index + 1}.</span>
@@ -410,7 +410,7 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
         await updateKnowledge({ id: editItem.id, ...data });
         toast.success('更新成功');
       } else {
-        await createKnowledge(data);
+        await createKnowledge(data as any);
         toast.success('创建成功');
       }
       setShowModal(false);
@@ -837,7 +837,7 @@ function QATab() {
         await updateQA({ id: editItem.id, ...data });
         toast.success('更新成功');
       } else {
-        await createQA(data);
+        await createQA(data as any);
         toast.success('创建成功');
       }
       setShowModal(false);

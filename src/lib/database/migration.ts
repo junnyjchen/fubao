@@ -506,7 +506,7 @@ export async function getMigrationStatus(): Promise<{
     id: m.id,
     name: m.name,
     status: executedMap.has(m.id) ? 'executed' : 'pending',
-    executedAt: executedMap.get(m.id)?.executed_at,
+    executedAt: (executedMap.get(m.id) as any)?.executed_at,
   }));
 
   return { migrations: status };
