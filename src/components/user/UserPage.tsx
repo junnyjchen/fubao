@@ -262,7 +262,7 @@ export function UserPage() {
     { label: uh.quickAccess.shipped, count: orders.filter(o => o.orderStatus === 2).length, icon: Truck, href: '/user/orders?status=shipped' },
     { label: uh.quickAccess.toReview, count: orders.filter(o => o.orderStatus === 3).length, icon: Star, href: '/user/reviews/pending' },
     { label: uh.quickAccess.vip, icon: Crown, href: '/user/vip', highlight: true, highlightColor: 'gold' },
-    { label: uh.quickAccess.distribution, icon: TrendingUp, href: '/distribution/team', highlight: true, highlightColor: 'purple' },
+    { label: uh.quickAccess.distribution, icon: TrendingUp, href: '/distribution', highlight: true, highlightColor: 'purple' },
     { label: uh.quickAccess.coupons, icon: Ticket, href: '/user/coupons' },
     { label: uh.quickAccess.myPoints, icon: Coins, href: '/user/points' },
     { label: uh.quickAccess.pointsMall, icon: Gift, href: '/user/points-mall' },
@@ -415,7 +415,7 @@ export function UserPage() {
                   </CardContent>
                 </Card>
               </Link>
-              <Link href="/distribution/team">
+              <Link href="/distribution">
                 <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border-purple-300/50 hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-3 text-center">
                     <TrendingUp className="w-6 h-6 mx-auto mb-1 text-purple-500" />

@@ -166,8 +166,16 @@ function DistributionCenterContent() {
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>{d.loadFailed}</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+        <Users className="w-16 h-16 text-muted-foreground" />
+        <p className="text-muted-foreground text-lg">您還不是分銷員</p>
+        <p className="text-muted-foreground text-sm">申請成為分銷員，推廣商品賺取佣金</p>
+        <Link href="/distribution/apply">
+          <Button size="lg">
+            <UserPlus className="w-4 h-4 mr-2" />
+            申請成為分銷員
+          </Button>
+        </Link>
       </div>
     );
   }

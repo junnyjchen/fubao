@@ -1,11 +1,11 @@
 /**
  * @fileoverview 后台分销管理API
- * @description 管理分销配置、用户分销信息、团队长审核
+ * @description 管理分销配置、分销员审核、团队长管理
  * @module app/api/admin/distribution/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query, queryOne, insert, update, count } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
@@ -22,8 +22,33 @@ async function verifyAdmin(request: NextRequest): Promise<{ userId: string; role
   }
 }
 
+/** 默认分销配置 */
+function getDefaultConfig() {
+  return [
+    { id: 1, level: 1, rate: 10.0, team_leader_rate: 2.0, description: '一級分銷佣金比例', updated_at: new Date().toISOString() },
+    { id: 2, level: 2, rate: 5.0, team_leader_rate: 1.0, description: '二級分銷佣金比例', updated_at: new Date().toISOString() },
+    { id: 3, level: 3, rate: 2.0, team_leader_rate: 0.5, description: '三級分銷佣金比例', updated_at: new Date().toISOString() },
+  ];
+}
+
+/** 确保 distribution_config 有默认数据 */
+async function ensureConfig() {
+  const existing = await query('SELECT * FROM distribution_config ORDER BY level');
+  if (!existing || existing.length === 0) {
+    const defaults = getDefaultConfig();
+    for (const cfg of defaults) {
+      await insert('distribution_config', cfg);
+    }
+  }
+}
+
 /**
- * GET /api/admin/distribution - 获取分销统计数据
+ * GET /api/admin/distribution - 获取分销数据
+ * ?action=config - 获取配置
+ * ?action=team_leaders - 获取团队长
+ * ?action=distributors - 获取分销员列表
+ * ?action=pending - 获取待审核申请
+ * ?action=stats - 获取统计
  */
 export async function GET(request: NextRequest) {
   const admin = await verifyAdmin(request);
@@ -35,106 +60,93 @@ export async function GET(request: NextRequest) {
   const action = searchParams.get('action');
 
   try {
+    await ensureConfig();
+
     if (action === 'config') {
-      // 获取分销配置
-      const { data: config, error } = await supabase
-        .from('distribution_config')
-        .select('*')
-        .order('level');
-
-      if (error) {
-        return NextResponse.json({
-          success: true,
-          data: getDefaultConfig(),
-        });
-      }
-
-      return NextResponse.json({ success: true, data: config });
+      const config = await query('SELECT * FROM distribution_config ORDER BY level');
+      return NextResponse.json({ success: true, data: config.length > 0 ? config : getDefaultConfig() });
     }
 
     if (action === 'team_leaders') {
-      // 获取团队长列表
-      const { data: leaders, error } = await supabase
-        .from('user_distribution')
-        .select(`
-          user_id,
-          invite_code,
-          team_count,
-          direct_count,
-          total_team_sales,
-          total_commission,
-          is_team_leader,
-          created_at
-        `)
-        .eq('is_team_leader', true)
-        .order('total_team_sales', { ascending: false });
-
-      if (error) {
-        return NextResponse.json({
-          success: true,
-          data: getMockTeamLeaders(),
-        });
-      }
-
+      const leaders = await query("SELECT * FROM user_distribution WHERE is_team_leader = 1 ORDER BY total_team_sales DESC");
       return NextResponse.json({ success: true, data: leaders });
     }
 
-    if (action === 'pending_team_leaders') {
-      // 获取待审核的团队长申请
-      const { data: pending, error } = await supabase
-        .from('team_leader_applications')
-        .select('*')
-        .eq('status', 0)
-        .order('created_at', { ascending: false });
+    if (action === 'distributors') {
+      const page = parseInt(searchParams.get('page') || '1');
+      const limit = parseInt(searchParams.get('limit') || '20');
+      const status = searchParams.get('status'); // 0=待审核, 1=已通过, 2=已拒绝
+      const keyword = searchParams.get('keyword') || '';
 
-      if (error) {
-        return NextResponse.json({
-          success: true,
-          data: [],
-        });
+      let where = '1=1';
+      const params: any[] = [];
+
+      if (status !== null && status !== '') {
+        where += ' AND status = ?';
+        params.push(parseInt(status));
+      }
+      if (keyword) {
+        where += ' AND (real_name LIKE ? OR phone LIKE ? OR invite_code LIKE ?)';
+        params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
       }
 
-      return NextResponse.json({ success: true, data: pending || [] });
+      const all = await query(`SELECT * FROM user_distribution WHERE ${where} ORDER BY created_at DESC`, params);
+      const total = all.length;
+      const list = all.slice((page - 1) * limit, page * limit);
+
+      return NextResponse.json({ success: true, data: { list, total, page, limit } });
     }
 
-    // 默认返回统计数据
-    const { data: stats, error } = await supabase
-      .from('user_distribution')
-      .select('total_commission, available_commission, team_count');
-
-    if (error) {
-      return NextResponse.json({
-        success: true,
-        data: getMockStats(),
-      });
+    if (action === 'pending') {
+      const pending = await query("SELECT * FROM distribution_applications WHERE status = 0 ORDER BY created_at DESC");
+      return NextResponse.json({ success: true, data: pending });
     }
 
-    const totalCommission = stats?.reduce((sum, s) => sum + (s.total_commission || 0), 0) || 0;
-    const totalAvailable = stats?.reduce((sum, s) => sum + (s.available_commission || 0), 0) || 0;
-    const totalMembers = stats?.reduce((sum, s) => sum + (s.team_count || 0), 0) || 0;
+    // 默认返回统计
+    const allDist = await query('SELECT * FROM user_distribution');
+    const totalDistributors = allDist.length;
+    const totalTeamMembers = allDist.reduce((sum: number, d: any) => sum + (d.team_count || 0), 0);
+    const totalCommission = allDist.reduce((sum: number, d: any) => sum + (d.total_commission || 0), 0);
+    const availableCommission = allDist.reduce((sum: number, d: any) => sum + (d.available_commission || 0), 0);
+
+    // 待审核申请数
+    const pendingApps = await query("SELECT * FROM distribution_applications WHERE status = 0");
+    const pendingCount = pendingApps.length;
 
     return NextResponse.json({
       success: true,
       data: {
-        total_distributors: stats?.length || 0,
-        total_team_members: totalMembers,
+        total_distributors: totalDistributors,
+        total_team_members: totalTeamMembers,
         total_commission: totalCommission,
-        available_commission: totalAvailable,
+        available_commission: availableCommission,
         today_commission: 1888.88,
         month_commission: 28688.88,
+        pending_applications: pendingCount,
       },
     });
   } catch (error) {
-    console.error('获取分销数据失败:', error);
+    console.error('[Admin Distribution] 获取数据失败:', error);
     return NextResponse.json({
       success: true,
-      data: getMockStats(),
+      data: {
+        total_distributors: 0,
+        total_team_members: 0,
+        total_commission: 0,
+        available_commission: 0,
+        today_commission: 0,
+        month_commission: 0,
+        pending_applications: 0,
+      },
     });
   }
 }
 
 /**
- * POST /api/admin/distribution - 更新分销配置
+ * POST /api/admin/distribution - 操作
+ * action=update_config - 更新配置
+ * action=approve_distributor - 审核分销员 (data: {id, approve: boolean, reason?})
+ * action=approve_team_leader - 审批团队长 (data: {user_id, approve: boolean})
  */
 export async function POST(request: NextRequest) {
   const admin = await verifyAdmin(request);
@@ -147,86 +159,104 @@ export async function POST(request: NextRequest) {
     const { action, data } = body;
 
     if (action === 'update_config') {
-      // 更新分销配置
-      for (const config of data) {
-        await supabase
-          .from('distribution_config')
-          .upsert({
-            level: config.level,
-            rate: config.rate,
-            team_leader_rate: config.team_leader_rate,
+      for (const cfg of data) {
+        const existing = await queryOne('SELECT * FROM distribution_config WHERE level = ?', [cfg.level]);
+        if (existing) {
+          await update('distribution_config', existing.id, {
+            rate: cfg.rate,
+            team_leader_rate: cfg.team_leader_rate,
             updated_at: new Date().toISOString(),
           });
+        } else {
+          await insert('distribution_config', {
+            level: cfg.level,
+            rate: cfg.rate,
+            team_leader_rate: cfg.team_leader_rate,
+            description: cfg.description || '',
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+      return NextResponse.json({ success: true, message: '配置已更新' });
+    }
+
+    if (action === 'approve_distributor') {
+      const { id, approve, reason } = data;
+      const app = await queryOne('SELECT * FROM distribution_applications WHERE id = ?', [id]);
+      if (!app) {
+        return NextResponse.json({ error: '申請不存在' }, { status: 404 });
+      }
+
+      await update('distribution_applications', id, {
+        status: approve ? 1 : 2,
+        review_note: reason || (approve ? '審核通過' : '審核未通過'),
+        reviewed_at: new Date().toISOString(),
+      });
+
+      if (approve) {
+        // 审核通过，创建分销员记录
+        const existing = await queryOne('SELECT * FROM user_distribution WHERE user_id = ?', [app.user_id]);
+        if (!existing) {
+          await insert('user_distribution', {
+            user_id: app.user_id,
+            invite_code: app.invite_code || generateInviteCode(),
+            real_name: app.real_name || '',
+            phone: app.phone || '',
+            status: 1,
+            is_team_leader: false,
+            team_count: 0,
+            direct_count: 0,
+            level_2_count: 0,
+            level_3_count: 0,
+            total_commission: 0,
+            available_commission: 0,
+            frozen_commission: 0,
+            withdrawn_commission: 0,
+            total_team_sales: 0,
+            created_at: new Date().toISOString(),
+          });
+        } else {
+          // 已有记录，更新状态
+          await update('user_distribution', existing.id, { status: 1 });
+        }
       }
 
       return NextResponse.json({
         success: true,
-        message: '配置已更新',
+        message: approve ? '已通過分銷員申請' : '已拒絕分銷員申請',
       });
     }
 
     if (action === 'approve_team_leader') {
-      // 审批团队长
       const { user_id, approve } = data;
-
-      if (approve) {
-        await supabase
-          .from('user_distribution')
-          .update({ is_team_leader: true })
-          .eq('user_id', user_id);
+      const dist = await queryOne('SELECT * FROM user_distribution WHERE user_id = ?', [user_id]);
+      if (dist) {
+        await update('user_distribution', dist.id, { is_team_leader: approve ? 1 : 0 });
       }
-
       return NextResponse.json({
         success: true,
         message: approve ? '已批准團隊長申請' : '已拒絕團隊長申請',
       });
     }
 
+    if (action === 'toggle_distributor') {
+      const { id, enabled } = data;
+      await update('user_distribution', id, { status: enabled ? 1 : 0 });
+      return NextResponse.json({ success: true, message: enabled ? '已啟用分銷員' : '已停用分銷員' });
+    }
+
     return NextResponse.json({ error: '未知操作' }, { status: 400 });
   } catch (error) {
-    console.error('操作失败:', error);
+    console.error('[Admin Distribution] 操作失败:', error);
     return NextResponse.json({ error: '操作失敗' }, { status: 500 });
   }
 }
 
-function getDefaultConfig() {
-  return [
-    { level: 1, rate: 10.0, team_leader_rate: 2.0 },
-    { level: 2, rate: 5.0, team_leader_rate: 1.0 },
-    { level: 3, rate: 2.0, team_leader_rate: 0.5 },
-  ];
-}
-
-function getMockStats() {
-  return {
-    total_distributors: 1280,
-    total_team_members: 8650,
-    total_commission: 128888.88,
-    available_commission: 66888.88,
-    today_commission: 1888.88,
-    month_commission: 28688.88,
-  };
-}
-
-function getMockTeamLeaders() {
-  return [
-    {
-      user_id: 'leader1',
-      invite_code: 'ABC123',
-      team_count: 168,
-      direct_count: 86,
-      total_team_sales: 188888.88,
-      total_commission: 18888.88,
-      is_team_leader: true,
-    },
-    {
-      user_id: 'leader2',
-      invite_code: 'DEF456',
-      team_count: 128,
-      direct_count: 65,
-      total_team_sales: 128888.88,
-      total_commission: 12888.88,
-      is_team_leader: true,
-    },
-  ];
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'FB';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
 }

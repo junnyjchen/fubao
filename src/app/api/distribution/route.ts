@@ -1,245 +1,165 @@
 /**
- * @fileoverview 分销中心API路由
- * @description 获取分销统计数据
+ * @fileoverview 用户分销中心API
+ * @description 分销数据、佣金记录、团队管理
  * @module app/api/distribution/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query, queryOne, insert, update, count } from '@/lib/db';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fubao-jwt-secret-key-2026';
 
-interface CommissionRecord {
-  commission_amount: number;
-}
-
-interface DistributionData {
-  invite_code: string;
-  is_team_leader: boolean;
-  team_leader_id: string | null;
-  total_commission: number;
-  available_commission: number;
-  frozen_commission: number;
-  withdrawn_commission: number;
-  team_count: number;
-  direct_count: number;
-  level_2_count: number;
-  level_3_count: number;
-  total_team_sales: number;
-}
-
-// 验证用户登录
-async function verifyUser(request: NextRequest): Promise<string | null> {
+function getUserFromToken(request: NextRequest): { userId: string } | null {
   const token = request.cookies.get('auth_token')?.value;
   if (!token) return null;
-
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-    return decoded.userId;
+    return jwt.verify(token, JWT_SECRET) as { userId: string };
   } catch {
     return null;
   }
 }
 
 /**
- * GET /api/distribution - 获取分销中心数据
+ * GET /api/distribution - 获取用户分销数据
+ * ?action=overview - 总览
+ * ?action=team - 团队成员
+ * ?action=commissions - 佣金记录
+ * ?action=withdrawals - 提现记录
+ * ?action=products - 分销商品
+ * ?action=links - 分销链接
  */
 export async function GET(request: NextRequest) {
-  const userId = await verifyUser(request);
-  if (!userId) {
+  const user = getUserFromToken(request);
+  if (!user) {
     return NextResponse.json({ error: '請先登錄' }, { status: 401 });
   }
 
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get('action') || 'overview';
+
   try {
-    // 获取用户分销信息
-    const { data: distribution, error: distError } = await supabase
-      .from('user_distribution')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
+    const distributor = await queryOne('SELECT * FROM user_distribution WHERE user_id = ?', [user.userId]);
 
-    if (distError || !distribution) {
-      // 如果没有分销信息，创建一个
-      const { data: newDist, error: createError } = await supabase
-        .from('user_distribution')
-        .insert({
-          user_id: userId,
-          invite_code: generateInviteCode(),
-        })
-        .select()
-        .single();
+    if (!distributor || distributor.status !== 1) {
+      return NextResponse.json({ error: '您不是分銷員' }, { status: 403 });
+    }
 
-      if (createError) {
-        // 返回模拟数据
-        return NextResponse.json({
-          success: true,
-          data: getMockDistributionData(userId),
-        });
-      }
+    if (action === 'team') {
+      const teamMembers = await query("SELECT * FROM user_distribution WHERE parent_id = ? ORDER BY created_at DESC", [distributor.id]);
+      return NextResponse.json({ success: true, data: teamMembers });
+    }
 
+    if (action === 'commissions') {
+      const commissions = await query("SELECT * FROM commission_records WHERE distributor_id = ? ORDER BY created_at DESC LIMIT 50", [distributor.id]);
+      return NextResponse.json({ success: true, data: commissions });
+    }
+
+    if (action === 'withdrawals') {
+      const withdrawals = await query("SELECT * FROM withdrawal_records WHERE distributor_id = ? ORDER BY created_at DESC LIMIT 20", [distributor.id]);
+      return NextResponse.json({ success: true, data: withdrawals });
+    }
+
+    if (action === 'products') {
+      const products = await query("SELECT * FROM goods WHERE status = 1 ORDER BY sales DESC LIMIT 20");
+      // 附加分销佣金信息
+      const config = await query('SELECT * FROM distribution_config ORDER BY level');
+      const level1Rate = config.length > 0 ? (config[0] as any).rate : 10;
+      const productsWithCommission = products.map((p: any) => ({
+        ...p,
+        commission: Math.round(p.price * level1Rate) / 100,
+        commission_rate: level1Rate,
+      }));
+      return NextResponse.json({ success: true, data: productsWithCommission });
+    }
+
+    if (action === 'links') {
+      const domain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'www.fubao.ltd';
       return NextResponse.json({
         success: true,
-        data: formatDistributionData(newDist),
+        data: {
+          invite_link: `https://${domain}/register?invite=${distributor.invite_code}`,
+          invite_code: distributor.invite_code,
+          qrcode: `https://${domain}/api/qrcode?code=${distributor.invite_code}`,
+        },
       });
     }
 
-    // 获取今日佣金
-    const today = new Date().toISOString().split('T')[0];
-    const { data: todayCommissions } = await supabase
-      .from('distribution_commissions')
-      .select('commission_amount')
-      .eq('user_id', userId)
-      .eq('status', 1)
-      .gte('created_at', today);
-
-    const todayCommission = todayCommissions?.reduce(
-      (sum: number, c: CommissionRecord) => sum + c.commission_amount, 0
-    ) || 0;
-
-    // 获取本月佣金
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-
-    const { data: monthCommissions } = await supabase
-      .from('distribution_commissions')
-      .select('commission_amount')
-      .eq('user_id', userId)
-      .eq('status', 1)
-      .gte('created_at', monthStart.toISOString());
-
-    const monthCommission = monthCommissions?.reduce(
-      (sum: number, c: CommissionRecord) => sum + c.commission_amount, 0
-    ) || 0;
-
-    // 获取待结算佣金
-    const { data: pendingCommissions } = await supabase
-      .from('distribution_commissions')
-      .select('commission_amount')
-      .eq('user_id', userId)
-      .eq('status', 0);
-
-    const pendingCommission = pendingCommissions?.reduce(
-      (sum: number, c: CommissionRecord) => sum + c.commission_amount, 0
-    ) || 0;
-
+    // overview - 总览
+    const config = await query('SELECT * FROM distribution_config ORDER BY level');
     return NextResponse.json({
       success: true,
       data: {
-        ...formatDistributionData(distribution),
-        today_commission: todayCommission,
-        month_commission: monthCommission,
-        pending_commission: pendingCommission,
+        distributor,
+        config,
+        stats: {
+          total_commission: distributor.total_commission || 0,
+          available_commission: distributor.available_commission || 0,
+          frozen_commission: distributor.frozen_commission || 0,
+          withdrawn_commission: distributor.withdrawn_commission || 0,
+          team_count: distributor.team_count || 0,
+          direct_count: distributor.direct_count || 0,
+          total_team_sales: distributor.total_team_sales || 0,
+        },
       },
     });
   } catch (error) {
-    console.error('获取分销数据失败:', error);
-    // 返回模拟数据
-    return NextResponse.json({
-      success: true,
-      data: getMockDistributionData(userId),
-    });
+    console.error('[Distribution] 获取数据失败:', error);
+    return NextResponse.json({ success: true, data: { distributor: null, stats: {} } });
   }
 }
 
 /**
- * POST /api/distribution - 创建分销账户
+ * POST /api/distribution - 分销操作
+ * action=withdraw - 申请提现
  */
 export async function POST(request: NextRequest) {
-  const userId = await verifyUser(request);
-  if (!userId) {
+  const user = getUserFromToken(request);
+  if (!user) {
     return NextResponse.json({ error: '請先登錄' }, { status: 401 });
   }
 
   try {
     const body = await request.json();
-    const { invite_code } = body;
+    const { action, data } = body;
 
-    // 检查是否已有分销账户
-    const { data: existing } = await supabase
-      .from('user_distribution')
-      .select('id')
-      .eq('user_id', userId)
-      .single();
+    const distributor = await queryOne('SELECT * FROM user_distribution WHERE user_id = ?', [user.userId]);
+    if (!distributor || distributor.status !== 1) {
+      return NextResponse.json({ error: '您不是分銷員' }, { status: 403 });
+    }
 
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        message: '已存在分銷賬戶',
+    if (action === 'withdraw') {
+      const { amount, bank_name, bank_account, bank_holder } = data;
+      if (!amount || amount < 100) {
+        return NextResponse.json({ error: '最低提現金額為100元' }, { status: 400 });
+      }
+      if (amount > (distributor as any).available_commission) {
+        return NextResponse.json({ error: '提現金額超過可用餘額' }, { status: 400 });
+      }
+
+      // 创建提现记录
+      await insert('withdrawal_records', {
+        distributor_id: (distributor as any).id,
+        amount,
+        bank_name: bank_name || '',
+        bank_account: bank_account || '',
+        bank_holder: bank_holder || '',
+        status: 0, // 待审核
+        created_at: new Date().toISOString(),
       });
+
+      // 冻结佣金
+      await update('user_distribution', (distributor as any).id, {
+        available_commission: Math.round(((distributor as any).available_commission - amount) * 100) / 100,
+        frozen_commission: Math.round(((distributor as any).frozen_commission + amount) * 100) / 100,
+      });
+
+      return NextResponse.json({ success: true, message: '提現申請已提交' });
     }
 
-    // 创建分销账户
-    const { data, error } = await supabase
-      .from('user_distribution')
-      .insert({
-        user_id: userId,
-        invite_code: generateInviteCode(),
-        parent_id: invite_code || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: '創建失敗' }, { status: 500 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data,
-      message: '分銷賬戶創建成功',
-    });
+    return NextResponse.json({ error: '未知操作' }, { status: 400 });
   } catch (error) {
-    console.error('创建分销账户失败:', error);
-    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
+    console.error('[Distribution] 操作失败:', error);
+    return NextResponse.json({ error: '操作失敗' }, { status: 500 });
   }
-}
-
-function generateInviteCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
-function formatDistributionData(data: any) {
-  return {
-    invite_code: data.invite_code,
-    invite_link: `${process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'https://fubao.ltd'}/register?ref=${data.invite_code}`,
-    is_team_leader: data.is_team_leader,
-    team_leader_id: data.team_leader_id,
-    total_commission: data.total_commission || 0,
-    available_commission: data.available_commission || 0,
-    frozen_commission: data.frozen_commission || 0,
-    withdrawn_commission: data.withdrawn_commission || 0,
-    team_count: data.team_count || 0,
-    direct_count: data.direct_count || 0,
-    level_2_count: data.level_2_count || 0,
-    level_3_count: data.level_3_count || 0,
-    total_team_sales: data.total_team_sales || 0,
-  };
-}
-
-function getMockDistributionData(userId: string) {
-  return {
-    invite_code: 'FU' + userId.slice(-4).toUpperCase(),
-    invite_link: `${process.env.COZE_PROJECT_DOMAIN_DEFAULT || 'https://fubao.ltd'}/register?ref=FU${userId.slice(-4).toUpperCase()}`,
-    is_team_leader: false,
-    team_leader_id: null,
-    total_commission: 1888.50,
-    available_commission: 668.00,
-    frozen_commission: 120.50,
-    withdrawn_commission: 1100.00,
-    team_count: 156,
-    direct_count: 42,
-    level_2_count: 68,
-    level_3_count: 46,
-    total_team_sales: 56880.00,
-    today_commission: 88.50,
-    month_commission: 356.00,
-    pending_commission: 120.50,
-  };
 }
