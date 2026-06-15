@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
       [...params, limit]
     );
 
-    return NextResponse.json({ list: list || [] });
+    return NextResponse.json({ data: { list: list || [] } });
   } catch (error) {
     console.error('搜索知识库失败:', error);
-    return NextResponse.json({ list: [] });
+    return NextResponse.json({ data: { list: [] } });
   }
 }

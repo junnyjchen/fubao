@@ -18,27 +18,31 @@ export async function GET() {
     );
 
     return NextResponse.json({
-      knowledge: {
-        total: knowledgeTotal,
-        active: activeKnowledge,
-        categories: categoryStats || [],
-      },
-      qa: {
-        total: qaTotal,
-        active: activeQA,
-      },
-      tasks: {
-        total: tasksTotal,
-      },
-      top: categoryStats || [],
+      data: {
+        knowledge: {
+          total: knowledgeTotal,
+          active: activeKnowledge,
+          categories: categoryStats || [],
+        },
+        qa: {
+          total: qaTotal,
+          active: activeQA,
+        },
+        tasks: {
+          total: tasksTotal,
+        },
+        top: categoryStats || [],
+      }
     });
   } catch (error) {
     console.error('获取训练统计失败:', error);
     return NextResponse.json({
-      knowledge: { total: 0, active: 0, categories: [] },
-      qa: { total: 0, active: 0 },
-      tasks: { total: 0 },
-      top: [],
+      data: {
+        knowledge: { total: 0, active: 0, categories: [] },
+        qa: { total: 0, active: 0 },
+        tasks: { total: 0 },
+        top: [],
+      }
     });
   }
 }

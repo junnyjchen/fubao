@@ -355,8 +355,8 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
-  const [status, setStatus] = useState('');
+  const [category, setCategory] = useState('all');
+  const [status, setStatus] = useState('all');
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<KnowledgeItem | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -370,8 +370,8 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
         page,
         page_size: 10,
         keyword: search,
-        category,
-        status,
+        category: category === 'all' ? '' : category,
+        status: status === 'all' ? '' : status,
       });
       setList(res.data.list || []);
       setTotal(res.data.total || 0);
@@ -442,7 +442,7 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
             <SelectValue placeholder="选择分类" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">全部分类</SelectItem>
+            <SelectItem value="all">全部分类</SelectItem>
             {CATEGORIES.map((c) => (
               <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
             ))}
@@ -453,7 +453,7 @@ function KnowledgeTab({ onRefresh }: { onRefresh?: () => void }) {
             <SelectValue placeholder="状态" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">全部状态</SelectItem>
+            <SelectItem value="all">全部状态</SelectItem>
             {STATUS_OPTIONS.map((s) => (
               <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
             ))}
@@ -1226,8 +1226,8 @@ function ToolsTab({ onRefresh }: { onRefresh?: () => void }) {
           })),
         },
         tasks: {
-          total: tasksRes.data.length || 0,
-          list: (tasksRes.data || []).map((t: TrainingTask) => ({
+          total: tasksRes.data.total || 0,
+          list: (tasksRes.data.list || []).map((t: TrainingTask) => ({
             id: t.id,
             name: t.name,
             type: t.type,

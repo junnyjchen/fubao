@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       [`关于${title}的问题`, content, (knowledge as any).category || 'general', knowledge_id, JSON.stringify([title]), true, now, now]
     );
 
-    return NextResponse.json({ success: true, message: '已生成问答对' });
+    return NextResponse.json({ data: { success: true, count: 1 } });
   } catch (error) {
     console.error('生成问答对失败:', error);
     return NextResponse.json({ error: '生成失败' }, { status: 500 });

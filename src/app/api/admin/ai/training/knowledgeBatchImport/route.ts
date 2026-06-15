@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       imported++;
     }
 
-    return NextResponse.json({ success: true, imported, message: `成功导入 ${imported} 条知识` });
+    return NextResponse.json({ data: { success: true, imported, failed: data.length - imported } });
   } catch (error) {
     console.error('批量导入知识库失败:', error);
     return NextResponse.json({ error: '导入失败' }, { status: 500 });

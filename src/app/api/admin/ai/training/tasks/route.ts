@@ -26,13 +26,15 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
-      list: list || [],
-      total,
-      page,
-      page_size: pageSize,
+      data: {
+        list: list || [],
+        total,
+        page,
+        page_size: pageSize,
+      }
     });
   } catch (error) {
     console.error('获取训练任务列表失败:', error);
-    return NextResponse.json({ list: [], total: 0, page: 1, page_size: 10 });
+    return NextResponse.json({ data: { list: [], total: 0, page: 1, page_size: 10 } });
   }
 }
