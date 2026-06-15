@@ -458,6 +458,10 @@ function PaymentPageContent() {
                                       <svg className={`w-5 h-5 ${method.color}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                                       </svg>
+                                    ) : method.icon === 'paypal' ? (
+                                      <svg className={`w-5 h-5 ${method.color}`} viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797H9.603c-.562 0-1.037.41-1.115.964l-.744 4.72-.18 1.147-.01.062a.641.641 0 0 1-.633.563h.055z"/>
+                                      </svg>
                                     ) : (
                                       <Smartphone className={`w-5 h-5 ${method.color}`} />
                                     )}
@@ -500,6 +504,20 @@ function PaymentPageContent() {
                                   >
                                     <ExternalLink className="w-4 h-4 me-1" />
                                     前往支付
+                                  </Button>
+                                </>
+                              ) : selectedMethod === 'paypal' ? (
+                                <>
+                                  <svg className="w-12 h-12 mx-auto text-indigo-600 mb-2" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797H9.603c-.562 0-1.037.41-1.115.964l-.744 4.72-.18 1.147-.01.062a.641.641 0 0 1-.633.563h.055z"/>
+                                  </svg>
+                                  <p className="text-sm font-medium mb-3">PayPal 支付</p>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => window.open(paymentInfo.redirect_url, '_blank')}
+                                  >
+                                    <ExternalLink className="w-4 h-4 me-1" />
+                                    前往PayPal支付
                                   </Button>
                                 </>
                               ) : (

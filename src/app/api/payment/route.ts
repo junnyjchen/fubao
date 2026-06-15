@@ -10,6 +10,7 @@ import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { verifyToken } from '@/lib/auth/utils';
 import { getPayProtocolConfig, createPaymentOrder as createPayProtocolOrder, getPaymentPageUrl } from '@/lib/payprotocol';
+import { getPayPalConfig, createPayPalOrder, getPayPalApprovalUrl } from '@/lib/paypal';
 
 /**
  * 获取当前用户ID
@@ -169,10 +170,35 @@ export async function POST(request: Request) {
       case 'wechat':
         qrCode = generateMockQRCode(paymentId);
         break;
-      case 'paypal':
-        // 在实际项目中，这里会调用PayPal API创建支付订单
-        redirectUrl = `${process.env.COZE_PROJECT_DOMAIN_DEFAULT}/payment/${paymentId}/paypal`;
+      case 'paypal': {
+        // PayPal 支付 - 使用 PayPal REST API v2
+        const ppConfig = await getPayPalConfig();
+        if (!ppConfig) {
+          return NextResponse.json({ error: 'PayPal 支付未啟用或未配置，請在後台設置中開啟並填寫 Client ID 和 Secret' }, { status: 400 });
+        }
+
+        const ppDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${process.env.DEPLOY_RUN_PORT || 5000}`;
+        const ppBaseUrl = ppDomain.startsWith('http') ? ppDomain : `https://${ppDomain}`;
+
+        try {
+          const ppOrder = await createPayPalOrder(ppConfig, {
+            orderId: order.id,
+            orderNo: order.order_no || `ORD-${order.id}`,
+            amount: String(order.pay_amount || order.total_amount),
+            currency: 'HKD',
+            description: `符寶網訂單 ${order.order_no || order_id}`,
+            returnUrl: `${ppBaseUrl}/payment/success?orderId=${order_id}&method=paypal`,
+            cancelUrl: `${ppBaseUrl}/payment?orderId=${order_id}&cancelled=true`,
+          });
+
+          redirectUrl = getPayPalApprovalUrl(ppOrder);
+          clientSecret = ppOrder.id; // 保存 PayPal Order ID
+        } catch (ppError: any) {
+          console.error('[PayPal] 创建支付订单失败:', ppError);
+          return NextResponse.json({ error: `PayPal 支付創建失敗: ${ppError.message}` }, { status: 500 });
+        }
         break;
+      }
       case 'stripe':
         // 在实际项目中，这里会调用Stripe API创建支付意向
         clientSecret = `pi_${Math.random().toString(36).substring(2)}`;

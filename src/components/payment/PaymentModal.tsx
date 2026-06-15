@@ -26,6 +26,8 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
 
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null);
+
   const handlePay = async (method: string) => {
     setLoading(true);
     setPaymentMethod(method);
@@ -53,9 +55,12 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
       if (result.data) {
         if (method === 'paypal') {
           // PayPal 跳转到支付页面
-          window.open(result.data.approvalUrl, '_blank');
-          setPaying(true);
-          pollPaymentStatus(method);
+          if (result.data.approvalUrl) {
+            setPaypalOrderId(result.data.paypalOrderId);
+            window.open(result.data.approvalUrl, '_blank');
+            setPaying(true);
+            pollPaymentStatus(method, result.data.paypalOrderId);
+          }
         } else if (method === 'payprotocol') {
           // Pay Protocol 跳转到加密货币支付页面
           const paymentUrl = result.data.paymentUrl;
@@ -79,50 +84,63 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
     }
   };
 
-  const pollPaymentStatus = async (method: string) => {
-    // 模拟轮询支付状态
+  const pollPaymentStatus = async (method: string, paypalOrderId?: string) => {
     let attempts = 0;
-    const maxAttempts = 60; // 最多等待60秒
+    const maxAttempts = 120; // 最多等待120秒
 
     const poll = async () => {
       attempts++;
       
-      // 模拟支付成功（实际项目中需要调用后端接口查询支付状态）
-      if (attempts >= 3) {
-        try {
-          const endpoint = `/api/payments/${method}`;
-          await fetch(endpoint, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId }),
-          });
-          
+      try {
+        let statusEndpoint = '';
+        if (method === 'paypal' && paypalOrderId) {
+          statusEndpoint = `/api/paypal/webhook?paypalOrderId=${paypalOrderId}`;
+        } else if (method === 'payprotocol') {
+          statusEndpoint = `/api/payprotocol/callback?orderId=${orderId}`;
+        } else {
+          statusEndpoint = `/api/payments/${method}?orderId=${orderId}`;
+        }
+
+        const res = await fetch(statusEndpoint);
+        const data = await res.json();
+
+        if (data.status === 'completed') {
           onSuccess();
           onClose();
-        } catch (error) {
-          console.error('更新支付状态失败:', error);
+          return;
         }
-        return;
+      } catch {
+        // 继续轮询
       }
 
       if (attempts < maxAttempts) {
-        setTimeout(poll, 1000);
+        setTimeout(poll, 2000);
       }
     };
 
-    poll();
+    // 延迟3秒后开始轮询
+    setTimeout(poll, 3000);
   };
 
   const handleSimulatePayment = async () => {
     if (!paymentMethod) return;
     
     try {
-      const endpoint = `/api/payments/${paymentMethod}`;
-      await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
-      });
+      if (paymentMethod === 'paypal' && paypalOrderId) {
+        // PayPal: 捕获支付
+        await fetch('/api/payments/paypal', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, paypalOrderId }),
+        });
+      } else {
+        const endpoint = `/api/payments/${paymentMethod}`;
+        await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId }),
+        });
+      }
       
       onSuccess();
       onClose();
