@@ -65,7 +65,18 @@ const initialData: Record<string, any[]> = {
   logistics: [],
   coupons: [],
   user_coupons: [],
-  notifications: []
+  notifications: [],
+  ai_knowledge: [
+    { id: 1, title: '道教符咒基础知识', content: '符咒是道教法术的重要组成部分，是道士沟通天地、驱邪镇煞的重要工具。符咒由符文和咒语组成，符文是用朱砂或墨汁书写的特定图形和文字，咒语是配合符文使用的口诀。', category: 'fulu', source_type: 'manual', source_url: '', tags: '["符咒","道教","基础"]', status: 'active', created_at: '2025-01-01T00:00:00.000Z', updated_at: '2025-01-01T00:00:00.000Z' },
+    { id: 2, title: '开光仪式流程', content: '开光是一种宗教仪式，通过特定的法事程序，赋予法器灵性和法力。开光仪式一般包括：净坛、请神、加持、封符等步骤。', category: 'ceremony', source_type: 'manual', source_url: '', tags: '["开光","仪式","法器"]', status: 'active', created_at: '2025-01-02T00:00:00.000Z', updated_at: '2025-01-02T00:00:00.000Z' },
+    { id: 3, title: '风水基础知识', content: '风水是中国传统文化的重要组成部分，讲究人与自然环境的和谐。风水学主要包括阳宅风水和阴宅风水两大类。', category: 'fengshui', source_type: 'manual', source_url: '', tags: '["风水","基础","环境"]', status: 'active', created_at: '2025-01-03T00:00:00.000Z', updated_at: '2025-01-03T00:00:00.000Z' }
+  ],
+  ai_qa: [
+    { id: 1, question: '什么是符咒？', answer: '符咒是道教法术的重要组成部分，由符文和咒语组成，用于沟通天地、驱邪镇煞。', category: 'fulu', knowledge_id: 1, keywords: '["符咒","道教"]', is_active: true, created_at: '2025-01-01T00:00:00.000Z', updated_at: '2025-01-01T00:00:00.000Z' },
+    { id: 2, question: '开光是什么意思？', answer: '开光是一种宗教仪式，通过特定法事程序赋予法器灵性和法力，包括净坛、请神、加持、封符等步骤。', category: 'ceremony', knowledge_id: 2, keywords: '["开光","仪式"]', is_active: true, created_at: '2025-01-02T00:00:00.000Z', updated_at: '2025-01-02T00:00:00.000Z' }
+  ],
+  ai_training_tasks: [],
+  ai_model_configs: []
 };
 
 let nextIds: Record<string, number> = {};
@@ -217,6 +228,87 @@ export async function query<T = any>(
   params: unknown[] = []
 ): Promise<T[]> {
   const sqlLower = sql.toLowerCase().trim();
+
+  // DELETE 支持
+  if (sqlLower.startsWith('delete')) {
+    const tableName = getMainTable(sql);
+    if (!tableName) return [] as T[];
+    const data = getData()[tableName] || [];
+    const { conditions, havingLike } = parseWhereClause(sql);
+    const aliases = parseTableAliases(sql);
+    const initialLength = data.length;
+    const mockData = getData();
+    mockData[tableName] = data.filter((record: any) =>
+      !matchesConditions(record, conditions, havingLike, params, aliases)
+    );
+    return [{ affectedRows: initialLength - mockData[tableName].length }] as T[];
+  }
+
+  // INSERT 支持
+  if (sqlLower.startsWith('insert')) {
+    const tableMatch = sql.match(/INTO\s+`?(\w+)`?/i);
+    const tableName = tableMatch ? tableMatch[1] : null;
+    if (!tableName) return [] as T[];
+    const mockData = getData();
+    if (!mockData[tableName]) mockData[tableName] = [];
+    const ids = getIds();
+    const newId = ids[tableName] || 1;
+
+    // 解析列名
+    const colsMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
+    const cols = colsMatch ? colsMatch[1].split(',').map(c => c.trim().replace(/`/g, '')) : [];
+
+    const newRow: Record<string, any> = { id: newId };
+    cols.forEach((col, i) => {
+      newRow[col] = params[i] !== undefined ? params[i] : null;
+    });
+
+    mockData[tableName].push(newRow);
+    ids[tableName] = newId + 1;
+    return [{ insertId: newId }] as T[];
+  }
+
+  // UPDATE 支持
+  if (sqlLower.startsWith('update')) {
+    const tableMatch = sql.match(/UPDATE\s+`?(\w+)`?/i);
+    const tableName = tableMatch ? tableMatch[1] : null;
+    if (!tableName) return [] as T[];
+    const mockData = getData();
+    const data = mockData[tableName] || [];
+    const { conditions, havingLike } = parseWhereClause(sql);
+    const aliases = parseTableAliases(sql);
+
+    // 解析 SET 子句
+    const setMatch = sql.match(/SET\s+(.+?)(?:\s+WHERE\b|$)/i);
+    let setParamCount = 0;
+    if (setMatch) {
+      setParamCount = (setMatch[1].match(/\?/g) || []).length;
+    }
+
+    // WHERE 参数在 SET 参数之后
+    const whereParams = params.slice(setParamCount);
+    const setParams = params.slice(0, setParamCount);
+
+    let updatedCount = 0;
+    data.forEach((record: any) => {
+      if (matchesConditions(record, conditions, havingLike, whereParams, aliases)) {
+        if (setMatch) {
+          const setClauses = setMatch[1].split(',').map((s: string) => s.trim());
+          let paramIdx = 0;
+          setClauses.forEach((clause: string) => {
+            const colMatch = clause.match(/`?(\w+)`?\s*=\s*\?/);
+            if (colMatch && paramIdx < setParams.length) {
+              record[colMatch[1]] = setParams[paramIdx];
+              paramIdx++;
+            }
+          });
+        }
+        updatedCount++;
+      }
+    });
+
+    return [{ affectedRows: updatedCount }] as T[];
+  }
 
   if (!sqlLower.startsWith('select')) {
     return [] as T[];
