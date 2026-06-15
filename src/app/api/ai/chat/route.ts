@@ -21,13 +21,13 @@ interface ChatMessage {
 
 /** 调用 OpenAI 兼容 API */
 async function callLLM(
-  modelConfig: { apiUrl: string; apiKey: string; modelId: string },
+  modelConfig: { baseUrl: string; apiKey: string; model: string },
   messages: ChatMessage[],
   temperature: number,
   maxTokens: number,
   signal?: AbortSignal
 ): Promise<ReadableStream<Uint8Array>> {
-  const { apiUrl, apiKey, modelId } = modelConfig;
+  const { baseUrl: apiUrl, apiKey, model: modelId } = modelConfig;
 
   // 确保 API URL 以 /v1 结尾
   let baseUrl = apiUrl.replace(/\/+$/, '');
