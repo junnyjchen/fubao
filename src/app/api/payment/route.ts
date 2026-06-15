@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
 import { verifyToken } from '@/lib/auth/utils';
+import { getPayProtocolConfig, createPaymentOrder as createPayProtocolOrder, getPaymentPageUrl } from '@/lib/payprotocol';
 
 /**
  * 获取当前用户ID
@@ -79,6 +80,11 @@ const PAYMENT_METHODS = {
     name: '信用卡',
     icon: 'credit-card',
     type: 'card',
+  },
+  payprotocol: {
+    name: 'Pay Protocol',
+    icon: 'crypto',
+    type: 'redirect',
   },
 };
 
@@ -171,6 +177,35 @@ export async function POST(request: Request) {
         // 在实际项目中，这里会调用Stripe API创建支付意向
         clientSecret = `pi_${Math.random().toString(36).substring(2)}`;
         break;
+      case 'payprotocol': {
+        // Pay Protocol 加密货币支付
+        const ppConfig = await getPayProtocolConfig();
+        if (!ppConfig) {
+          return NextResponse.json({ error: 'Pay Protocol 支付未啟用或未配置，請在後台設置中開啟' }, { status: 400 });
+        }
+
+        const ppOutTradeNo = `FB${Date.now()}${order_id}`;
+        const ppDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${process.env.DEPLOY_RUN_PORT || 5000}`;
+        const ppBaseUrl = ppDomain.startsWith('http') ? ppDomain : `https://${ppDomain}`;
+
+        try {
+          const ppResult = await createPayProtocolOrder(ppConfig, {
+            outTradeNo: ppOutTradeNo,
+            description: `符寶網訂單 ${order.order_no || order_id}`,
+            quoteAmount: String(order.pay_amount || order.total_amount),
+            notifyUrl: `${ppBaseUrl}/api/payprotocol/callback`,
+            redirectionUrl: `${ppBaseUrl}/payment/success?orderId=${order_id}`,
+          });
+
+          redirectUrl = getPaymentPageUrl(ppConfig, ppResult.data.paymentUrl);
+          // 保存 Pay Protocol 订单号到 client_secret 字段（复用字段）
+          clientSecret = ppResult.data.outPaymentNo;
+        } catch (ppError: any) {
+          console.error('[PayProtocol] 创建支付订单失败:', ppError);
+          return NextResponse.json({ error: `Pay Protocol 支付創建失敗: ${ppError.message}` }, { status: 500 });
+        }
+        break;
+      }
       case 'balance':
         // 余额支付直接检查余额
         const { data: user } = await client

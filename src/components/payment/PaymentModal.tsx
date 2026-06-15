@@ -38,6 +38,8 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
         endpoint = '/api/payments/wechat';
       } else if (method === 'alipay') {
         endpoint = '/api/payments/alipay';
+      } else if (method === 'payprotocol') {
+        endpoint = '/api/payments/payprotocol';
       }
 
       const response = await fetch(endpoint, {
@@ -52,9 +54,16 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
         if (method === 'paypal') {
           // PayPal 跳转到支付页面
           window.open(result.data.approvalUrl, '_blank');
-          // 模拟等待支付完成
           setPaying(true);
           pollPaymentStatus(method);
+        } else if (method === 'payprotocol') {
+          // Pay Protocol 跳转到加密货币支付页面
+          const paymentUrl = result.data.paymentUrl;
+          if (paymentUrl) {
+            window.open(paymentUrl, '_blank');
+            setPaying(true);
+            pollPaymentStatus(method);
+          }
         } else {
           // 微信/支付宝显示二维码
           setQrCode(result.data.codeUrl || result.data.qrCode);
@@ -134,10 +143,11 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
 
         {!paying ? (
           <Tabs defaultValue="paypal" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="paypal">PayPal</TabsTrigger>
               <TabsTrigger value="wechat">微信</TabsTrigger>
               <TabsTrigger value="alipay">支付寶</TabsTrigger>
+              <TabsTrigger value="payprotocol">加密貨幣</TabsTrigger>
             </TabsList>
             
             <TabsContent value="paypal" className="mt-4">
@@ -178,6 +188,26 @@ export function PaymentModal({ open, onClose, orderId, amount, onSuccess }: Paym
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   支付寶支付
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="payprotocol" className="mt-4">
+              <div className="text-center py-4">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <svg className="w-6 h-6 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                  </svg>
+                  <span className="font-semibold">Pay Protocol</span>
+                </div>
+                <p className="text-muted-foreground mb-4 text-sm">使用USDT/USDC等加密貨幣安全支付</p>
+                <Button 
+                  onClick={() => handlePay('payprotocol')} 
+                  disabled={loading}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  加密貨幣支付
                 </Button>
               </div>
             </TabsContent>

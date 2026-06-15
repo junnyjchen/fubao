@@ -33,6 +33,14 @@ const defaultSettings = [
   { key: 'paypal_client_id', value: '', label: 'PayPal Client ID', type: 'text', group: 'payment', sort: 10 },
   { key: 'paypal_secret', value: '', label: 'PayPal Secret', type: 'password', group: 'payment', sort: 11 },
   { key: 'paypal_sandbox', value: 'true', label: '沙盒模式', type: 'boolean', group: 'payment', sort: 12, description: '開發測試時使用沙盒環境' },
+  // Pay Protocol 设置
+  { key: 'payprotocol_enabled', value: 'false', label: '啟用Pay Protocol', type: 'boolean', group: 'payment', sort: 13, description: '啟用後用戶可使用Pay Protocol加密貨幣付款' },
+  { key: 'payprotocol_api_key', value: '', label: 'Pay Protocol API Key', type: 'text', group: 'payment', sort: 14, description: 'Pay Protocol商戶API Key' },
+  { key: 'payprotocol_api_secret', value: '', label: 'Pay Protocol API Secret', type: 'password', group: 'payment', sort: 15, description: 'Pay Protocol商戶API Secret' },
+  { key: 'payprotocol_sandbox', value: 'true', label: 'Pay Protocol沙盒模式', type: 'boolean', group: 'payment', sort: 16, description: '開發測試時使用沙盒環境' },
+  { key: 'payprotocol_chain_id', value: '136', label: 'Pay Protocol鏈ID', type: 'text', group: 'payment', sort: 17, description: '平台內部鏈ID，136=Tron Nile測試鏈' },
+  { key: 'payprotocol_currency', value: 'USDT', label: 'Pay Protocol報價幣種', type: 'select', group: 'payment', sort: 18, options: 'USDT,USDC,ETH,TRX,HKD,USD,CNY', description: '報價幣種符號' },
+  { key: 'payprotocol_is_legal_tender', value: '0', label: '法幣報價', type: 'select', group: 'payment', sort: 19, options: '0,1', description: '0=數字貨幣報價,1=法幣報價' },
   // 物流设置
   { key: 'free_shipping_enabled', value: 'true', label: '啟用免運費', type: 'boolean', group: 'shipping', sort: 1, description: '訂單金額達到門檻後免運費' },
   { key: 'free_shipping_amount', value: '99', label: '免運費門檻', type: 'number', group: 'shipping', sort: 2, description: '訂單金額達到此數值免運費' },

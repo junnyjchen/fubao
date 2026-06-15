@@ -129,7 +129,7 @@ function CheckoutPageContent() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
   const [showCouponSelector, setShowCouponSelector] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat' | 'balance'>('alipay');
+  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat' | 'balance' | 'payprotocol'>('alipay');
   const [remark, setRemark] = useState('');
 
   const checkout = t.checkoutPage;
@@ -447,6 +447,22 @@ function CheckoutPageContent() {
                       <div className={isRTL ? 'text-end' : ''}>
                         <p className="font-medium">{checkout.payment.balance}</p>
                         <p className="text-xs text-muted-foreground">{checkout.payment.balanceDesc}：HK$0.00</p>
+                      </div>
+                    </label>
+                    <label
+                      className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'payprotocol' ? 'border-primary bg-primary/5' : ''
+                      } ${isRTL ? 'flex-row-reverse' : ''}`}
+                    >
+                      <RadioGroupItem value="payprotocol" />
+                      <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center text-white">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                      </div>
+                      <div className={isRTL ? 'text-end' : ''}>
+                        <p className="font-medium">Pay Protocol</p>
+                        <p className="text-xs text-muted-foreground">加密貨幣支付（USDT/USDC等）</p>
                       </div>
                     </label>
                   </div>
