@@ -55,7 +55,7 @@ export default function ContactPage() {
       content: t.contact.methods.phone.value,
       description: t.contact.methods.phone.desc,
       action: t.contact.methods.phone.action,
-      href: 'tel:+852XXXXXXXX',
+      href: 'tel:+85239008888',
     },
     {
       icon: MessageCircle,

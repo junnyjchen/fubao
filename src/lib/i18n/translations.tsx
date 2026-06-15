@@ -1031,7 +1031,7 @@ export const translations = {
         },
         phone: {
           title: '客服熱線',
-          value: '+852 XXXX XXXX',
+          value: '+852 3008 8888',
           desc: '週一至週五 9:00-18:00',
           action: '撥打電話',
         },
@@ -1044,7 +1044,7 @@ export const translations = {
       },
       address: {
         title: '公司地址',
-        value: '香港九龍XXX大廈XX樓',
+        value: '香港九龍觀塘鴻圖道87號宏基中心15樓',
       },
       workingHours: {
         title: '工作時間',
@@ -1177,7 +1177,7 @@ export const translations = {
             intro: '如您對本協議有任何疑問，可通過以下方式聯繫我們：',
             items: [
               '電子郵箱：support@fubao.ltd',
-              '客服熱線：+852 XXXX XXXX',
+              '客服熱線：+852 3008 8888',
               '工作時間：週一至週五 9:00-18:00',
             ],
           },
@@ -1275,7 +1275,7 @@ export const translations = {
           contact: {
             title: '九、聯繫我們',
             desc: '如果您對本隱私政策有任何疑問或建議，請通過以下方式聯繫我們：',
-            items: ['電子郵箱：privacy@fubao.ltd', '客服熱線：+852 XXXX XXXX', '公司地址：香港九龍XXX大廈XX樓'],
+            items: ['電子郵箱：privacy@fubao.ltd', '客服熱線：+852 3008 8888', '公司地址：香港九龍觀塘鴻圖道87號宏基中心15樓'],
           },
         },
       },
@@ -2455,7 +2455,7 @@ export const translations = {
         },
         phone: {
           title: 'خدمة العملاء',
-          value: '+852 XXXX XXXX',
+          value: '+852 3008 8888',
           desc: 'الإثنين-الجمعة 9:00-18:00',
           action: 'اتصل',
         },
@@ -2532,7 +2532,7 @@ export const translations = {
           disclaimer: { title: '٧. إخلاء المسؤولية', items: ['لسنا مسؤولين عن القوة القاهرة.', 'لسنا مسؤولين عن أخطاء المستخدم.'] },
           modification: { title: '٨. التعديلات', items: ['يمكننا تحديث هذه الشروط.', 'استمرار الاستخدام يعني القبول.'] },
           dispute: { title: '٩. النزاعات', items: ['نطبق قوانين هونغ كونغ.', 'حل النزاعات بالتفاوض أولاً.'] },
-          contact: { title: '١٠. اتصل بنا', intro: 'للاستفسارات:', items: ['البريد: support@fubao.ltd', 'الهاتف: +852 XXXX XXXX'] },
+          contact: { title: '١٠. اتصل بنا', intro: 'للاستفسارات:', items: ['البريد: support@fubao.ltd', 'الهاتف: +852 3008 8888'] },
         },
       },
       privacyContent: {
@@ -2596,7 +2596,7 @@ export const translations = {
           contact: {
             title: '٩. اتصل بنا',
             desc: 'إذا كان لديك أي أسئلة حول سياسة الخصوصية هذه، يرجى الاتصال بنا:',
-            items: ['البريد الإلكتروني: privacy@fubao.ltd', 'الهاتف: +852 XXXX XXXX', 'العنوان: هونغ كونغ، كولون، مبنى XXX، الطابق XX'],
+            items: ['البريد الإلكتروني: privacy@fubao.ltd', 'الهاتف: +852 3008 8888', 'العنوان: هونغ كونغ، كولون، مبنى XXX، الطابق XX'],
           },
         },
       },
@@ -3771,7 +3771,7 @@ export const translations = {
         },
         phone: {
           title: 'Customer Service',
-          value: '+852 XXXX XXXX',
+          value: '+852 3008 8888',
           desc: 'Mon-Fri 9:00-18:00',
           action: 'Call',
         },
@@ -3848,7 +3848,7 @@ export const translations = {
           disclaimer: { title: '7. Disclaimer', items: ['Not liable for force majeure.', 'Not liable for user errors.'] },
           modification: { title: '8. Modifications', items: ['We may update these terms.', 'Continued use means acceptance.'] },
           dispute: { title: '9. Disputes', items: ['Hong Kong laws apply.', 'Resolve disputes through negotiation first.'] },
-          contact: { title: '10. Contact Us', intro: 'For inquiries:', items: ['Email: support@fubao.ltd', 'Phone: +852 XXXX XXXX'] },
+          contact: { title: '10. Contact Us', intro: 'For inquiries:', items: ['Email: support@fubao.ltd', 'Phone: +852 3008 8888'] },
         },
       },
       privacyContent: {
@@ -3912,7 +3912,7 @@ export const translations = {
           contact: {
             title: '9. Contact Us',
             desc: 'If you have any questions about this privacy policy, please contact us:',
-            items: ['Email: privacy@fubao.ltd', 'Phone: +852 XXXX XXXX', 'Address: Hong Kong Kowloon XXX Building XX Floor'],
+            items: ['Email: privacy@fubao.ltd', 'Phone: +852 3008 8888', 'Address: Hong Kong Kowloon Kwun Tong Hung To Road 87, Grand Centre 15/F'],
           },
         },
       },

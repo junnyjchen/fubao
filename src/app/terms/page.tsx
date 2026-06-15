@@ -115,7 +115,7 @@ export default function TermsPage() {
             <ul>
               {(t.legal.termsContent?.sections?.contact?.items || [
                 '電子郵箱：support@fubao.ltd',
-                '客服熱線：+852 XXXX XXXX',
+                '客服熱線：+852 3900 8888',
                 '工作時間：週一至週五 9:00-18:00',
               ]).map((item, i) => (
                 <li key={i}>{item}</li>

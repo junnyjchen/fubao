@@ -1,6 +1,6 @@
 /**
  * @fileoverview 系统设置 API
- * @description 提供系统设置的查询和更新接口 - MySQL 实现
+ * @description 提供系统设置的查询和更新接口
  * @module app/api/settings/route
  */
 
@@ -15,23 +15,46 @@ const defaultSettings = [
   { key: 'site_title', value: '符寶網 - 全球玄門文化科普交易平台', label: '網站標題', type: 'text', group: 'basic', sort: 3 },
   { key: 'site_description', value: '全球玄門文化科普交易平台', label: '網站描述', type: 'textarea', group: 'basic', sort: 4 },
   { key: 'site_keywords', value: '符籙,法器,玄門文化', label: '網站關鍵詞', type: 'text', group: 'basic', sort: 5 },
-  { key: 'contact_email', value: 'contact@fubao.com', label: '聯繫郵箱', type: 'text', group: 'basic', sort: 6 },
-  { key: 'contact_phone', value: '400-888-8888', label: '聯繫電話', type: 'text', group: 'basic', sort: 7 },
-  { key: 'default_language', value: 'zh-TW', label: '默認語言', type: 'select', group: 'basic', sort: 8, options: 'zh-TW,zh-CN,en' },
-  { key: 'default_currency', value: 'HKD', label: '默認貨幣', type: 'select', group: 'basic', sort: 9, options: 'HKD,CNY,USD' },
+  { key: 'contact_email', value: 'support@fubao.ltd', label: '聯繫郵箱', type: 'text', group: 'basic', sort: 6 },
+  { key: 'contact_phone', value: '+852 2888 8888', label: '聯繫電話', type: 'text', group: 'basic', sort: 7 },
+  { key: 'contact_address', value: '香港九龍觀塘巧明街100號', label: '聯繫地址', type: 'text', group: 'basic', sort: 8 },
+  { key: 'default_language', value: 'zh-TW', label: '默認語言', type: 'select', group: 'basic', sort: 9, options: 'zh-TW,zh-CN,en' },
+  { key: 'default_currency', value: 'HKD', label: '默認貨幣', type: 'select', group: 'basic', sort: 10, options: 'HKD,CNY,USD' },
   // 支付设置
-  { key: 'alipay_enabled', value: 'false', label: '啟用支付寶', type: 'boolean', group: 'payment', sort: 1 },
-  { key: 'wechat_enabled', value: 'false', label: '啟用微信支付', type: 'boolean', group: 'payment', sort: 2 },
-  { key: 'paypal_enabled', value: 'false', label: '啟用PayPal', type: 'boolean', group: 'payment', sort: 3 },
+  { key: 'alipay_enabled', value: 'true', label: '啟用支付寶', type: 'boolean', group: 'payment', sort: 1, description: '啟用後用戶可使用支付寶付款' },
+  { key: 'alipay_app_id', value: '', label: '支付寶App ID', type: 'text', group: 'payment', sort: 2, description: '支付寶開放平台應用App ID' },
+  { key: 'alipay_private_key', value: '', label: '支付寶私鑰', type: 'password', group: 'payment', sort: 3 },
+  { key: 'alipay_public_key', value: '', label: '支付寶公鑰', type: 'password', group: 'payment', sort: 4 },
+  { key: 'wechat_enabled', value: 'true', label: '啟用微信支付', type: 'boolean', group: 'payment', sort: 5, description: '啟用後用戶可使用微信支付' },
+  { key: 'wechat_app_id', value: '', label: '微信App ID', type: 'text', group: 'payment', sort: 6 },
+  { key: 'wechat_mch_id', value: '', label: '微信商戶號', type: 'text', group: 'payment', sort: 7 },
+  { key: 'wechat_api_key', value: '', label: '微信API密鑰', type: 'password', group: 'payment', sort: 8 },
+  { key: 'paypal_enabled', value: 'false', label: '啟用PayPal', type: 'boolean', group: 'payment', sort: 9, description: '啟用後用戶可使用PayPal付款' },
+  { key: 'paypal_client_id', value: '', label: 'PayPal Client ID', type: 'text', group: 'payment', sort: 10 },
+  { key: 'paypal_secret', value: '', label: 'PayPal Secret', type: 'password', group: 'payment', sort: 11 },
+  { key: 'paypal_sandbox', value: 'true', label: '沙盒模式', type: 'boolean', group: 'payment', sort: 12, description: '開發測試時使用沙盒環境' },
   // 物流设置
-  { key: 'free_shipping_enabled', value: 'true', label: '啟用免運費', type: 'boolean', group: 'shipping', sort: 1 },
-  { key: 'free_shipping_amount', value: '99', label: '免運費門檻', type: 'number', group: 'shipping', sort: 2 },
-  { key: 'default_shipping_fee', value: '10', label: '默認運費', type: 'number', group: 'shipping', sort: 3 },
+  { key: 'free_shipping_enabled', value: 'true', label: '啟用免運費', type: 'boolean', group: 'shipping', sort: 1, description: '訂單金額達到門檻後免運費' },
+  { key: 'free_shipping_amount', value: '99', label: '免運費門檻', type: 'number', group: 'shipping', sort: 2, description: '訂單金額達到此數值免運費' },
+  { key: 'default_shipping_fee', value: '10', label: '默認運費', type: 'number', group: 'shipping', sort: 3, description: '未滿免運費門檻時的默認運費' },
+  { key: 'shipping_regions', value: '香港,台灣,中國大陸', label: '配送地區', type: 'text', group: 'shipping', sort: 4, description: '支援配送的地區，逗號分隔' },
+  { key: 'international_shipping_enabled', value: 'false', label: '啟用國際配送', type: 'boolean', group: 'shipping', sort: 5 },
+  { key: 'international_shipping_fee', value: '50', label: '國際運費', type: 'number', group: 'shipping', sort: 6 },
   // 通知设置
-  { key: 'email_notification_enabled', value: 'false', label: '啟用郵件通知', type: 'boolean', group: 'notification', sort: 1 },
+  { key: 'email_notification_enabled', value: 'false', label: '啟用郵件通知', type: 'boolean', group: 'notification', sort: 1, description: '訂單狀態變更時發送郵件通知' },
+  { key: 'smtp_host', value: '', label: 'SMTP伺服器', type: 'text', group: 'notification', sort: 2 },
+  { key: 'smtp_port', value: '465', label: 'SMTP端口', type: 'number', group: 'notification', sort: 3 },
+  { key: 'smtp_user', value: '', label: 'SMTP用戶名', type: 'text', group: 'notification', sort: 4 },
+  { key: 'smtp_password', value: '', label: 'SMTP密碼', type: 'password', group: 'notification', sort: 5 },
+  { key: 'sms_enabled', value: 'false', label: '啟用短信通知', type: 'boolean', group: 'notification', sort: 6 },
+  { key: 'order_notification', value: 'true', label: '訂單通知', type: 'boolean', group: 'notification', sort: 7, description: '新訂單時通知管理員' },
+  { key: 'shipment_notification', value: 'true', label: '發貨通知', type: 'boolean', group: 'notification', sort: 8, description: '發貨時通知用戶' },
   // 安全设置
-  { key: 'captcha_enabled', value: 'false', label: '啟用驗證碼', type: 'boolean', group: 'security', sort: 1 },
-  { key: 'login_attempt_limit', value: '5', label: '登錄嘗試次數', type: 'number', group: 'security', sort: 2 },
+  { key: 'captcha_enabled', value: 'false', label: '啟用驗證碼', type: 'boolean', group: 'security', sort: 1, description: '登錄和註冊時啟用圖形驗證碼' },
+  { key: 'login_attempt_limit', value: '5', label: '登錄嘗試次數', type: 'number', group: 'security', sort: 2, description: '超過次數後鎖定賬戶30分鐘' },
+  { key: 'session_timeout', value: '30', label: '會話超時(分鐘)', type: 'number', group: 'security', sort: 3, description: '用戶無操作後自動登出的時間' },
+  { key: 'two_factor_enabled', value: 'false', label: '啟用雙因素認證', type: 'boolean', group: 'security', sort: 4, description: '管理員登錄需要雙因素認證' },
+  { key: 'ip_whitelist', value: '', label: 'IP白名單', type: 'textarea', group: 'security', sort: 5, description: '允許訪問管理後台的IP，每行一個' },
 ];
 
 /**
@@ -49,20 +72,28 @@ export async function GET(request: NextRequest) {
       rows = await query('SELECT * FROM settings ORDER BY `group`, id');
     }
 
-    // 如果数据库为空，用默认设置初始化
-    if (!rows || rows.length === 0) {
-      for (const setting of defaultSettings) {
+    // 确保所有分组的默认设置都存在
+    const existingKeys = new Set((rows as any[]).map((r: any) => r.key));
+    const missingSettings = defaultSettings.filter(s => !existingKeys.has(s.key));
+
+    if (missingSettings.length > 0) {
+      for (const setting of missingSettings) {
         await dbInsert('settings', {
           'group': setting.group,
           'key': setting.key,
           value: setting.value,
         });
       }
-      rows = await query('SELECT * FROM settings ORDER BY `group`, id');
+      // 重新查询
+      if (group) {
+        rows = await query('SELECT * FROM settings WHERE `group` = ? ORDER BY id', [group]);
+      } else {
+        rows = await query('SELECT * FROM settings ORDER BY `group`, id');
+      }
     }
 
     // 合并默认设置中的 label/type/description 信息
-    const data = rows.map((row: Record<string, unknown>) => {
+    const data = (rows as any[]).map((row: any) => {
       const defaultItem = defaultSettings.find(s => s.key === row.key);
       return {
         ...row,
@@ -75,7 +106,7 @@ export async function GET(request: NextRequest) {
     });
 
     // 按 group 分组
-    const grouped: Record<string, unknown[]> = {};
+    const grouped: Record<string, any[]> = {};
     for (const item of data) {
       const g = String(item.group || 'basic');
       if (!grouped[g]) grouped[g] = [];
@@ -102,12 +133,13 @@ export async function PUT(request: NextRequest) {
     }
 
     for (const [key, value] of Object.entries(settings)) {
-      // Try update first, insert if not exists
       const existing = await queryOne('SELECT id FROM settings WHERE `key` = ?', [key]);
       if (existing) {
         await dbUpdate('settings', { value }, { key });
       } else {
-        await dbInsert('settings', { 'group': 'basic', 'key': key, value });
+        // 找到默认设置中的 group
+        const defaultItem = defaultSettings.find(s => s.key === key);
+        await dbInsert('settings', { 'group': defaultItem?.group || 'basic', 'key': key, value });
       }
     }
 
