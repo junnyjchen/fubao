@@ -116,12 +116,13 @@ function getMainTable(sql: string): string | null {
 
 /** 将带别名的字段名转为真实字段名，如 g.name → name (如果 g = goods) */
 function stripAlias(field: string, aliases: Record<string, string>): string {
-  const dotMatch = field.match(/^(\w+)\.(\w+)$/);
+  const cleanField = field.replace(/`/g, '');
+  const dotMatch = cleanField.match(/^(\w+)\.(\w+)$/);
   if (dotMatch) {
     const alias = dotMatch[1];
     if (aliases[alias]) return dotMatch[2]; // 是表别名，去掉
   }
-  return field;
+  return cleanField;
 }
 
 /** 解析 SQL WHERE 子句中的简单条件 */
@@ -142,18 +143,18 @@ function parseWhereClause(sql: string): { conditions: WhereCondition[]; havingLi
 
   const whereStr = whereMatch[1];
 
-  // 解析 LIKE 条件
-  const likeMatches = [...whereStr.matchAll(/(\w+(?:\.\w+)?)\s+LIKE\s+\?/gi)];
+  // 解析 LIKE 条件（支持反引号包裹的字段名）
+  const likeMatches = [...whereStr.matchAll(/(`?\w+`?(?:\.\w+)?)\s+LIKE\s+\?/gi)];
   for (const lm of likeMatches) {
-    havingLike.field = lm[1];
+    havingLike.field = lm[1].replace(/`/g, '');
     // 计算 ? 的位置
     const beforeLike = whereStr.substring(0, lm.index);
     const paramCount = (beforeLike.match(/\?/g) || []).length;
     havingLike.patternIdx = paramCount;
   }
 
-  // 解析 = 条件，同时检测 OR 逻辑
-  const eqMatches = [...whereStr.matchAll(/(\w+(?:\.\w+)?)\s*(?:=|!=|<|>|<=|>=)\s*\?/gi)];
+  // 解析 = 条件，同时检测 OR 逻辑（支持反引号包裹的字段名）
+  const eqMatches = [...whereStr.matchAll(/(`?\w+`?(?:\.\w+)?)\s*(?:=|!=|<|>|<=|>=)\s*\?/gi)];
   for (let i = 0; i < eqMatches.length; i++) {
     const eq = eqMatches[i];
     // 计算当前条件之前有多少个 ?
@@ -169,7 +170,7 @@ function parseWhereClause(sql: string): { conditions: WhereCondition[]; havingLi
       }
     }
     conditions.push({
-      field: eq[1],
+      field: eq[1].replace(/`/g, ''),
       operator: eq[0].includes('!=') ? '!=' : eq[0].includes('>=') ? '>=' : eq[0].includes('<=') ? '<=' : eq[0].includes('>') ? '>' : eq[0].includes('<') ? '<' : '=',
       paramIndex: currentParamIdx,
       logic
