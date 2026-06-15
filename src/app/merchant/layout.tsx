@@ -16,8 +16,15 @@ export default function MerchantLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [merchant, setMerchant] = useState<{ id: number; name: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const isLoginPage = pathname === '/merchant/login';
 
   useEffect(() => {
+    // 登录页面不需要检查认证
+    if (isLoginPage) {
+      setLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem('merchant_token');
     const stored = localStorage.getItem('merchant_info');
     if (!token || !stored) {
@@ -31,7 +38,7 @@ export default function MerchantLayout({ children }: { children: ReactNode }) {
       return;
     }
     setLoading(false);
-  }, [router]);
+  }, [router, isLoginPage]);
 
   const handleLogout = () => {
     localStorage.removeItem('merchant_token');
@@ -39,17 +46,17 @@ export default function MerchantLayout({ children }: { children: ReactNode }) {
     router.replace('/merchant/login');
   };
 
+  // 登录页面直接渲染，不带布局
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600" />
       </div>
     );
-  }
-
-  // 登录页面不需要布局
-  if (pathname === '/merchant/login') {
-    return <>{children}</>;
   }
 
   return (

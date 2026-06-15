@@ -152,17 +152,27 @@ function parseWhereClause(sql: string): { conditions: WhereCondition[]; havingLi
     havingLike.patternIdx = paramCount;
   }
 
-  // 解析 = 条件
+  // 解析 = 条件，同时检测 OR 逻辑
   const eqMatches = [...whereStr.matchAll(/(\w+(?:\.\w+)?)\s*(?:=|!=|<|>|<=|>=)\s*\?/gi)];
-  let paramIdx = 0;
-  for (const eq of eqMatches) {
+  for (let i = 0; i < eqMatches.length; i++) {
+    const eq = eqMatches[i];
     // 计算当前条件之前有多少个 ?
     const beforeEq = whereStr.substring(0, eq.index);
     const currentParamIdx = (beforeEq.match(/\?/g) || []).length;
+    // 第一个条件默认 AND，后续条件检查前面是 OR 还是 AND
+    let logic: 'AND' | 'OR' = 'AND';
+    if (i > 0) {
+      const prevEnd = eqMatches[i - 1].index! + eqMatches[i - 1][0].length;
+      const between = whereStr.substring(prevEnd, eq.index).trim().toUpperCase();
+      if (between.startsWith('OR')) {
+        logic = 'OR';
+      }
+    }
     conditions.push({
       field: eq[1],
       operator: eq[0].includes('!=') ? '!=' : eq[0].includes('>=') ? '>=' : eq[0].includes('<=') ? '<=' : eq[0].includes('>') ? '>' : eq[0].includes('<') ? '<' : '=',
-      paramIndex: currentParamIdx
+      paramIndex: currentParamIdx,
+      logic
     });
   }
 
@@ -177,45 +187,59 @@ function matchesConditions(
   params: unknown[],
   aliases: Record<string, string>
 ): boolean {
-  // 检查等值条件
+  // 将条件按 OR 分组：遇到 OR 时开始新组，同组内条件是 AND 关系，组之间是 OR 关系
+  const orGroups: WhereCondition[][] = [[]];
   for (const cond of conditions) {
-    const field = stripAlias(cond.field, aliases);
-    const value = params[cond.paramIndex];
-    const recordValue = record[field];
-
-    switch (cond.operator) {
-      case '=':
-        if (recordValue != value) return false;
-        break;
-      case '!=':
-        if (recordValue == value) return false;
-        break;
-      case '>':
-        if (!(Number(recordValue) > Number(value))) return false;
-        break;
-      case '<':
-        if (!(Number(recordValue) < Number(value))) return false;
-        break;
-      case '>=':
-        if (!(Number(recordValue) >= Number(value))) return false;
-        break;
-      case '<=':
-        if (!(Number(recordValue) <= Number(value))) return false;
-        break;
+    if (cond.logic === 'OR' && orGroups[orGroups.length - 1].length > 0) {
+      orGroups.push([cond]);
+    } else {
+      orGroups[orGroups.length - 1].push(cond);
     }
   }
 
-  // 检查 LIKE 条件
-  if (likeCondition.field && likeCondition.patternIdx >= 0) {
-    const field = stripAlias(likeCondition.field, aliases);
-    const pattern = String(params[likeCondition.patternIdx] || '');
-    const recordValue = String(record[field] || '');
-    // 将 SQL LIKE 模式转为正则: %xxx% → .*xxx.*
-    const regexStr = pattern.replace(/%/g, '.*').replace(/_/g, '.');
-    if (!new RegExp(regexStr, 'i').test(recordValue)) return false;
-  }
+  // 任一 OR 组满足即可
+  const orResult = orGroups.some(group => {
+    // 组内条件必须全部满足 (AND)
+    for (const cond of group) {
+      const field = stripAlias(cond.field, aliases);
+      const value = params[cond.paramIndex];
+      const recordValue = record[field];
 
-  return true;
+      switch (cond.operator) {
+        case '=':
+          if (recordValue != value) return false;
+          break;
+        case '!=':
+          if (recordValue == value) return false;
+          break;
+        case '>':
+          if (!(Number(recordValue) > Number(value))) return false;
+          break;
+        case '<':
+          if (!(Number(recordValue) < Number(value))) return false;
+          break;
+        case '>=':
+          if (!(Number(recordValue) >= Number(value))) return false;
+          break;
+        case '<=':
+          if (!(Number(recordValue) <= Number(value))) return false;
+          break;
+      }
+    }
+
+    // 检查 LIKE 条件（全局，不分 OR 组）
+    if (likeCondition.field && likeCondition.patternIdx >= 0) {
+      const field = stripAlias(likeCondition.field, aliases);
+      const pattern = String(params[likeCondition.patternIdx] || '');
+      const recordValue = String(record[field] || '');
+      const regexStr = pattern.replace(/%/g, '.*').replace(/_/g, '.');
+      if (!new RegExp(regexStr, 'i').test(recordValue)) return false;
+    }
+
+    return true;
+  });
+
+  return orResult;
 }
 
 // ========== 核心 API ==========

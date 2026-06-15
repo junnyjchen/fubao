@@ -6,14 +6,21 @@ const JWT_SECRET = process.env.JWT_SECRET || 'fubao-secret-key-2025';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const { email, username, password } = body;
 
-    if (!email || !password) {
-      return NextResponse.json({ error: '请输入邮箱和密码' }, { status: 400 });
+    // 支持邮箱或用户名登录
+    const loginAccount = email || username;
+
+    if (!loginAccount || !password) {
+      return NextResponse.json({ error: '请输入账号和密码' }, { status: 400 });
     }
 
-    // 查找用户
-    const user = await queryOne('SELECT * FROM users WHERE email = ?', [email]);
+    // 查找用户（支持邮箱或用户名）
+    let user = await queryOne('SELECT * FROM users WHERE email = ?', [loginAccount]);
+    if (!user) {
+      user = await queryOne('SELECT * FROM users WHERE name = ?', [loginAccount]);
+    }
     if (!user) {
       return NextResponse.json({ error: '用户不存在' }, { status: 401 });
     }
