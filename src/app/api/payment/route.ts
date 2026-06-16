@@ -6,31 +6,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { verifyToken } from '@/lib/auth/utils';
 import { getPayProtocolConfig, createPaymentOrder as createPayProtocolOrder, getPaymentPageUrl } from '@/lib/payprotocol';
 import { getPayPalConfig, createPayPalOrder, getPayPalApprovalUrl } from '@/lib/paypal';
 
-/**
- * 获取当前用户ID
- * @returns 用户ID或null
- */
-async function getCurrentUserId(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
-    
-    if (!token) {
-      return null;
-    }
-    
-    const payload = verifyToken(token);
-    return payload?.userId || null;
-  } catch {
-    return null;
-  }
-}
+
 
 /**
  * 生成支付ID
@@ -106,7 +87,7 @@ export async function POST(request: Request) {
     }
 
     // 获取当前用户ID
-    const userId = await getCurrentUserId();
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }

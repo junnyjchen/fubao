@@ -5,17 +5,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { queryOne, query, update as dbUpdate } from '@/lib/db';
-import { verifyToken } from '@/lib/auth/utils';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 
-function getUserId(request: NextRequest): number | null {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const payload = verifyToken(token);
-    if (payload?.userId) return parseInt(String(payload.userId));
-  }
-  return null;
-}
+
 
 /**
  * GET - 获取订单详情
@@ -26,7 +18,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
 
     const order = await queryOne(
       'SELECT * FROM orders WHERE id = ?' + (userId ? ' AND user_id = ?' : ''),
@@ -74,7 +66,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     const body = await request.json();
 
     const order = await queryOne(

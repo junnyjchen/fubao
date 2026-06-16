@@ -7,24 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { verifyToken } from '@/lib/auth/utils';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 
 const supabase = getSupabaseClient();
 
 export async function GET(request: NextRequest) {
   try {
-    // 验证用户身份
-    const token = request.cookies.get('auth_token')?.value;
-    if (!token) {
+    const userId = await getAuthUserId(request);
+    if (!userId) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
-
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: '無效的令牌' }, { status: 401 });
-    }
-
-    const userId = decoded.userId;
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
@@ -75,17 +67,11 @@ export async function GET(request: NextRequest) {
 // 标记通知为已读
 export async function PUT(request: NextRequest) {
   try {
-    const token = request.cookies.get('auth_token')?.value;
-    if (!token) {
+    const userId = await getAuthUserId(request);
+    if (!userId) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: '無效的令牌' }, { status: 401 });
-    }
-
-    const userId = decoded.userId;
     const body = await request.json();
     const { notificationId, all } = body;
 
@@ -139,17 +125,11 @@ export async function PUT(request: NextRequest) {
 // 删除通知
 export async function DELETE(request: NextRequest) {
   try {
-    const token = request.cookies.get('auth_token')?.value;
-    if (!token) {
+    const userId = await getAuthUserId(request);
+    if (!userId) {
       return NextResponse.json({ error: '請先登入' }, { status: 401 });
     }
 
-    const decoded = await verifyToken(token);
-    if (!decoded) {
-      return NextResponse.json({ error: '無效的令牌' }, { status: 401 });
-    }
-
-    const userId = decoded.userId;
     const { searchParams } = new URL(request.url);
     const notificationId = searchParams.get('id');
     const all = searchParams.get('all') === 'true';

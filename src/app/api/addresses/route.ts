@@ -6,25 +6,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate, remove as dbRemove } from '@/lib/db';
-import { verifyToken } from '@/lib/auth/utils';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 
-/** 从请求获取用户ID */
-function getUserId(request: NextRequest): number | null {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const payload = verifyToken(token);
-    if (payload?.userId) return parseInt(String(payload.userId));
-  }
-  return null;
-}
+
 
 /**
  * 获取用户地址列表
  */
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
@@ -46,7 +37,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
@@ -87,7 +78,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
@@ -134,7 +125,7 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }

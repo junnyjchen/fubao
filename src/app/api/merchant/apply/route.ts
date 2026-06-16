@@ -5,24 +5,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, insert as dbInsert } from '@/lib/db';
-import { verifyToken } from '@/lib/auth/utils';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 
-function getUserId(request: NextRequest): number | null {
-  const authHeader = request.headers.get('Authorization');
-  if (authHeader?.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const payload = verifyToken(token);
-    if (payload?.userId) return parseInt(String(payload.userId));
-  }
-  return null;
-}
+
 
 /**
  * POST - 提交商户入驻申请
  */
 export async function POST(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     const body = await request.json();
     const { shop_name, contact_name, contact_phone, contact_email, description, business_license, address } = body;
 
@@ -61,7 +53,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }

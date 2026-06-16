@@ -32,9 +32,9 @@ export async function getAuthUser(request: Request): Promise<AuthUser | null> {
     }
   }
 
-  // 2. 尝试从 Cookie 获取 token
+  // 2. 尝试从 Cookie 获取 token (支持 auth_token / fubao_token / token)
   const cookieHeader = request.headers.get('cookie') || '';
-  const tokenMatch = cookieHeader.match(/(?:fubao_token|token)=([^;]+)/);
+  const tokenMatch = cookieHeader.match(/(?:auth_token|fubao_token|token)=([^;]+)/);
   if (tokenMatch) {
     const payload = verifyToken(tokenMatch[1]);
     if (payload?.userId) {
@@ -46,6 +46,16 @@ export async function getAuthUser(request: Request): Promise<AuthUser | null> {
     }
   }
 
+  return null;
+}
+
+/**
+ * 从请求中获取已认证的用户ID (便捷方法)
+ * 支持 Authorization header 和 Cookie (auth_token / fubao_token)
+ */
+export async function getAuthUserId(request: Request): Promise<number | null> {
+  const user = await getAuthUser(request);
+  if (user?.userId) return parseInt(String(user.userId));
   return null;
 }
 

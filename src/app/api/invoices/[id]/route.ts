@@ -5,22 +5,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { verifyToken } from '@/lib/auth/utils';
 
-/**
- * 获取当前用户ID
- */
-async function getCurrentUserId(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
-    return token ? verifyToken(token)?.userId || null : null;
-  } catch {
-    return null;
-  }
-}
+
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -32,7 +20,7 @@ interface RouteParams {
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const client = getSupabaseClient();
-    const userId = await getCurrentUserId();
+    const userId = await getAuthUserId(request);
     
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
@@ -72,7 +60,7 @@ export async function GET(request: Request, { params }: RouteParams) {
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const client = getSupabaseClient();
-    const userId = await getCurrentUserId();
+    const userId = await getAuthUserId(request);
     
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });

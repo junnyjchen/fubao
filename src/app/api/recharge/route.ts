@@ -6,29 +6,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { getAuthUserId } from '@/lib/auth/apiAuth';
 import { getSupabaseClient } from '@/storage/database/supabase-client';
-import { verifyToken } from '@/lib/auth/utils';
 
-/**
- * 获取当前用户ID
- * @returns 用户ID或null
- */
-async function getCurrentUserId(): Promise<string | null> {
-  try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
-    
-    if (!token) {
-      return null;
-    }
-    
-    const payload = verifyToken(token);
-    return payload?.userId || null;
-  } catch {
-    return null;
-  }
-}
+
 
 /**
  * 生成充值单号
@@ -73,7 +54,7 @@ export async function GET(request: Request) {
   try {
     const client = getSupabaseClient();
     
-    const userId = await getCurrentUserId();
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
@@ -130,7 +111,7 @@ export async function POST(request: Request) {
   try {
     const client = getSupabaseClient();
     
-    const userId = await getCurrentUserId();
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
@@ -215,7 +196,7 @@ export async function PUT(request: Request) {
   try {
     const client = getSupabaseClient();
     
-    const userId = await getCurrentUserId();
+    const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ error: '請先登錄' }, { status: 401 });
     }
