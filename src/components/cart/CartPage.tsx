@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyState, EmptyIcon } from '@/components/ui/empty-state';
 import { useI18n } from '@/lib/i18n';
 import {
   ShoppingCart,
@@ -456,7 +456,7 @@ export function CartPage() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {merchantGroups.length === 0 ? (
-          <EmptyState type="cart" />
+          <EmptyState icon={<EmptyIcon type="cart" />} title="購物車為空" description="快去選購心儀的商品吧" />
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">
             {/* 商品列表 */}

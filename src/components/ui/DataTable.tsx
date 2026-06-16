@@ -220,7 +220,7 @@ export function DataTable<T extends { id: string }>({
     }
     
     const exportColumns = columns.map((col) => ({
-      key: col.id as keyof T,
+      id: col.id as string,
       header: col.header,
     }));
     

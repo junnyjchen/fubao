@@ -46,7 +46,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { GiftDetailSkeleton } from '@/components/free-gifts/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ClaimCodeDisplay, QRCode } from '@/components/free-gifts/QRCode';
 import { CopyClaimCode } from '@/components/free-gifts/ShareButton';
 import { SuccessAnimation } from '@/components/free-gifts/SuccessAnimation';
@@ -283,7 +283,14 @@ function FreeGiftDetailContent({ params }: PageProps) {
   const mockReviews = getMockReviews();
 
   if (loading) {
-    return <GiftDetailSkeleton />;
+    return (
+      <div className="max-w-4xl mx-auto p-4 space-y-4">
+        <Skeleton className="h-60 w-full rounded-lg" />
+        <Skeleton className="h-8 w-1/2" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+    );
   }
 
   if (!gift) {

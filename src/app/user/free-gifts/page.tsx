@@ -39,10 +39,10 @@ import {
   Filter,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ClaimRecordSkeleton } from '@/components/free-gifts/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { QRCode } from '@/components/free-gifts/QRCode';
 import { CopyClaimCode } from '@/components/free-gifts/ShareButton';
-import { EmptyState } from '@/components/free-gifts/EmptyState';
+import { EmptyState } from '@/components/ui/empty-state';
 import { InviteFriend, InviteProgress } from '@/components/free-gifts/InviteFriend';
 import { NotificationCenter, NotificationButton } from '@/components/free-gifts/NotificationCenter';
 
@@ -230,7 +230,16 @@ export default function MyFreeGiftsPage() {
   };
 
   if (loading) {
-    return <ClaimRecordSkeleton />;
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="rounded-lg border p-4 space-y-2">
+            <Skeleton className="h-5 w-1/3" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -318,8 +327,16 @@ export default function MyFreeGiftsPage() {
         {/* 记录列表 */}
         {filteredRecords.length === 0 ? (
           <EmptyState
-            type="no_records"
-            action={{ label: '去領取商品', href: '/free-gifts' }}
+            title="暫無領取記錄"
+            description="快去免費送專區看看吧"
+            action={
+              <a
+                href="/free-gifts"
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              >
+                去領取商品
+              </a>
+            }
           />
         ) : (
           <div className="space-y-4">

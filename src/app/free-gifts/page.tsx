@@ -33,7 +33,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { SimpleCountdown } from '@/components/free-gifts/CountdownTimer';
-import { GiftListSkeleton } from '@/components/free-gifts/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { ShareButton } from '@/components/free-gifts/ShareButton';
 import { SearchBar } from '@/components/free-gifts/SearchBar';
 import { ActionButtons } from '@/components/free-gifts/FavoriteButton';
@@ -44,7 +44,7 @@ import { RecommendList, HotRecommendBanner } from '@/components/free-gifts/Recom
 import { RefreshButton } from '@/components/free-gifts/PullToRefresh';
 import { CustomerService } from '@/components/free-gifts/CustomerService';
 import { OnboardingGuide, GuideCard } from '@/components/free-gifts/OnboardingGuide';
-import { EmptyState, ErrorState } from '@/components/free-gifts/EmptyState';
+import { EmptyState, ErrorState, EmptyIcon } from '@/components/ui/empty-state';
 import { InviteFriend, InviteBanner } from '@/components/free-gifts/InviteFriend';
 import { NotificationCenter, NotificationButton } from '@/components/free-gifts/NotificationCenter';
 
@@ -335,7 +335,15 @@ function FreeGiftsContent() {
 
         {/* 商品列表 */}
         {loading ? (
-          <GiftListSkeleton count={6} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-lg border p-4 space-y-3">
+                <Skeleton className="h-40 w-full rounded-md" />
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredGifts.map((gift) => {
@@ -437,12 +445,17 @@ function FreeGiftsContent() {
         {/* 无数据提示 */}
         {!loading && filteredGifts.length === 0 && (
           <EmptyState
-            type={searchKeyword ? 'no_search' : filter === 'all' ? 'no_gifts' : 'no_filter'}
-            title={searchKeyword ? `沒有找到「${searchKeyword}」相關商品` : undefined}
+            icon={<EmptyIcon type={searchKeyword ? 'search' : 'data'} />}
+            title={searchKeyword ? `沒有找到「${searchKeyword}」相關商品` : '暫無免費商品'}
             action={
-              (filter !== 'all' || searchKeyword || selectedCategory !== 'all')
-                ? { label: '查看全部商品', onClick: () => { setFilter('all'); setSearchKeyword(''); setSelectedCategory('all'); } }
-                : undefined
+              (filter !== 'all' || searchKeyword || selectedCategory !== 'all') ? (
+                <button
+                  onClick={() => { setFilter('all'); setSearchKeyword(''); setSelectedCategory('all'); }}
+                  className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  查看全部商品
+                </button>
+              ) : undefined
             }
           />
         )}

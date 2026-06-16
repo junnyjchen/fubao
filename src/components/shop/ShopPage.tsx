@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/Pagination';
 import { GoodsCardSkeleton } from '@/components/ui/Skeleton';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyState, EmptyIcon } from '@/components/ui/empty-state';
 import { Search, SlidersHorizontal, Grid, List, ShoppingCart } from 'lucide-react';
 
 interface Merchant {
@@ -229,7 +229,7 @@ export function ShopPage() {
             )}
           </>
         ) : (
-          <EmptyState type="goods" />
+          <EmptyState icon={<EmptyIcon type="data" />} title="暫無商品" description="目前沒有符合條件的商品" />
         )}
       </section>
     </div>

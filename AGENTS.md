@@ -292,4 +292,6 @@ AI_PROVIDER=volcengine
 
 ---
 
+> **开发技术标准详见 [DEVELOPMENT_STANDARDS.md](./DEVELOPMENT_STANDARDS.md)**，所有新增、修改代码必须遵循该文档。
+>
 > 最后更新: 2025-01-15

@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyState, EmptyIcon } from '@/components/ui/empty-state';
 import {
   Package,
   Eye,
@@ -227,7 +227,7 @@ export default function OrdersPage() {
               {t.common.loading}
             </div>
           ) : filteredOrders.length === 0 ? (
-            <EmptyState type="orders" />
+            <EmptyState icon={<EmptyIcon type="orders" />} title="暫無訂單" description="您還沒有任何訂單" />
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => {

@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShareButton } from '@/components/free-gifts/ShareButton';
-import { EmptyState } from '@/components/free-gifts/EmptyState';
+import { EmptyState } from '@/components/ui/empty-state';
 
 /** 积分商品 */
 interface PointsGoods {
@@ -330,11 +330,17 @@ export default function PointsMallPage() {
           </div>
         ) : goods.length === 0 ? (
           <EmptyState
-            type="custom"
             title="暫無可兌換商品"
             description="敬請期待更多精彩好禮"
             icon={<Gift className="w-16 h-16 text-muted-foreground/30" />}
-            action={{ label: '刷新看看', onClick: () => loadData() }}
+            action={
+              <button
+                onClick={() => loadData()}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+              >
+                刷新看看
+              </button>
+            }
           />
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

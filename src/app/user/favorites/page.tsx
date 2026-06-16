@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { UserLayout } from '@/components/user/UserLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Heart, Trash2, ShoppingCart, Package } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import { useI18n } from '@/lib/i18n';

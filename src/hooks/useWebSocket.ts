@@ -55,7 +55,7 @@ export function useWebSocket({
   }, []);
 
   const isConnected = useCallback(() => {
-    return connRef.current?.isConnected() ?? false;
+    return connRef.current?.isConnected ?? false;
   }, []);
 
   return { send, isConnected };

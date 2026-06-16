@@ -168,3 +168,32 @@ export function NetworkError({ onRetry }: { onRetry?: () => void }) {
     />
   );
 }
+
+/** 错误状态（加载失败等场景） */
+export function ErrorState({
+  title = '加載失敗',
+  description = '請檢查網絡後重試',
+  onRetry,
+}: {
+  title?: string;
+  description?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <EmptyState
+      icon={<EmptyIcon type="network" />}
+      title={title}
+      description={description}
+      action={
+        onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          >
+            重新加載
+          </button>
+        )
+      }
+    />
+  );
+}

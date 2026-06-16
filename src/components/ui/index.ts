@@ -60,7 +60,7 @@ export * from './table';
 // 自定义扩展组件
 export * from './Pagination';
 export * from './Skeleton';
-export * from './EmptyState';
+export { EmptyState, ErrorState, EmptyIcon, NetworkError } from './empty-state';
 export { 
   ImageWithPlaceholder, 
   GoodsImage,
