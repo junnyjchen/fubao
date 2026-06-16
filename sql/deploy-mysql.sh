@@ -83,21 +83,41 @@ echo ""
 echo "📌 [5/5] 配置项目环境变量..."
 
 # 写入 .env
-ENV_FILE="${PROJECT_DIR}/.env"
-if [ -f "$ENV_FILE" ]; then
-    # 更新已有的 MYSQL 配置
-    sed -i '/^MYSQL_/d' "$ENV_FILE"
+# 自动查找项目目录
+if [ -d "/workspace/projects" ]; then
+    PROJECT_DIR="/workspace/projects"
+elif [ -d "$HOME/projects" ]; then
+    PROJECT_DIR="$HOME/projects"
+else
+    PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 fi
-cat >> "$ENV_FILE" << EOF
 
-# MySQL 数据库配置
-MYSQL_HOST=${DB_HOST}
-MYSQL_PORT=${DB_PORT}
-MYSQL_USER=${DB_USER}
-MYSQL_PASSWORD=${DB_PASS}
-MYSQL_DATABASE=${DB_NAME}
-EOF
-echo "✅ 环境变量已写入 .env"
+ENV_FILE="${PROJECT_DIR}/.env"
+touch "$ENV_FILE"
+
+# 删除已有的 MYSQL 配置，避免重复
+sed -i '/^MYSQL_/d' "$ENV_FILE" 2>/dev/null || true
+# 删除多余的空行
+sed -i '/^$/N;/^\n$/d' "$ENV_FILE" 2>/dev/null || true
+
+# 追加 MySQL 配置
+echo "" >> "$ENV_FILE"
+echo "# MySQL 数据库配置" >> "$ENV_FILE"
+echo "MYSQL_HOST=${DB_HOST}" >> "$ENV_FILE"
+echo "MYSQL_PORT=${DB_PORT}" >> "$ENV_FILE"
+echo "MYSQL_USER=${DB_USER}" >> "$ENV_FILE"
+echo "MYSQL_PASSWORD=${DB_PASS}" >> "$ENV_FILE"
+echo "MYSQL_DATABASE=${DB_NAME}" >> "$ENV_FILE"
+echo "✅ 环境变量已写入 ${ENV_FILE}"
+
+# 同时输出到 Docker 环境变量提示
+echo ""
+echo "⚠️  如果使用 Docker 部署，还需在 docker-compose.yml 或 docker run 中添加环境变量："
+echo "  MYSQL_HOST=${DB_HOST}"
+echo "  MYSQL_PORT=${DB_PORT}"
+echo "  MYSQL_USER=${DB_USER}"
+echo "  MYSQL_PASSWORD=${DB_PASS}"
+echo "  MYSQL_DATABASE=${DB_NAME}"
 
 echo ""
 echo "============================================"
