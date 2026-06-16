@@ -50,7 +50,7 @@ interface Goods {
 }
 
 export function ShopPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [goods, setGoods] = useState<Goods[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -88,6 +88,7 @@ export function ShopPage() {
         if (purposeFilter !== 'all') params.append('purpose', purposeFilter);
         params.append('page', currentPage.toString());
         params.append('limit', pageSize.toString());
+        if (lang && lang !== 'zh-TW') params.append('locale', lang);
 
         const res = await fetch(`/api/goods?${params.toString()}`);
         const data = await res.json();
@@ -115,7 +116,7 @@ export function ShopPage() {
     }
 
     fetchGoods();
-  }, [typeFilter, purposeFilter, sortBy, currentPage]);
+  }, [typeFilter, purposeFilter, sortBy, currentPage, lang]);
 
   return (
     <div className="min-h-screen bg-muted/20">

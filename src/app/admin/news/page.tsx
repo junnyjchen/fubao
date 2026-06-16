@@ -52,6 +52,7 @@ import {
   Pin,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SingleImageUpload } from '@/components/upload/ImageUpload';
 
 interface News {
   id: number;
@@ -110,10 +111,11 @@ export default function NewsManagePage() {
   const handleImageUpload = useCallback(async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('folder', 'news');
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || '上传失败');
-    return data.url;
+    if (!data.data?.url) throw new Error(data.error || '上傳失敗');
+    return data.data.url;
   }, []);
 
   useEffect(() => {
@@ -493,12 +495,12 @@ export default function NewsManagePage() {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="cover_image">封面圖片URL</Label>
-                <Input
-                  id="cover_image"
+                <Label>封面圖片</Label>
+                <SingleImageUpload
                   value={form.cover_image}
-                  onChange={e => setForm(prev => ({ ...prev, cover_image: e.target.value }))}
-                  placeholder="請輸入封面圖片URL"
+                  onChange={(url) => setForm(prev => ({ ...prev, cover_image: url }))}
+                  folder="news/covers"
+                  placeholder="點擊上傳封面圖片"
                 />
               </div>
             </div>

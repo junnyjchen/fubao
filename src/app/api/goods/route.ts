@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const keyword = searchParams.get('keyword');
     const type = searchParams.get('type');
     const purpose = searchParams.get('purpose');
+    const locale = searchParams.get('locale') || 'zh-TW';
     const offset = (page - 1) * pageSize;
 
     const conditions: string[] = ['status = ?'];
@@ -50,8 +51,39 @@ export async function GET(request: NextRequest) {
       params
     );
 
+    // 如果请求了非默认语言，附加翻译
+    let enrichedData = data;
+    if (locale !== 'zh-TW' && data.length > 0) {
+      const goodsIds = data.map((g: any) => g.id);
+      const translations = await query(
+        `SELECT * FROM goods_i18n WHERE goods_id IN (${goodsIds.map(() => '?').join(',')}) AND locale = ?`,
+        [...goodsIds, locale]
+      );
+
+      // 附加翻译到商品
+      const translationMap = new Map<number, any>();
+      for (const t of translations) {
+        translationMap.set(t.goods_id, t);
+      }
+
+      enrichedData = data.map((g: any) => {
+        const t = translationMap.get(g.id);
+        if (t) {
+          return {
+            ...g,
+            name: t.name || g.name,
+            subtitle: t.subtitle || g.subtitle,
+            description: t.description || g.description,
+            _original: { name: g.name, subtitle: g.subtitle, description: g.description },
+            _translated_locale: locale,
+          };
+        }
+        return { ...g, _translated_locale: null };
+      });
+    }
+
     return NextResponse.json({
-      data,
+      data: enrichedData,
       total,
       page,
       pageSize,

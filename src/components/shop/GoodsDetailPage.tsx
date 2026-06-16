@@ -120,7 +120,7 @@ const RelatedGoodsCard = memo(function RelatedGoodsCard({
 
 export function GoodsDetailPage() {
   const router = useRouter();
-  const { t, isRTL } = useI18n();
+  const { t, isRTL, lang } = useI18n();
   const [goodsId, setGoodsId] = useState<string | null>(null);
   const [goods, setGoods] = useState<Goods | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,7 +145,7 @@ export function GoodsDetailPage() {
     const loadGoods = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/goods/${goodsId}`);
+        const res = await fetch(`/api/goods/${goodsId}?locale=${lang}`);
         const data = await res.json();
         if (data.data) {
           setGoods(data.data);

@@ -72,6 +72,7 @@ const navItems: NavItem[] = [
     children: [
       { key: 'products-list', label: '商品列表', icon: Package, href: '/admin/products', permission: 'goods.view' },
       { key: 'products-goods', label: '商品管理', icon: Package, href: '/admin/goods', permission: 'goods.view' },
+      { key: 'goods-i18n', label: '商品多語言', icon: Package, href: '/admin/goods-i18n', permission: 'goods.view' },
       { key: 'categories', label: '分類管理', icon: Package, href: '/admin/categories', permission: 'goods.view' },
     ],
   },

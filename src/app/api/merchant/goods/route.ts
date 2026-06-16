@@ -122,33 +122,31 @@ export async function PUT(request: Request) {
     // 验证商品属于该商家
     const existing = await queryOne('SELECT * FROM goods WHERE id = ? AND merchant_id = ?', [id, merchant.merchantId]);
     if (!existing) {
-      return NextResponse.json({ error: '商品不存在或不属于该商家' }, { status: 403 });
+      return NextResponse.json({ error: '商品不存在或不屬於該商家' }, { status: 403 });
     }
 
-    await query(
-      `UPDATE goods SET name=?, subtitle=?, price=?, original_price=?, stock=?, category_id=?, type=?, purpose=?, description=?, main_image=?, images=?, is_certified=?, status=?, specifications=?, updated_at=NOW() WHERE id=? AND merchant_id=?`,
-      [
-        name || existing.name, subtitle !== undefined ? subtitle : existing.subtitle,
-        price !== undefined ? parseFloat(price) : existing.price,
-        original_price !== undefined ? (original_price ? parseFloat(original_price) : null) : existing.original_price,
-        stock !== undefined ? parseInt(stock) : existing.stock,
-        category_id !== undefined ? category_id : existing.category_id,
-        type !== undefined ? type : existing.type,
-        purpose !== undefined ? purpose : existing.purpose,
-        description !== undefined ? description : existing.description,
-        main_image !== undefined ? main_image : existing.main_image,
-        images !== undefined ? images : existing.images,
-        is_certified !== undefined ? (is_certified ? 1 : 0) : existing.is_certified,
-        status !== undefined ? parseInt(status) : existing.status,
-        specifications ? JSON.stringify(specifications) : existing.specifications,
-        id, merchant.merchantId
-      ]
-    );
+    const updateData: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (name !== undefined) updateData.name = name;
+    if (subtitle !== undefined) updateData.subtitle = subtitle;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (original_price !== undefined) updateData.original_price = original_price ? parseFloat(original_price) : null;
+    if (stock !== undefined) updateData.stock = parseInt(stock);
+    if (category_id !== undefined) updateData.category_id = category_id;
+    if (type !== undefined) updateData.type = type;
+    if (purpose !== undefined) updateData.purpose = purpose;
+    if (description !== undefined) updateData.description = description;
+    if (main_image !== undefined) updateData.main_image = main_image;
+    if (images !== undefined) updateData.images = images;
+    if (is_certified !== undefined) updateData.is_certified = is_certified ? 1 : 0;
+    if (status !== undefined) updateData.status = parseInt(status);
+    if (specifications !== undefined) updateData.specifications = specifications ? JSON.stringify(specifications) : null;
+
+    await update('goods', id, updateData);
 
     return NextResponse.json({ success: true, message: '商品更新成功' });
   } catch (error: any) {
     console.error('商家更新商品失败:', error);
-    return NextResponse.json({ error: '更新商品失败' }, { status: 500 });
+    return NextResponse.json({ error: '更新商品失敗' }, { status: 500 });
   }
 }
 

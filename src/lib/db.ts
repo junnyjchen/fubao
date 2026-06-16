@@ -76,7 +76,29 @@ const initialData: Record<string, any[]> = {
     { id: 2, question: '开光是什么意思？', answer: '开光是一种宗教仪式，通过特定法事程序赋予法器灵性和法力，包括净坛、请神、加持、封符等步骤。', category: 'ceremony', knowledge_id: 2, keywords: '["开光","仪式"]', is_active: true, created_at: '2025-01-02T00:00:00.000Z', updated_at: '2025-01-02T00:00:00.000Z' }
   ],
   ai_training_tasks: [],
-  ai_model_configs: []
+  ai_model_configs: [],
+  goods_i18n: [
+    { id: 1, goods_id: 1, locale: 'en', name: 'Tai Chi Amulet', subtitle: 'Dao follows nature·Tai Chi Guardian', description: 'A Tai Chi amulet hand-drawn by a Taoist priest, with powerful evil-warding and protective effects.', created_at: '2025-01-15T00:00:00.000Z', updated_at: '2025-01-15T00:00:00.000Z' },
+    { id: 2, goods_id: 1, locale: 'ja', name: '太極護身符', subtitle: '道法自然·太極守護', description: '道士が手書きした太極護身符、強力な厄除け護身の効能があります。', created_at: '2025-01-15T00:00:00.000Z', updated_at: '2025-01-15T00:00:00.000Z' },
+    { id: 3, goods_id: 2, locale: 'en', name: 'Peach Wood Sword', subtitle: 'Millennium Peach Wood·Righteous Spirit', description: 'Crafted from millennium-old peach wood, the sword body is engraved with Big Dipper talisman runes, a sacred item for home protection.', created_at: '2025-01-16T00:00:00.000Z', updated_at: '2025-01-16T00:00:00.000Z' },
+    { id: 4, goods_id: 2, locale: 'ja', name: '桃木剣·鎮宅法器', subtitle: '千年桃木·正気凛然', description: '千年の桃木から精巧に彫刻され、剣身に北斗七星の符文が刻まれています。家を守る聖器。', created_at: '2025-01-16T00:00:00.000Z', updated_at: '2025-01-16T00:00:00.000Z' },
+    { id: 5, goods_id: 3, locale: 'en', name: 'Natural Agarwood Incense', subtitle: 'Meditation·Natural Fragrance', description: 'Natural agarwood incense from Vietnam, with an elegant and long-lasting aroma, suitable for meditation.', created_at: '2025-01-17T00:00:00.000Z', updated_at: '2025-01-17T00:00:00.000Z' },
+    { id: 6, goods_id: 3, locale: 'ja', name: '天然沈香線香', subtitle: '静心修禅·天然の香り', description: 'ベトナム産の天然沈香線香、香りは清雅で長持ちし、座禅瞑想に適しています。', created_at: '2025-01-17T00:00:00.000Z', updated_at: '2025-01-17T00:00:00.000Z' },
+  ],
+  categories_i18n: [
+    { id: 1, category_id: 1, locale: 'en', name: 'Talismans', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 2, category_id: 1, locale: 'ja', name: '符咒', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 3, category_id: 2, locale: 'en', name: 'Ritual Items', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 4, category_id: 2, locale: 'ja', name: '法器', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 5, category_id: 3, locale: 'en', name: 'Offerings', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 6, category_id: 3, locale: 'ja', name: '供品', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 7, category_id: 4, locale: 'en', name: 'Cultivation Supplies', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 8, category_id: 4, locale: 'ja', name: '修行用品', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 9, category_id: 5, locale: 'en', name: 'Feng Shui Decor', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 10, category_id: 5, locale: 'ja', name: '風水擺件', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 11, category_id: 6, locale: 'en', name: 'Lucky Accessories', created_at: '2025-01-01T00:00:00.000Z' },
+    { id: 12, category_id: 6, locale: 'ja', name: '開運飾品', created_at: '2025-01-01T00:00:00.000Z' },
+  ]
 };
 
 let nextIds: Record<string, number> = {};

@@ -106,19 +106,33 @@ export default function MerchantGoodsNewPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/goods', {
+      const merchantToken = localStorage.getItem('merchant_token');
+      const res = await fetch('/api/merchant/goods', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {}),
+        },
         body: JSON.stringify({
-          ...form,
-          status: isDraft ? 0 : 1,
-          merchant_id: 1, // TODO: 从登录状态获取
+          name: form.name,
+          subtitle: form.keywords || '',
+          price: form.price,
+          original_price: form.original_price || null,
+          stock: form.stock,
+          category_id: form.category_id,
+          type: 1,
+          purpose: '',
+          description: form.description,
+          main_image: form.images[0] || '',
+          images: form.images.join(','),
+          is_certified: form.has_cert,
+          specifications: form.cert_type ? { cert_type: form.cert_type } : null,
         }),
       });
 
       const data = await res.json();
 
-      if (data.data) {
+      if (data.success || data.id) {
         toast.success(isDraft ? '商品已保存為草稿' : '商品發布成功');
         router.push('/merchant/dashboard/goods');
       } else {

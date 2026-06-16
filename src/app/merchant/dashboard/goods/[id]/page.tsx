@@ -86,26 +86,40 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
   const loadGoods = async () => {
     setLoading(true);
     try {
-      // 模拟数据
-      setForm({
-        id: parseInt(resolvedParams.id),
-        name: '開光平安符',
-        category_id: 1,
-        price: 288,
-        original_price: 388,
-        stock: 156,
-        unit: '件',
-        description: '武當山道觀開光加持，保佑平安吉祥',
-        content: '<h2>商品詳情</h2><p>這是一款經過正統道教開光儀式加持的平安符...</p>',
-        images: ['/goods/pinganfu-1.jpg', '/goods/pinganfu-2.jpg'],
-        video_url: '',
-        has_cert: true,
-        cert_type: '開光認證',
-        keywords: '平安符,開光,武當山',
-        status: 1,
-        sales: 1250,
-        created_at: '2026-03-01',
+      const merchantToken = localStorage.getItem('merchant_token');
+      const res = await fetch(`/api/merchant/goods`, {
+        headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
       });
+      const data = await res.json();
+      if (data.data) {
+        const goodsList = data.data as any[];
+        const item = goodsList.find((g: any) => g.id === parseInt(resolvedParams.id));
+        if (item) {
+          const imageArr = item.images ? (typeof item.images === 'string' ? item.images.split(',').filter(Boolean) : item.images) : [];
+          setForm({
+            id: item.id,
+            name: item.name || '',
+            category_id: item.category_id || 1,
+            price: item.price || 0,
+            original_price: item.original_price || 0,
+            stock: item.stock || 0,
+            unit: item.unit || '件',
+            description: item.description || '',
+            content: item.content || '',
+            images: imageArr,
+            video_url: item.video_url || '',
+            has_cert: !!item.is_certified,
+            cert_type: item.specifications ? (typeof item.specifications === 'string' ? JSON.parse(item.specifications).cert_type || '' : item.specifications.cert_type || '') : '',
+            keywords: item.subtitle || '',
+            status: item.status ?? 1,
+            sales: item.sales || 0,
+            created_at: item.created_at || '',
+          });
+        } else {
+          toast.error('商品不存在');
+          router.push('/merchant/dashboard/goods');
+        }
+      }
     } catch (error) {
       console.error('加载商品失败:', error);
       toast.error('加載商品失敗');
@@ -133,10 +147,40 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
 
     setSaving(true);
     try {
-      // 调用API更新商品
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success(isDraft ? '商品已保存為草稿' : '商品更新成功');
-      router.push('/merchant/dashboard/goods');
+      const merchantToken = localStorage.getItem('merchant_token');
+      const res = await fetch('/api/merchant/goods', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {}),
+        },
+        body: JSON.stringify({
+          id: form.id,
+          name: form.name,
+          subtitle: form.keywords || '',
+          price: form.price,
+          original_price: form.original_price || null,
+          stock: form.stock,
+          category_id: form.category_id,
+          type: 1,
+          purpose: '',
+          description: form.description,
+          main_image: form.images[0] || '',
+          images: form.images.join(','),
+          is_certified: form.has_cert,
+          status: isDraft ? 0 : form.status,
+          specifications: form.cert_type ? { cert_type: form.cert_type } : null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success || data.data) {
+        toast.success(isDraft ? '商品已保存為草稿' : '商品更新成功');
+        router.push('/merchant/dashboard/goods');
+      } else {
+        toast.error(data.error || data.message || '更新失敗');
+      }
     } catch (error) {
       console.error('更新商品失败:', error);
       toast.error('操作失敗，請重試');
@@ -147,9 +191,18 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
 
   const handleDelete = async () => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      toast.success('商品已刪除');
-      router.push('/merchant/dashboard/goods');
+      const merchantToken = localStorage.getItem('merchant_token');
+      const res = await fetch(`/api/merchant/goods?id=${form?.id}`, {
+        method: 'DELETE',
+        headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('商品已刪除');
+        router.push('/merchant/dashboard/goods');
+      } else {
+        toast.error(data.error || '刪除失敗');
+      }
     } catch (error) {
       toast.error('刪除失敗');
     }
