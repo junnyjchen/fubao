@@ -31,6 +31,9 @@ import {
   Truck,
   Bell,
   Shield,
+  Mail,
+  MailCheck,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -64,6 +67,9 @@ export default function SettingsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -98,6 +104,52 @@ export default function SettingsPage() {
         item.key === key ? { ...item, value } : item
       ),
     }));
+  };
+
+  const handleTestEmailConnection = async () => {
+    setEmailTesting(true);
+    try {
+      const res = await fetch('/api/admin/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'test' }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('SMTP 連接成功', { description: '郵件伺服器連接正常' });
+      } else {
+        toast.error('SMTP 連接失敗', { description: data.error || '請檢查配置' });
+      }
+    } catch {
+      toast.error('連接測試失敗', { description: '網絡錯誤' });
+    } finally {
+      setEmailTesting(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testEmailTo.trim()) {
+      toast.error('請輸入收件人郵箱');
+      return;
+    }
+    setEmailSending(true);
+    try {
+      const res = await fetch('/api/admin/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send', to: testEmailTo.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('測試郵件已發送', { description: `請檢查 ${testEmailTo} 的收件箱` });
+      } else {
+        toast.error('發送失敗', { description: data.error || '請檢查SMTP配置' });
+      }
+    } catch {
+      toast.error('發送失敗', { description: '網絡錯誤' });
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const handleSave = async (group: keyof Settings) => {
@@ -308,6 +360,56 @@ export default function SettingsPage() {
                     ))}
 
                     <Separator />
+
+                    {/* 邮件测试区域 - 仅通知设置分组显示 */}
+                    {group === 'notification' && (
+                      <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Mail className="w-4 h-4" />
+                          郵件服務測試
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          先保存SMTP配置，再測試連接。QQ郵箱需使用授權碼（非QQ密碼），在 QQ郵箱 → 設置 → 賬戶 → POP3/SMTP服務 中生成。
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleTestEmailConnection}
+                            disabled={emailTesting}
+                          >
+                            {emailTesting ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <MailCheck className="w-4 h-4 mr-2" />
+                            )}
+                            測試SMTP連接
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Input
+                            type="email"
+                            placeholder="輸入收件人郵箱"
+                            value={testEmailTo}
+                            onChange={(e) => setTestEmailTo(e.target.value)}
+                            className="max-w-xs"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSendTestEmail}
+                            disabled={emailSending || !testEmailTo.trim()}
+                          >
+                            {emailSending ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Mail className="w-4 h-4 mr-2" />
+                            )}
+                            發送測試郵件
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex justify-end">
                       <Button onClick={() => handleSave(group)} disabled={saving}>

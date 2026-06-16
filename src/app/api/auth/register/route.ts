@@ -9,6 +9,7 @@ import { hash } from 'bcryptjs';
 import { generateToken } from '@/lib/auth/utils';
 import { cookies } from 'next/headers';
 import { queryOne, insert as dbInsert } from '@/lib/db';
+import { sendWelcomeEmail } from '@/lib/email/service';
 
 /**
  * 生成随机邀请码
@@ -101,6 +102,14 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7,
       path: '/',
     });
+
+    // 异步发送欢迎邮件（不阻塞响应）
+    try {
+      await sendWelcomeEmail(email, displayName);
+    } catch (emailError) {
+      console.error('[Register] 发送欢迎邮件失败:', emailError);
+      // 邮件发送失败不影响注册
+    }
 
     return NextResponse.json({
       message: '註冊成功',

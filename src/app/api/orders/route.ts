@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate, count, remove as dbRemove } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth/apiAuth';
+import { sendOrderConfirmationEmail } from '@/lib/email/service';
 
 function generateOrderNo() {
   const now = new Date();
@@ -213,6 +214,23 @@ export async function POST(request: NextRequest) {
         } catch {
           // 忽略
         }
+      }
+    }
+
+    // 异步发送订单确认邮件（不阻塞响应）
+    const userEmail = authUser.email || '';
+    if (userEmail) {
+      try {
+        const addressObj = address as any;
+        await sendOrderConfirmationEmail(userEmail, {
+          orderId: orderNo,
+          items: orderItems.map(oi => ({ name: oi.goods_name, quantity: oi.quantity, price: parseFloat(oi.price) })),
+          totalAmount: payAmount,
+          shippingAddress: addressObj ? `${addressObj.province || ''}${addressObj.city || ''}${addressObj.district || ''}${addressObj.address || ''}` : undefined,
+        });
+      } catch (emailError) {
+        console.error('[Orders] 发送订单确认邮件失败:', emailError);
+        // 邮件发送失败不影响订单创建
       }
     }
 
