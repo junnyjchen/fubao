@@ -9,9 +9,9 @@
 
 | 层级 | 技术 | 版本 | 说明 |
 |------|------|------|------|
-| 前端框架 | Next.js | 16 (App Router) | 前端 SSR/SSG + 开发用 API Routes |
-| 后端（生产） | PHP | 8.x + ThinkPHP | 生产环境后端，`php/` 目录 |
-| 后端（开发） | Next.js API Routes | - | 开发/预览用后端，`src/app/api/` 目录 |
+| 前端框架 | Next.js | 16 (App Router) | **SSR 渲染层**，SEO友好，不含API逻辑 |
+| 后端（唯一） | PHP | 8.x + ThinkPHP | **生产 + 开发共用后端**，`php/` 目录 |
+| 后端（开发降级） | Next.js API Routes | - | 仅当 PHP 不可用时降级使用 |
 | UI库 | React | 19 | 禁止使用 React 17 旧语法 |
 | 语言 | TypeScript / PHP | TS5 / PHP8 | 前端 TS 严格模式；后端 PHP 强类型 |
 | 样式 | Tailwind CSS | 4 | 语义化变量，禁止硬编码颜色 |
@@ -20,6 +20,24 @@
 | 数据库 | MySQL | 8.x | 生产环境；开发降级到 Mock DB |
 | AI | 豆包/DeepSeek/Kimi | - | SSE 流式输出 |
 | 邮件 | nodemailer / PHPMailer | - | QQ邮箱 SMTP (smtp.qq.com:465 SSL) |
+
+### 架构核心原则：PHP是唯一API源
+
+```
+生产环境：
+  用户请求 → Nginx
+                ├── /api/*  → PHP-FPM (ThinkPHP) → MySQL
+                └── /*      → Next.js SSR 渲染页面
+
+开发环境：
+  浏览器 → Next.js Dev Server
+                ├── /api/*  → Next.js API Routes → MySQL/Mock DB
+                └── /*      → Next.js SSR 渲染页面
+```
+
+- **开发时**：`NEXT_PUBLIC_API_MODE=local`，前端 `fetch('/api/xxx')` 走 Next.js API Routes
+- **生产时**：`NEXT_PUBLIC_API_MODE=php`，前端 `fetch('/api/xxx')` 经 Nginx 转发到 PHP-FPM
+- **切换零改动**：前端代码统一使用 `apiRequest('/api/xxx')`，由 `api-config.ts` 自动路由
 
 ---
 
@@ -263,17 +281,41 @@ if (!admin) return NextResponse.json({ error: '管理員權限不足' }, { statu
 
 ---
 
-## 四-B、PHP 后端开发标准（生产环境）
+## 四-B、PHP 后端开发标准（唯一生产 API）
 
 ### 4B.1 架构概述
 
-PHP 后端基于 **ThinkPHP** 框架，运行在 Nginx + PHP-FPM 上，通过 `php/route/router.php` 做路由映射。所有 API 路径与 Next.js API Routes **一一对应**。
+**PHP 是唯一的生产环境 API 后端**。Next.js API Routes 仅用于开发/预览环境。
 
 ```
-请求流程：Nginx → php/public/index.php → router.php → Controller → MySQL
+生产环境请求流程：
+  浏览器 → Nginx
+    ├── /api/* → PHP-FPM → ThinkPHP Controller → MySQL
+    └── /*     → Next.js SSR → 输出完整 HTML（SEO 友好）
+
+开发环境请求流程：
+  浏览器 → Next.js Dev Server
+    ├── /api/* → Next.js API Routes → MySQL/Mock DB
+    └── /*     → Next.js SSR + HMR
 ```
 
-### 4B.2 目录结构
+**前端代码无需改动** — `api-request.ts` 自动根据 `NEXT_PUBLIC_API_MODE` 环境变量选择 API 源：
+- `NEXT_PUBLIC_API_MODE=local`（默认）→ `/api/*`（Next.js API Routes，开发用）
+- `NEXT_PUBLIC_API_MODE=php` → PHP 后端 URL（生产用）
+
+### 4B.2 新增 PHP 控制器清单
+
+| 控制器 | API 路径 | 说明 |
+|--------|---------|------|
+| `MerchantCenter.php` | `/api/merchant/*` | 商家中心（登录/商品/订单/入驻/统计） |
+| `FreeGift.php` | `/api/free-gifts/*` | 免费送活动 |
+| `News.php` | `/api/news/*` | 新闻资讯 |
+| `Setting.php` | `/api/settings` | 系统设置 |
+| `GoodsI18n.php` | `/api/goods/i18n` | 商品多语言 |
+| `admin/Database.php` | `/api/admin/database` | 数据库管理 |
+| `admin/Email.php` | `/api/admin/email` | 邮件服务管理 |
+
+### 4B.3 目录结构
 
 ```
 php/
@@ -407,17 +449,44 @@ $adminId = Jwt::getAdminIdFromHeader();
 if (!$adminId) Response::error('管理員權限不足', 403);
 ```
 
-### 4B.7 新增 API 同步清单
+### 4B.8 新增 API 开发流程
 
-新增后端接口时，**必须**同时维护两端：
+**PHP 优先原则**：新增后端接口时，**必须先写 PHP 控制器**，Next.js API Routes 作为开发环境副本。
 
-| 步骤 | Next.js (开发) | PHP (生产) |
+| 步骤 | PHP（生产，必须） | Next.js API（开发副本） |
 |------|---------------|------------|
-| 1 | `src/app/api/{module}/route.ts` | `php/app/controller/{Module}.php` |
-| 2 | 函数签名 `GET/POST/PUT/DELETE` | 对应方法 `index/create/update/delete` |
-| 3 | 响应格式一致 | 响应格式一致 |
-| 4 | 认证方式 `getAuthUserId` | 认证方式 `Jwt::getUserIdFromHeader` |
-| 5 | 路由自动注册 | 手动注册到 `router.php` |
+| 1 | `php/app/controller/{Module}.php` | `src/app/api/{module}/route.ts` |
+| 2 | 方法 `index/create/update/delete` | 函数 `GET/POST/PUT/DELETE` |
+| 3 | 注册到 `router.php` | 路由自动注册 |
+| 4 | 认证 `Jwt::getUserIdFromHeader()` | 认证 `getAuthUserId(request)` |
+| 5 | 响应 `Response::success/error` | 响应 `NextResponse.json` |
+| 6 | **必须** | 可选（开发环境兜底） |
+
+### 4B.9 API 路由完整映射
+
+所有 `/api/*` 请求在生产环境由 PHP 处理，Nginx 规则：
+
+```nginx
+# 生产环境 Nginx 配置（php/nginx.conf）
+location /api/ {
+    try_files $uri $uri/ /index.php?$query_string;
+    # PHP-FPM 处理所有 /api/* 请求
+}
+
+location / {
+    proxy_pass http://127.0.0.1:3000;  # Next.js SSR
+}
+```
+
+前端 `api-request.ts` 自动适配：
+
+```typescript
+// 开发环境：fetch('/api/goods') → Next.js API Routes
+// 生产环境：fetch('https://domain/api/goods') → PHP API
+const baseURL = process.env.NEXT_PUBLIC_API_MODE === 'php' 
+  ? (process.env.NEXT_PUBLIC_PHP_API_URL || '') 
+  : '';
+```
 
 ---
 
@@ -702,7 +771,7 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 
 ## 十、部署相关
 
-### 双后端部署架构
+### 生产架构（SSR + PHP API，SEO 友好）
 
 ```
                         ┌─────────────────────┐
@@ -710,17 +779,25 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
                         └──────────┬───────────┘
                     ┌──────────────┼──────────────┐
                     ▼                              ▼
-          /api/* → PHP-FPM              / * → Next.js (SSR)
+          /api/* → PHP-FPM              /* → Next.js (SSR)
           (php/public/index.php)        (localhost:5000)
                     │                              │
                     ▼                              ▼
-               MySQL 8.x                    MySQL 8.x
-            (fubao database)            (fubao database)
+               MySQL 8.x                    渲染完整 HTML
+            (fubao database)            (爬虫直接拿到内容)
 ```
 
-- **前端页面**：Next.js 提供服务，端口 5000
-- **API 请求**：生产环境由 PHP (ThinkPHP + Nginx) 处理
-- **数据库**：两端共用同一 MySQL 实例
+**SEO 关键**：Next.js SSR 输出完整 HTML，搜索引擎爬虫无需执行 JS 即可获取页面内容。所有 API 调用在服务端完成，页面以完整 DOM 输出。
+
+### 开发环境 vs 生产环境
+
+| 维度 | 开发环境 | 生产环境 |
+|------|---------|---------|
+| 前端 SSR | Next.js Dev (port 5000) | Next.js Start (port 5000) |
+| API 处理 | Next.js API Routes | PHP-FPM + ThinkPHP |
+| 数据库 | Mock DB 降级 / MySQL | MySQL |
+| API 模式变量 | `NEXT_PUBLIC_API_MODE=local` | `NEXT_PUBLIC_API_MODE=php` |
+| 热更新 | HMR 开启 | 关闭 |
 
 ### 环境变量
 
@@ -728,7 +805,8 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 # Next.js 前端
 DEPLOY_RUN_PORT=5000                    # 服务监听端口
 COZE_WORKSPACE_PATH=/workspace/projects # 工作目录
-NEXT_PUBLIC_API_MODE=local              # API 模式
+NEXT_PUBLIC_API_MODE=local              # 开发=local / 生产=php
+NEXT_PUBLIC_PHP_API_URL=                # PHP API地址（生产环境设置）
 
 # MySQL（前端 + PHP 共用）
 MYSQL_HOST=localhost

@@ -1,8 +1,9 @@
 import type { NextConfig } from 'next';
 
+const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
+const phpApiUrl = process.env.PHP_API_URL || 'http://127.0.0.1:8080';
+
 const nextConfig: NextConfig = {
-  // outputFileTracingRoot: path.resolve(__dirname, '../../'),  // Uncomment and add 'import path from "path"' if needed
-  /* config options here */
   allowedDevOrigins: ['*.dev.coze.site'],
   typescript: {
     ignoreBuildErrors: true,
@@ -48,6 +49,24 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
+  },
+  /**
+   * API 路由策略：
+   * - 开发环境：/api/* 由 Next.js API Routes 处理（无需 PHP）
+   * - 生产环境：/api/* 代理到 PHP-FPM 后端
+   * 
+   * 前端代码统一 fetch('/api/xxx')，环境切换由此处自动处理。
+   */
+  async rewrites() {
+    if (isProd) {
+      return [
+        {
+          source: '/api/:path*',
+          destination: `${phpApiUrl}/api/:path*`,
+        },
+      ];
+    }
+    return [];
   },
 };
 

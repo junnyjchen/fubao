@@ -291,6 +291,53 @@ $routers = [
     
     // ========== 用户 - AI问答推荐 ==========
     'api/ai/recommendQA' => ['app\controller\AITraining::getRecommendedQA', ['GET']], 
+
+    // ========== 新闻 ==========
+    'api/news' => ['app\controller\News::index', ['GET']],
+
+    // ========== 免费送 ==========
+    'api/free-gifts' => ['app\controller\FreeGift::index', ['GET']],
+    'api/free-gifts/claim' => ['app\controller\FreeGift::claim', ['POST']],
+    'api/free-gifts/myClaim' => ['app\controller\FreeGift::myClaim', ['GET']],
+    'api/free-gifts/create' => ['app\controller\FreeGift::create', ['POST']],
+    'api/free-gifts/update' => ['app\controller\FreeGift::update', ['POST']],
+    'api/free-gifts/delete' => ['app\controller\FreeGift::delete', ['POST']],
+
+    // ========== 商家中心 ==========
+    'api/merchant/login' => ['app\controller\MerchantCenter::login', ['POST']],
+    'api/merchant/profile' => ['app\controller\MerchantCenter::profile', ['GET']],
+    'api/merchant/goods' => ['app\controller\MerchantCenter::goods', ['GET']],
+    'api/merchant/goods/create' => ['app\controller\MerchantCenter::goodsCreate', ['POST']],
+    'api/merchant/goods/update' => ['app\controller\MerchantCenter::goodsUpdate', ['POST']],
+    'api/merchant/goods/delete' => ['app\controller\MerchantCenter::goodsDelete', ['POST']],
+    'api/merchant/orders' => ['app\controller\MerchantCenter::orders', ['GET']],
+    'api/merchant/orders/ship' => ['app\controller\MerchantCenter::ordersShip', ['POST']],
+    'api/merchant/statistics' => ['app\controller\MerchantCenter::statistics', ['GET']],
+    'api/merchant/apply' => ['app\controller\MerchantCenter::apply', ['POST']],
+
+    // ========== 系统设置 ==========
+    'api/settings' => ['app\controller\Setting::index', ['GET']],
+    'api/settings/update' => ['app\controller\Setting::update', ['POST']],
+
+    // ========== 商品多语言 ==========
+    'api/goods/i18n' => ['app\controller\GoodsI18n::index', ['GET']],
+    'api/goods/i18n/create' => ['app\controller\GoodsI18n::create', ['POST']],
+    'api/goods/i18n/update' => ['app\controller\GoodsI18n::update', ['POST']],
+    'api/goods/i18n/delete' => ['app\controller\GoodsI18n::delete', ['POST']],
+
+    // ========== 管理员 - 数据库管理 ==========
+    'api/admin/database/status' => ['app\controller\admin\Database::status', ['GET']],
+    'api/admin/database/init' => ['app\controller\admin\Database::init', ['POST']],
+    'api/admin/database/test' => ['app\controller\admin\Database::test', ['POST']],
+
+    // ========== 管理员 - 邮件管理 ==========
+    'api/admin/email/status' => ['app\controller\admin\Email::status', ['GET']],
+    'api/admin/email/testConnection' => ['app\controller\admin\Email::testConnection', ['POST']],
+    'api/admin/email/testSend' => ['app\controller\admin\Email::testSend', ['POST']],
+
+    // ========== 管理员 - 商家入驻申请 ==========
+    'api/admin/merchant-applications' => ['app\controller\admin\Merchant::applications', ['GET']],
+    'api/admin/merchant-applications/review' => ['app\controller\admin\Merchant::reviewApplication', ['POST']],
 ];
 
 // 支持 RESTful 风格
@@ -335,6 +382,26 @@ if (!isset($routers[$path])) {
     // 分类商品: api/goods/category/123
     if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'goods' && $parts[2] === 'category' && is_numeric($parts[3])) {
         $routers[$path] = ['app\controller\Goods::byCategory', ['GET']];
+    }
+    
+    // 新闻详情: api/news/slug
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'news') {
+        $routers[$path] = ['app\controller\News::detail', ['GET']];
+    }
+    
+    // 免费送详情: api/free-gifts/123
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'free-gifts' && is_numeric($parts[2])) {
+        $routers[$path] = ['app\controller\FreeGift::detail', ['GET']];
+    }
+    
+    // 商品翻译列表: api/goods/123/i18n
+    if (count($parts) === 4 && $parts[0] === 'api' && $parts[1] === 'goods' && is_numeric($parts[2]) && $parts[3] === 'i18n') {
+        $routers[$path] = ['app\controller\GoodsI18n::byGoods', ['GET']];
+    }
+    
+    // 管理员-商品翻译: api/admin/goods-i18n
+    if (count($parts) === 3 && $parts[0] === 'api' && $parts[1] === 'admin' && $parts[2] === 'goods-i18n') {
+        $routers[$path] = ['app\controller\GoodsI18n::adminList', ['GET']];
     }
 }
 
