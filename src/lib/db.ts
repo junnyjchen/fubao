@@ -10,7 +10,24 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getPool as getMysqlPool, isMySQLEnabled, mysqlQuery, mysqlExecute, mysqlQueryOne } from './mysql';
 
-const USE_MYSQL = isMySQLEnabled();
+// MySQL 可用性：初始值 + 运行时降级
+let _mysqlAvailable = isMySQLEnabled();
+const MYSQL_FLAG = isMySQLEnabled(); // 环境变量是否配置了MySQL
+
+/** MySQL查询失败时自动降级到Mock DB */
+function onMySqlError(err: any): void {
+  if (_mysqlAvailable) {
+    console.warn('[DB] MySQL 查询失败，降级到 Mock DB:', err?.code || err?.message || err);
+    _mysqlAvailable = false;
+    // 5秒后重试MySQL（可能是临时断连）
+    setTimeout(() => { _mysqlAvailable = MYSQL_FLAG; }, 5000);
+  }
+}
+
+/** 检查当前是否应该使用MySQL */
+function shouldUseMysql(): boolean {
+  return _mysqlAvailable;
+}
 
 // ========== 持久化配置 ==========
 const DATA_DIR = join(process.env.COZE_WORKSPACE_PATH || '/workspace/projects', '.db-data');
@@ -360,10 +377,12 @@ export async function query<T = any>(
   sql: string,
   params: unknown[] = []
 ): Promise<T[]> {
-  // MySQL 優先
-  if (USE_MYSQL) {
-    const rows = await mysqlQuery(sql, params);
-    return Array.isArray(rows) ? rows as T[] : [rows] as T[];
+  // MySQL 優先（失敗自動降級）
+  if (shouldUseMysql()) {
+    try {
+      const rows = await mysqlQuery(sql, params);
+      return Array.isArray(rows) ? rows as T[] : [rows] as T[];
+    } catch (e) { onMySqlError(e); }
   }
 
   const sqlLower = sql.toLowerCase().trim();
@@ -518,8 +537,13 @@ export async function queryOne<T = any>(
   sql: string,
   params: unknown[] = []
 ): Promise<T | null> {
-  if (USE_MYSQL) {
-    return await mysqlQueryOne<T>(sql, params);
+  if (shouldUseMysql()) {
+    try {
+      return await mysqlQueryOne<T>(sql, params);
+    } catch (e) {
+      console.warn('[DB] MySQL queryOne 失败, 降级到 Mock:', (e as Error).message);
+      onMySqlError(e);
+    }
   }
   const results = await query<T>(sql, params);
   return results[0] || null;
@@ -532,14 +556,19 @@ export async function insert(
   table: string,
   data: Record<string, any>
 ): Promise<number> {
-  if (USE_MYSQL) {
-    const keys = Object.keys(data);
-    const values = Object.values(data);
-    const placeholders = keys.map(() => '?').join(', ');
-    const cols = keys.map(k => `\`${k}\``).join(', ');
-    const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders})`;
-    const result = await mysqlExecute(sql, values);
-    return result.insertId;
+  if (shouldUseMysql()) {
+    try {
+      const keys = Object.keys(data);
+      const values = Object.values(data);
+      const placeholders = keys.map(() => '?').join(', ');
+      const cols = keys.map(k => `\`${k}\``).join(', ');
+      const sql = `INSERT INTO \`${table}\` (${cols}) VALUES (${placeholders})`;
+      const result = await mysqlExecute(sql, values);
+      return result.insertId;
+    } catch (e) {
+      console.warn('[DB] MySQL insert 失败, 降级到 Mock:', (e as Error).message);
+      onMySqlError(e);
+    }
   }
 
   const ids = getIds();
@@ -573,29 +602,32 @@ export async function update(
 ): Promise<number> {
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-  if (USE_MYSQL) {
-    if (typeof dataOrId === 'number') {
-      // update(table, id, data)
-      const id = dataOrId;
-      const data = { ...whereOrData, updated_at: now };
-      const keys = Object.keys(data);
-      const values = Object.values(data);
-      const setClause = keys.map(k => `\`${k}\` = ?`).join(', ');
-      const sql = `UPDATE \`${table}\` SET ${setClause} WHERE \`id\` = ?`;
-      const result = await mysqlExecute(sql, [...values, id]);
-      return result.affectedRows;
-    } else {
-      // update(table, data, where)
-      const data = { ...dataOrId, updated_at: now };
-      const where = whereOrData;
-      const keys = Object.keys(data);
-      const values = Object.values(data);
-      const setClause = keys.map(k => `\`${k}\` = ?`).join(', ');
-      const whereClause = Object.keys(where).map(k => `\`${k}\` = ?`).join(' AND ');
-      const whereValues = Object.values(where);
-      const sql = `UPDATE \`${table}\` SET ${setClause} WHERE ${whereClause}`;
-      const result = await mysqlExecute(sql, [...values, ...whereValues]);
-      return result.affectedRows;
+  if (shouldUseMysql()) {
+    try {
+      if (typeof dataOrId === 'number') {
+        const id = dataOrId;
+        const data = { ...whereOrData, updated_at: now };
+        const keys = Object.keys(data);
+        const values = Object.values(data);
+        const setClause = keys.map(k => `\`${k}\` = ?`).join(', ');
+        const sql = `UPDATE \`${table}\` SET ${setClause} WHERE \`id\` = ?`;
+        const result = await mysqlExecute(sql, [...values, id]);
+        return result.affectedRows;
+      } else {
+        const data = { ...dataOrId, updated_at: now };
+        const where = whereOrData;
+        const keys = Object.keys(data);
+        const values = Object.values(data);
+        const setClause = keys.map(k => `\`${k}\` = ?`).join(', ');
+        const whereClause = Object.keys(where).map(k => `\`${k}\` = ?`).join(' AND ');
+        const whereValues = Object.values(where);
+        const sql = `UPDATE \`${table}\` SET ${setClause} WHERE ${whereClause}`;
+        const result = await mysqlExecute(sql, [...values, ...whereValues]);
+        return result.affectedRows;
+      }
+    } catch (e) {
+      console.warn('[DB] MySQL update 失败, 降级到 Mock:', (e as Error).message);
+      onMySqlError(e);
     }
   }
 
@@ -643,12 +675,17 @@ export async function remove(
   table: string,
   where: Record<string, unknown>
 ): Promise<number> {
-  if (USE_MYSQL) {
-    const whereClause = Object.keys(where).map(k => `\`${k}\` = ?`).join(' AND ');
-    const values = Object.values(where);
-    const sql = `DELETE FROM \`${table}\` WHERE ${whereClause}`;
-    const result = await mysqlExecute(sql, values);
-    return result.affectedRows;
+  if (shouldUseMysql()) {
+    try {
+      const whereClause = Object.keys(where).map(k => `\`${k}\` = ?`).join(' AND ');
+      const values = Object.values(where);
+      const sql = `DELETE FROM \`${table}\` WHERE ${whereClause}`;
+      const result = await mysqlExecute(sql, values);
+      return result.affectedRows;
+    } catch (e) {
+      console.warn('[DB] MySQL remove 失败, 降级到 Mock:', (e as Error).message);
+      onMySqlError(e);
+    }
   }
 
   const mockData = getData();
@@ -678,23 +715,28 @@ export async function count(
   where?: string,
   params?: unknown[]
 ): Promise<number> {
-  if (USE_MYSQL) {
-    // 如果是完整 SQL
-    if (tableOrSql.toLowerCase().trim().startsWith('select')) {
-      const sql = tableOrSql;
-      const countSql = sql.replace(/SELECT\s+[\s\S]*?FROM/i, 'SELECT COUNT(*) as cnt FROM');
-      // Remove ORDER BY, LIMIT, OFFSET for count
-      const cleaned = countSql.replace(/\s+ORDER\s+BY\s+[\s\S]*$/i, '').replace(/\s+LIMIT\s+[\s\S]*$/i, '').replace(/\s+OFFSET\s+[\s\S]*$/i, '');
-      const rows = await mysqlQuery(cleaned, params || []);
+  if (shouldUseMysql()) {
+    try {
+      // 如果是完整 SQL
+      if (tableOrSql.toLowerCase().trim().startsWith('select')) {
+        const sql = tableOrSql;
+        const countSql = sql.replace(/SELECT\s+[\s\S]*?FROM/i, 'SELECT COUNT(*) as cnt FROM');
+        // Remove ORDER BY, LIMIT, OFFSET for count
+        const cleaned = countSql.replace(/\s+ORDER\s+BY\s+[\s\S]*$/i, '').replace(/\s+LIMIT\s+[\s\S]*$/i, '').replace(/\s+OFFSET\s+[\s\S]*$/i, '');
+        const rows = await mysqlQuery(cleaned, params || []);
+        return (rows as any[])[0]?.cnt || 0;
+      }
+      // 只是表名
+      if (!where) {
+        const rows = await mysqlQuery(`SELECT COUNT(*) as cnt FROM \`${tableOrSql}\``);
+        return (rows as any[])[0]?.cnt || 0;
+      }
+      const rows = await mysqlQuery(`SELECT COUNT(*) as cnt FROM \`${tableOrSql}\` WHERE ${where}`, params || []);
       return (rows as any[])[0]?.cnt || 0;
+    } catch (e) {
+      console.warn('[DB] MySQL count 失败, 降级到 Mock:', (e as Error).message);
+      onMySqlError(e);
     }
-    // 只是表名
-    if (!where) {
-      const rows = await mysqlQuery(`SELECT COUNT(*) as cnt FROM \`${tableOrSql}\``);
-      return (rows as any[])[0]?.cnt || 0;
-    }
-    const rows = await mysqlQuery(`SELECT COUNT(*) as cnt FROM \`${tableOrSql}\` WHERE ${where}`, params || []);
-    return (rows as any[])[0]?.cnt || 0;
   }
 
   const mockData = getData();
@@ -736,7 +778,7 @@ export async function count(
 
 // 保持向后兼容的 getPool
 export function getPool() {
-  if (USE_MYSQL) {
+  if (shouldUseMysql()) {
     return getMysqlPool();
   }
   return {
