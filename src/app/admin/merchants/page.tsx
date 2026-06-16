@@ -133,7 +133,7 @@ export default function MerchantsManagePage() {
         params.set('status', statusFilter);
       }
 
-      const res = await fetch(`/api/merchants?${params}`);
+      const res = await fetch(`/api/admin/merchants?${params}`);
       const data = await res.json();
 
       setMerchants(data.data || []);
@@ -181,7 +181,7 @@ export default function MerchantsManagePage() {
     }
 
     try {
-      const url = '/api/merchants';
+      const url = '/api/admin/merchants';
       const method = editingId ? 'PUT' : 'POST';
       const body = editingId
         ? { id: editingId, ...form, type: parseInt(form.type) }
@@ -210,7 +210,7 @@ export default function MerchantsManagePage() {
 
   const handleToggleStatus = async (id: number, currentStatus: boolean) => {
     try {
-      const res = await fetch('/api/merchants', {
+      const res = await fetch('/api/admin/merchants', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: !currentStatus }),
@@ -233,7 +233,7 @@ export default function MerchantsManagePage() {
     if (!confirm('確定要刪除此商戶嗎？')) return;
 
     try {
-      const res = await fetch(`/api/merchants?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/merchants?id=${id}`, { method: 'DELETE' });
       const data = await res.json();
       
       if (data.message) {

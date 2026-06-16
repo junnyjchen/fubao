@@ -146,7 +146,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { id } = await request.json();
+    const searchParams = request.nextUrl.searchParams;
+    const id = parseInt(searchParams.get('id') || '0');
 
     if (!id) {
       return NextResponse.json({ error: '缺少商家ID' }, { status: 400 });

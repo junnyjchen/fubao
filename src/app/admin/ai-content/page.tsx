@@ -531,7 +531,7 @@ export default function AIContentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: activeTab,
-          keyword: keyword.trim(),
+          topic: keyword.trim(),
           category: category || undefined,
         }),
       });
@@ -542,8 +542,22 @@ export default function AIContentPage() {
         throw new Error(data.error || '生成失敗');
       }
 
-      setGeneratedContent(data.content);
-      saveToHistory(activeTab, keyword, data.content.title);
+      // API returns { success, data: { type, topic, generated, raw } }
+      // Frontend expects content with title, content, summary, etc.
+      const generated = data.data?.generated || data.content || {};
+      const content = {
+        title: generated.title || `${keyword.trim()} - AI生成內容`,
+        content: generated.content || generated.text || '',
+        summary: generated.summary || generated.description || '',
+        category: generated.category || category || '',
+        tags: generated.tags || [keyword.trim()],
+        price: generated.price,
+        original_price: generated.original_price,
+        ...generated,
+      };
+
+      setGeneratedContent(content);
+      saveToHistory(activeTab, keyword, content.title);
       toast.success('內容生成成功');
     } catch (error) {
       console.error('生成失败:', error);

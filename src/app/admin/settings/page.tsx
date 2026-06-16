@@ -104,10 +104,11 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const groupSettings = settings[group] || [];
-      const updates = groupSettings.map(item => ({
-        key: item.key,
-        value: item.value,
-      }));
+      // 转换为 { key: value } 对象格式
+      const updates: Record<string, string> = {};
+      groupSettings.forEach(item => {
+        updates[item.key] = item.value;
+      });
 
       // 获取管理员 token
       const token = localStorage.getItem('admin_token');
