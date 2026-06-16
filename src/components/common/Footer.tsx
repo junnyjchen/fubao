@@ -22,14 +22,11 @@ export function Footer() {
     platform: [
       { href: '/about', label: t.nav.about },
       { href: '/contact', label: t.nav.contact },
-      { href: '/help', label: t.nav.help },
       { href: '/merchant/apply', label: t.home.features.join },
     ],
     help: [
-      { href: '/help/shopping', label: t.help.categories.shopping },
-      { href: '/help/payment', label: t.help.categories.payment },
-      { href: '/help/shipping', label: t.help.categories.shipping },
-      { href: '/help/after-sales', label: t.help.categories.afterSales },
+      { href: '/shop', label: t.nav.shop },
+      { href: '/news', label: t.nav.news },
     ],
     legal: [
       { href: '/terms', label: t.legal.terms },

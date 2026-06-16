@@ -518,14 +518,6 @@ export function GoodsDetailPage() {
                 </Button>
               </div>
 
-              {/* 快速下单按钮 */}
-              <Link href={`/quick-order?goods_id=${goods.id}`} className="block">
-                <Button variant="secondary" className="w-full" size="lg">
-                  <Package className="w-5 h-5 me-2" />
-                  {detail.quickOrder}
-                </Button>
-              </Link>
-
               {/* 功能按钮 */}
               <div className="flex gap-4 justify-center">
                 <Button variant="ghost" size="sm" onClick={handleToggleFavorite}>
@@ -615,11 +607,9 @@ export function GoodsDetailPage() {
                       </div>
                     </div>
                     <div className="pt-4 border-t">
-                      <Button variant="outline" className="w-full" asChild>
-                        <Link href={`/verify/${goods.certificate.certificate_no}`} target="_blank">
+                      <Button variant="outline" className="w-full">
                           <Shield className="w-4 h-4 me-2" />
                           {detail.certificateInfo.viewFull}
-                        </Link>
                       </Button>
                     </div>
                   </div>

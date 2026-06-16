@@ -32,7 +32,7 @@ import {
   Truck,
   Loader2,
   Sparkles,
-  Settings,
+  Database,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/admin/DashboardCharts';
 
@@ -197,14 +197,10 @@ export default function AdminDashboard() {
     { title: '訂單管理', href: '/admin/orders', icon: ShoppingCart, color: 'bg-green-500' },
     { title: '分類管理', href: '/admin/categories', icon: Package, color: 'bg-purple-500' },
     { title: '輪播圖', href: '/admin/banners', icon: Eye, color: 'bg-pink-500' },
-    { title: '證書管理', href: '/admin/certificates', icon: AlertCircle, color: 'bg-amber-500' },
     { title: '分銷管理', href: '/admin/distribution', icon: TrendingUp, color: 'bg-indigo-500' },
-    { title: '提現審核', href: '/admin/withdrawals', icon: Wallet, color: 'bg-teal-500' },
-    { title: '百科管理', href: '/admin/wiki', icon: FileText, color: 'bg-cyan-500' },
     { title: '新聞管理', href: '/admin/news', icon: FileText, color: 'bg-lime-500' },
     { title: '商戶管理', href: '/admin/merchants', icon: Store, color: 'bg-rose-500' },
-    { title: '財務對賬', href: '/admin/finance', icon: DollarSign, color: 'bg-emerald-500' },
-    { title: '第三方登錄', href: '/admin/oauth-config', icon: Settings, color: 'bg-slate-500' },
+    { title: '數據管理', href: '/admin/database', icon: Database, color: 'bg-emerald-500' },
   ];
 
   if (loading) {

@@ -11,7 +11,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Home,
-  Search,
   ShoppingBag,
   User,
   Bell,
@@ -20,8 +19,7 @@ import {
   Store,
   Heart,
   Package,
-  Settings,
-  HelpCircle,
+  BookOpen,
   ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -188,7 +186,7 @@ export function MobileNav() {
 
   const navItems: NavItem[] = [
     { href: '/', icon: Home, label: '首頁' },
-    { href: '/search', icon: Search, label: '搜索' },
+    { href: '/shop', icon: Store, label: '商城' },
     { href: '/cart', icon: ShoppingBag, label: '購物車', badgeKey: 'cart' },
     { href: '/user/notifications', icon: Bell, label: '消息', badgeKey: 'notification' },
     { href: '/user', icon: User, label: '我的' },
@@ -196,12 +194,10 @@ export function MobileNav() {
 
   // 快捷链接（更多菜单中）
   const quickLinks: QuickLink[] = [
-    { href: '/shop', icon: Store, label: '商城' },
+    { href: '/news', icon: BookOpen, label: '新聞' },
     { href: '/user/favorites', icon: Heart, label: '收藏夾' },
     { href: '/user/orders', icon: Package, label: '我的訂單' },
     { href: '/ai-assistant', icon: Sparkles, label: 'AI助手' },
-    { href: '/help', icon: HelpCircle, label: '幫助中心' },
-    { href: '/user/settings', icon: Settings, label: '設置' },
   ];
 
   // 回到顶部

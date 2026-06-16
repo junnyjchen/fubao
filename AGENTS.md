@@ -9,7 +9,9 @@
 | UI | shadcn/ui + Tailwind CSS 4 |
 | 语言 | TypeScript 5 |
 | 包管理 | **pnpm** (强制) |
+| 数据库 | MySQL 优先 + Mock DB 自动降级 |
 | AI 集成 | 豆包/DeepSeek/Kimi (流式输出) |
+| 邮件 | QQ邮箱SMTP (nodemailer) |
 
 ---
 
@@ -24,27 +26,40 @@
 │   │   ├── free-gifts/        # 免费送活动
 │   │   ├── cart/              # 购物车
 │   │   ├── checkout/          # 结账页面
+│   │   ├── shop/              # 商品商城
+│   │   ├── news/              # 新闻资讯
+│   │   ├── baike/             # 百科
+│   │   ├── merchant/          # 商家中心
+│   │   ├── user/              # 用户中心
+│   │   ├── admin/             # 管理后台
 │   │   ├── login/             # 用户登录
 │   │   ├── register/          # 用户注册
-│   │   ├── admin/             # 管理后台
-│   │   ├── api/               # API Routes
-│   │   │   ├── auth/         # 认证 API
-│   │   │   ├── ai/           # AI API
-│   │   │   └── ...
-│   │   └── layout.tsx        # 根布局
+│   │   └── api/               # API Routes
 │   ├── components/            # 组件
 │   │   ├── ui/               # shadcn/ui 基础组件
 │   │   ├── ai/               # AI 组件
+│   │   ├── admin/            # 管理后台组件
+│   │   ├── shop/             # 商城组件
 │   │   ├── cart/             # 购物车组件
 │   │   ├── order/            # 订单组件
+│   │   ├── free-gifts/       # 免费送组件
+│   │   ├── home/             # 首页组件
+│   │   ├── merchant/         # 商家组件
+│   │   ├── news/             # 新闻组件
 │   │   └── ...
 │   └── lib/                   # 工具库
+│       ├── db.ts             # Mock DB + MySQL 双模式数据库
+│       ├── mysql.ts          # MySQL 连接池
+│       ├── email/service.ts  # 邮件服务 (QQ邮箱SMTP)
 │       ├── auth/             # 认证相关
-│       ├── hooks/            # 自定义 Hooks
-│       └── utils.ts          # 工具函数
+│       ├── ai/               # AI 相关
+│       └── hooks/            # 自定义 Hooks
+├── sql/                       # MySQL 建表和种子数据
+│   ├── schema.sql            # 15张表DDL
+│   ├── seed.sql              # 种子数据
+│   └── deploy-mysql.sh       # 一键部署脚本
 ├── public/                    # 静态资源
-├── .coze/                    # Coze 配置
-└── package.json
+└── update-fubao.sh           # 服务器一键更新脚本
 ```
 
 ---
@@ -61,9 +76,6 @@ pnpm dev
 # 生产构建
 pnpm build
 
-# 生产运行
-pnpm start
-
 # 代码检查
 pnpm lint
 pnpm ts-check
@@ -71,98 +83,151 @@ pnpm ts-check
 
 ---
 
-## 核心功能
+## 核心功能清单
 
-### 1. AI 助手
-
+### 1. 用户系统
 | 路径 | 说明 |
 |------|------|
-| `/ai-assistant` | AI 助手对话页面 |
-| `/api/ai/chat` | AI 聊天 API (SSE 流式) |
+| `/login` | 用户登录（邮箱/手机号） |
+| `/register` | 用户注册 |
+| `/user` | 用户中心（订单/收藏/钱包/积分/地址/通知/优惠券） |
+| API `/api/auth/*` | 认证API（登录/注册/个人信息） |
+| API `/api/notifications` | 用户通知（查询/标记已读/删除） |
 
-**特性：**
-- 流式输出 (SSE)
-- 知识库检索增强
-- 多模型支持
+### 2. 商品商城
+| 路径 | 说明 |
+|------|------|
+| `/shop` | 商品列表（分类/搜索/筛选） |
+| `/shop/[id]` | 商品详情（多语言/推荐） |
+| `/categories` | 商品分类 |
+| API `/api/goods` | 商品CRUD + 多语言(locale) |
+| API `/api/goods/i18n` | 商品翻译管理 |
+| API `/api/categories` | 分类管理 |
 
-### 2. 免费送活动
+### 3. 购物车与订单
+| 路径 | 说明 |
+|------|------|
+| `/cart` | 购物车 |
+| `/checkout` | 结账 |
+| `/order/[id]` | 订单详情 |
+| `/payment/[id]` | 支付页面 |
+| API `/api/cart` | 购物车API |
+| API `/api/orders` | 订单API（创建/查询/详情） |
+| API `/api/addresses` | 收货地址API |
 
+### 4. AI 智能助手
+| 路径 | 说明 |
+|------|------|
+| `/ai-assistant` | AI 对话页面 |
+| `/knowledge` | 知识库页面 |
+| API `/api/ai/chat` | AI 聊天 (SSE 流式) |
+| API `/api/ai/models` | 可用模型列表 |
+| API `/api/ai/knowledge/search` | 知识库检索 |
+| API `/api/admin/ai-training/*` | AI 训练管理 |
+| API `/api/admin/ai-content/*` | AI 内容生成 |
+| API `/api/admin/ai-knowledge` | 知识库管理 |
+
+### 5. 免费送活动
 | 路径 | 说明 |
 |------|------|
 | `/free-gifts` | 免费送列表 |
 | `/free-gifts/[id]` | 免费送详情 |
+| API `/api/free-gifts` | 免费送API |
 
-**特性：**
-- 用户需登录参与
-- 积分/任务兑换
-- 分享邀请
-
-### 3. 用户认证
-
+### 6. 商家中心
 | 路径 | 说明 |
 |------|------|
-| `/login` | 用户登录 |
-| `/register` | 用户注册 |
+| `/merchant/login` | 商家登录 |
+| `/merchant/dashboard` | 商家后台（商品/订单/统计） |
+| `/merchant/apply` | 商家入驻申请 |
+| API `/api/merchant/*` | 商家API（登录/商品/订单/入驻） |
+| API `/api/merchants` | 商家列表/详情 |
 
-**特性：**
-- 邮箱/手机号登录
-- JWT Token 认证
-- 本地 Mock 模式（无数据库时）
+### 7. 新闻资讯
+| 路径 | 说明 |
+|------|------|
+| `/news` | 新闻列表 |
+| `/news/[slug]` | 新闻详情 |
+| API `/api/news` | 新闻API |
+| API `/api/articles` | 文章API |
+
+### 8. 百科
+| 路径 | 说明 |
+|------|------|
+| `/baike` | 百科首页 |
+| `/baike/[slug]` | 百科文章 |
+
+### 9. 管理后台
+| 路径 | 说明 |
+|------|------|
+| `/admin/login` | 管理员登录 |
+| `/admin` | 仪表盘 |
+| `/admin/goods` | 商品管理 |
+| `/admin/goods-i18n` | 商品翻译管理 |
+| `/admin/orders` | 订单管理 |
+| `/admin/users` | 用户管理 |
+| `/admin/merchants` | 商家管理 |
+| `/admin/news` | 新闻管理 |
+| `/admin/categories` | 分类管理 |
+| `/admin/banners` | 轮播图管理 |
+| `/admin/settings` | 系统设置（含邮件测试） |
+| `/admin/database` | 数据库管理（状态/初始化/测试） |
+| `/admin/ai-training` | AI 训练 |
+| `/admin/ai-content` | AI 内容生成 |
+| `/admin/ai-knowledge` | 知识库管理 |
+| `/admin/ai-models` | AI 模型配置 |
+
+### 10. 邮件服务
+| 功能 | 说明 |
+|------|------|
+| 订单确认邮件 | 下单成功自动发送 |
+| 注册欢迎邮件 | 新用户注册发送 |
+| 发货通知邮件 | 商家发货后发送 |
+| SMTP测试 | 管理后台可测试连接和发送 |
+| 配置 | QQ邮箱 smtp.qq.com:465 SSL |
+
+### 11. 数据库
+| 功能 | 说明 |
+|------|------|
+| MySQL 优先 | 有MySQL环境时自动使用 |
+| Mock DB 降级 | MySQL不可用时自动降级到内存数据库 |
+| 文件持久化 | Mock DB 数据保存到 .db-data/mock-db.json |
+| 一键部署 | sql/deploy-mysql.sh 脚本 |
+| 数据库管理 | /admin/database 管理界面 |
 
 ---
 
-## 组件库
+## API 调用规范
 
-### UI 基础组件 (`components/ui/`)
-
-| 组件 | 说明 |
-|------|------|
-| Toast | 通知提示 |
-| Modal/Dialog | 对话框 |
-| Card | 卡片 |
-| Button | 按钮 |
-| Input | 输入框 |
-| Select | 选择器 |
-| Tabs | 标签页 |
-
-### AI 组件 (`components/ai/`)
-
-| 组件 | 说明 |
-|------|------|
-| AIChat | AI 聊天主组件 |
-| QuickStartAI | 快速启动 AI |
-| FloatingAIButton | 悬浮 AI 按钮 |
-
-### 业务组件
-
-| 目录 | 说明 |
-|------|------|
-| `auth/` | 认证组件 |
-| `cart/` | 购物车组件 |
-| `order/` | 订单组件 |
-| `product/` | 商品组件 |
-
----
-
-## API 调用
-
-### 基础请求
+### 数据库操作
 
 ```typescript
-import { api } from '@/lib/api-request';
+import { query, insert, update, remove, count } from '@/lib/db';
 
-export async function getData(params: { page?: number }) {
-  return api.get('/endpoint', params);
-}
+// 查询 (SQL方式)
+const goods = await query('SELECT * FROM goods WHERE status = ? LIMIT ?', [1, 20]);
+
+// 插入
+const id = await insert('goods', { name: '商品', price: 100 });
+
+// 更新
+await update('goods', { price: 200 }, { id: 1 });
+
+// 删除
+await remove('goods', { id: 1 });
+
+// 计数
+const total = await count('goods', { status: 1 });
 ```
 
-### AI API
+### 认证
 
 ```typescript
-// 聊天 (SSE 流式)
-POST /api/ai/chat
-Body: { messages: [{role, content}], model?, temperature? }
-Response: SSE stream
+import { getAuthUserId } from '@/lib/auth/apiAuth';
+
+// API路由中获取用户ID
+const userId = await getAuthUserId(request);
+// 支持Cookie(auth_token) + Authorization Header 双通道
 ```
 
 ---
@@ -189,71 +254,40 @@ export function Component() {
 - 工具函数: `camelCase` → `useUserData.ts`
 - 页面文件: `kebab-case` → `user-profile/page.tsx`
 
-### 命名规范
-
-| 类型 | 规则 | 示例 |
-|------|------|------|
-| 变量 | camelCase | `userName` |
-| 常量 | UPPER_SNAKE | `MAX_COUNT` |
-| 组件 | PascalCase | `UserCard` |
-| 布尔 | is/has 前缀 | `isLoading` |
-
 ---
 
 ## Mock 数据模式
 
-当数据库不可用时，系统会自动切换到本地 Mock 模式：
+当 MySQL 不可用时自动降级到 Mock DB：
 
 ```typescript
 import { mockUsers } from '@/lib/auth/mockStore';
 
-// 查找用户
-const user = mockUsers.find(email);
-
-// 添加用户
-mockUsers.add({ id, name, email, phone, password });
+// 预置测试用户
+// 邮箱: test@example.com / demo@example.com  密码: admin123
+// 管理后台: admin / editor  密码: admin123
 ```
-
-**预置测试用户：**
-
-| 邮箱 | 密码 |
-|------|------|
-| test@example.com | admin123 |
-| demo@example.com | admin123 |
-
-**管理后台账户：**
-
-| 用户名 | 密码 |
-|--------|------|
-| admin | admin123 |
-| editor | admin123 |
 
 ---
 
 ## 环境变量
 
 ```bash
-# API 模式
-NEXT_PUBLIC_API_MODE=local        # local 或 remote
+# 数据库
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=fubao
+MYSQL_PASSWORD=XNmEbBwKKe5HwnNW
+MYSQL_DATABASE=fubao
 
-# Supabase (可选)
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# API 模式
+NEXT_PUBLIC_API_MODE=local
 
 # AI 模型
-AI_PROVIDER=volcengine          # volcengine | deepseek | kimi
-```
+AI_PROVIDER=volcengine
 
----
-
-## 快捷命令
-
-```bash
-pnpm dev          # 开发模式
-pnpm build        # 生产构建
-pnpm start        # 生产运行
-pnpm lint         # 代码检查
-pnpm ts-check     # 类型检查
+# 邮件 SMTP (QQ邮箱)
+# 配置存储在 settings 表中，无需环境变量
 ```
 
 ---

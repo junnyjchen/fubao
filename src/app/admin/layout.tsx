@@ -79,8 +79,6 @@ const navItems: NavItem[] = [
   { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/admin/orders', permission: 'order.view' },
   { key: 'merchants', label: '商戶管理', icon: Store, href: '/admin/merchants', permission: 'merchant.view' },
   { key: 'merchant-applications', label: '商戶審核', icon: ClipboardCheck, href: '/admin/merchant-applications', permission: 'merchant.audit' },
-  { key: 'certificates', label: '證書管理', icon: Shield, href: '/admin/certificates', permission: 'content.view' },
-  { key: 'coupons', label: '優惠券管理', icon: Ticket, href: '/admin/coupons', permission: 'operation.coupon' },
   {
     key: 'content',
     label: '內容運營',
@@ -90,22 +88,14 @@ const navItems: NavItem[] = [
     children: [
       { key: 'content', label: '內容管理', icon: FileText, href: '/admin/content', permission: 'content.view' },
       { key: 'banners', label: '輪播圖管理', icon: Image, href: '/admin/banners', permission: 'operation.banner' },
-      { key: 'announcements', label: '公告管理', icon: Bell, href: '/admin/announcements', permission: 'operation.banner' },
-      { key: 'wiki', label: '百科管理', icon: FileText, href: '/admin/wiki', permission: 'content.wiki' },
-      { key: 'videos', label: '視頻管理', icon: FileText, href: '/admin/videos', permission: 'content.video' },
       { key: 'news', label: '新聞管理', icon: FileText, href: '/admin/news', permission: 'content.news' },
       { key: 'ai-content', label: 'AI內容生成', icon: FileText, href: '/admin/ai-content', permission: 'content.news' },
       { key: 'ai-training', label: 'AI訓練中心', icon: Brain, href: '/admin/ai-training', permission: 'system.settings' },
       { key: 'ai-assistant', label: 'AI助手', icon: MessageSquare, href: '/admin/ai-assistant', permission: 'content.view' },
     ],
   },
-  { key: 'page-builder', label: '頁面裝修', icon: Palette, href: '/admin/page-builder', permission: 'operation.page' },
-  { key: 'tickets', label: '客服工單', icon: MessageSquare, href: '/admin/tickets', permission: 'order.view' },
-  { key: 'feedback', label: '反饋管理', icon: MessageSquare, href: '/admin/feedback', permission: 'user.view' },
   { key: 'distribution', label: '分銷管理', icon: TrendingUp, href: '/admin/distribution', permission: 'data.stats' },
-  { key: 'withdrawals', label: '提現審核', icon: Wallet, href: '/admin/withdrawals', permission: 'data.stats' },
   { key: 'users', label: '用戶管理', icon: Users, href: '/admin/users', permission: 'user.view' },
-  { key: 'finance', label: '財務管理', icon: Wallet, href: '/admin/finance', permission: 'data.stats' },
   { key: 'database', label: '數據管理', icon: Database, href: '/admin/database', permission: 'system.settings' },
   {
     key: 'ai-config',
@@ -403,12 +393,6 @@ export default function AdminRootLayout({
               <Link href="/" target="_blank">
                 <Button variant="outline" size="sm">
                   訪問前台
-                </Button>
-              </Link>
-              <Link href="/admin/page-builder">
-                <Button variant="outline" size="sm">
-                  <Palette className="w-4 h-4 mr-2" />
-                  頁面裝修
                 </Button>
               </Link>
             </div>

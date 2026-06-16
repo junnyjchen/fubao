@@ -1,15 +1,12 @@
-/* @ts-nocheck */
 /**
  * @fileoverview 用户通知API
- * @description 获取用户通知列表
+ * @description 获取用户通知列表、标记已读、删除通知
  * @module app/api/notifications/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClient } from '@/storage/database/supabase-client';
+import { query, update, remove } from '@/lib/db';
 import { getAuthUserId } from '@/lib/auth/apiAuth';
-
-const supabase = getSupabaseClient();
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,46 +18,34 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get('unread') === 'true';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    // 构建查询
-    let query = supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    let sql = 'SELECT * FROM notifications WHERE user_id = ?';
+    const params: unknown[] = [userId];
 
     if (unreadOnly) {
-      query = query.eq('read', false);
+      sql += ' AND read = ?';
+      params.push(false);
     }
 
-    const { data: notifications, error } = await query;
+    sql += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(limit);
 
-    if (error) {
-      console.error('获取通知失败:', error);
-      return NextResponse.json(
-        { error: '獲取通知失敗' },
-        { status: 500 }
-      );
-    }
+    const notifications = await query(sql, params);
 
     // 获取未读数量
-    const { count: unreadCount } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('read', false);
+    const unreadResult = await query(
+      'SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND read = ?',
+      [userId, false]
+    );
+    const unreadCount = (unreadResult as any[])?.[0]?.cnt || 0;
 
     return NextResponse.json({
       success: true,
-      data: notifications || [],
-      unreadCount: unreadCount || 0,
+      data: notifications,
+      unreadCount,
     });
   } catch (error) {
     console.error('通知API错误:', error);
-    return NextResponse.json(
-      { error: '服務器錯誤' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
   }
 }
 
@@ -76,49 +61,25 @@ export async function PUT(request: NextRequest) {
     const { notificationId, all } = body;
 
     if (all) {
-      // 标记所有通知为已读
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userId)
-        .eq('read', false);
-
-      if (error) {
-        console.error('标记所有通知已读失败:', error);
-        return NextResponse.json(
-          { error: '操作失敗' },
-          { status: 500 }
-        );
+      // 标记该用户所有通知为已读 - 先查询再逐个更新
+      const unreadList = await query(
+        'SELECT id FROM notifications WHERE user_id = ? AND read = ?',
+        [userId, false]
+      );
+      for (const n of unreadList as any[]) {
+        await update('notifications', { read: true }, { id: n.id, user_id: userId });
       }
     } else if (notificationId) {
       // 标记单个通知为已读
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('id', notificationId)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('标记通知已读失败:', error);
-        return NextResponse.json(
-          { error: '操作失敗' },
-          { status: 500 }
-        );
-      }
+      await update('notifications', { read: true }, { id: notificationId, user_id: userId });
     } else {
-      return NextResponse.json(
-        { error: '缺少參數' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '缺少參數' }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('标记已读API错误:', error);
-    return NextResponse.json(
-      { error: '服務器錯誤' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
   }
 }
 
@@ -135,47 +96,18 @@ export async function DELETE(request: NextRequest) {
     const all = searchParams.get('all') === 'true';
 
     if (all) {
-      // 删除所有通知
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('删除所有通知失败:', error);
-        return NextResponse.json(
-          { error: '操作失敗' },
-          { status: 500 }
-        );
-      }
+      // 删除该用户所有通知
+      await remove('notifications', { user_id: userId });
     } else if (notificationId) {
       // 删除单个通知
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', notificationId)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('删除通知失败:', error);
-        return NextResponse.json(
-          { error: '操作失敗' },
-          { status: 500 }
-        );
-      }
+      await remove('notifications', { id: parseInt(notificationId), user_id: userId });
     } else {
-      return NextResponse.json(
-        { error: '缺少參數' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: '缺少參數' }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('删除通知API错误:', error);
-    return NextResponse.json(
-      { error: '服務器錯誤' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: '服務器錯誤' }, { status: 500 });
   }
 }

@@ -51,13 +51,9 @@ export function Header() {
 
   const navItems = [
     { href: '/', label: t.nav.home },
-    { href: '/wiki', label: t.nav.baike },
     { href: '/shop', label: t.nav.shop },
     { href: '/free', label: '免費領取', highlight: true, badge: 'NEW' },
-    { href: '/video', label: t.nav.video },
-    { href: '/shares', label: t.nav.ruyuan, icon: Camera, highlight: true },
     { href: '/news', label: t.nav.news },
-    { href: '/verify', label: t.nav.verify },
     { href: '/ai-assistant', label: t.nav.aiAssistant, icon: Sparkles },
   ];
 
@@ -160,21 +156,6 @@ export function Header() {
                 </Button>
               </Link>
 
-              {/* Quick Order */}
-              <Link href="/quick-order" className="hidden sm:block">
-                <Button variant="ghost" size="icon" className="h-9 w-9" title={t.nav.quickOrder}>
-                  <Zap className="h-4 w-4" />
-                  <span className="sr-only">{t.nav.quickOrder}</span>
-                </Button>
-              </Link>
-
-              {/* Order Query */}
-              <Link href="/order/query" className="hidden sm:block">
-                <Button variant="ghost" size="icon" className="h-9 w-9" title={t.nav.orderQuery}>
-                  <FileSearch className="h-4 w-4" />
-                  <span className="sr-only">{t.nav.orderQuery}</span>
-                </Button>
-              </Link>
 
               {/* Cart */}
               <Link href="/cart">

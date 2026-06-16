@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useI18n } from '@/lib/i18n';
-import { AnnouncementBar } from '@/components/announcement/AnnouncementBar';
+
 import { HomeRecommendations } from '@/components/shop/ProductRecommendations';
 import { HomeSkeleton } from '@/components/home/HomeSkeleton';
 import { 
@@ -402,9 +402,9 @@ export function HomePage() {
 
   const features = [
     { icon: Gift, title: t.home.features.freeGift, href: '/free-gifts' },
-    { icon: ShieldCheck, title: t.nav.verify, href: '/verify' },
-    { icon: BookOpen, title: t.home.features.wiki, href: '/wiki' },
     { icon: Sparkles, title: t.nav.aiAssistant, href: '/ai-assistant' },
+    { icon: BookOpen, title: t.nav.news, href: '/news' },
+    { icon: Award, title: t.nav.shop, href: '/shop' },
   ];
 
   if (loading) {
@@ -413,9 +413,6 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* 公告栏 */}
-      <AnnouncementBar />
-      
       {/* Hero Banner */}
       <section className="relative h-[50vh] min-h-[400px] max-h-[600px] overflow-hidden" aria-label="Hero Banner">
         {banners.length > 0 ? (
@@ -501,19 +498,19 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 今日符箓/百科推荐 */}
+      {/* 今日推荐 */}
       {todayArticle && (
         <section className="container mx-auto px-4 py-8" aria-label="Today's Article">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">{t.home.wiki}</h2>
+            <h2 className="text-2xl font-bold">今日推薦</h2>
             <Button variant="ghost" asChild className="group">
-              <Link href="/wiki" className="text-muted-foreground hover:text-foreground">
+              <Link href="/news" className="text-muted-foreground hover:text-foreground">
                 {t.home.viewMore}
                 <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
               </Link>
             </Button>
           </div>
-          <Link href={`/wiki/${todayArticle.slug || todayArticle.id}`} className="block group">
+          <Link href={`/news/${todayArticle.slug || todayArticle.id}`} className="block group">
             <Card className="overflow-hidden md:flex hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
               <div className="relative w-full md:w-80 h-48 md:h-auto flex-shrink-0 overflow-hidden">
                 {todayArticle.cover_image ? (
@@ -619,31 +616,6 @@ export function HomePage() {
         <HomeRecommendations />
       </section>
 
-      {/* 精选视频 */}
-      {videos.length > 0 && (
-        <section className="container mx-auto px-4 py-8" aria-label="Featured Videos">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                <Play className="w-5 h-5 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold">{t.home.featuredVideos}</h2>
-            </div>
-            <Button variant="ghost" asChild className="group">
-              <Link href="/videos" className="text-muted-foreground hover:text-foreground">
-                {t.home.moreVideos}
-                <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
-              </Link>
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {videos.map((item) => (
-              <VideoCard key={item.id} item={item} />
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* 玄门头条 */}
       <section className="container mx-auto px-4 py-8" aria-label="Latest News">
         <div className="flex items-center justify-between mb-6">
@@ -666,67 +638,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 视频学堂入口 */}
-      <section className="container mx-auto px-4 py-8" aria-label="Video Learning">
-        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 overflow-hidden hover:shadow-lg transition-all duration-300">
-          <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                <Play className="w-8 h-8 text-primary" />
-              </div>
-              <div className="text-center md:text-start">
-                <h3 className="text-xl font-bold mb-1">{t.nav.video}</h3>
-                <p className="text-muted-foreground">{t.home.videoCategories}</p>
-              </div>
-            </div>
-            <Button size="lg" asChild className="group">
-              <Link href="/videos">
-                {t.home.exploreVideos}
-                <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </section>
-
-      {/* 如愿 - 晒图分享入口 */}
-      <section className="container mx-auto px-4 py-8 pb-16" aria-label="Wish Sharing">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-primary/10">
-          <div className="absolute inset-0 bg-[url('/pattern.svg')] opacity-5" aria-hidden="true" />
-          <div className="relative p-8 md:p-12">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="text-center md:text-start">
-                <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
-                    <span className="text-2xl">🙏</span>
-                  </div>
-                  <h3 className="text-2xl md:text-3xl font-bold">{t.home.ruyuan.title}</h3>
-                </div>
-                <p className="text-muted-foreground text-lg mb-4">
-                  {t.home.ruyuan.subtitle}
-                </p>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  {t.home.ruyuan.description}
-                </p>
-              </div>
-              <div className={`flex flex-col sm:flex-row gap-3 ${isRTL ? 'sm:flex-row-reverse' : ''}`}>
-                <Link href="/shares">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2">
-                    <ImageIcon className="w-5 h-5" />
-                    {t.home.ruyuan.browse}
-                  </Button>
-                </Link>
-                <Link href="/shares/publish">
-                  <Button size="lg" className="w-full sm:w-auto gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
-                    <Plus className="w-5 h-5" />
-                    {t.home.ruyuan.publish}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

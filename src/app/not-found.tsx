@@ -29,9 +29,9 @@ export default function NotFound() {
               </Link>
             </Button>
             <Button variant="outline" asChild className="gap-2">
-              <Link href="/search">
+              <Link href="/shop">
                 <Search className="w-4 h-4" />
-                搜索商品
+                瀏覽商品
               </Link>
             </Button>
           </div>
@@ -43,9 +43,9 @@ export default function NotFound() {
             <div className="flex flex-wrap gap-2 justify-center">
               {[
                 { label: '商品商城', href: '/shop' },
-                { label: '玄門百科', href: '/baike' },
-                { label: '證書驗證', href: '/verify' },
-                { label: '幫助中心', href: '/help' },
+                { label: '新聞資訊', href: '/news' },
+                { label: '免費領取', href: '/free-gifts' },
+                { label: 'AI助手', href: '/ai-assistant' },
               ].map((link) => (
                 <Link
                   key={link.href}
