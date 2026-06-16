@@ -1,8 +1,10 @@
-import { pgTable, index, serial, varchar, boolean, timestamp, unique, text, integer, jsonb, numeric, date, bigserial, smallint, bigint, foreignKey, uuid, pgPolicy, pgSequence } from "drizzle-orm/pg-core"
+import { pgTable, index, serial, varchar, boolean, timestamp, unique, text, integer, jsonb, numeric, date, bigserial, smallint, bigint, foreignKey, pgPolicy, uuid, pgSequence } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-// 生成随机UUID的函数
-const gen_random_uuid = () => sql`gen_random_uuid()`;
+// MySQL compatibility shim
+function gen_random_uuid(): ReturnType<typeof sql> {
+  return sql`(UUID())`;
+}
 
 
 export const ticketNoSeq = pgSequence("ticket_no_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
@@ -103,6 +105,8 @@ export const categories = pgTable("categories", {
 	sort: integer().default(0),
 	status: boolean().default(true).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	isActive: boolean("is_active").default(true),
+	sortOrder: integer("sort_order").default(0),
 }, (table) => [
 	index("categories_parent_id_idx").using("btree", table.parentId.asc().nullsLast().op("int4_ops")),
 	index("categories_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
@@ -327,24 +331,6 @@ export const reviews = pgTable("reviews", {
 	index("reviews_goods_id_idx").using("btree", table.goodsId.asc().nullsLast().op("int4_ops")),
 	index("reviews_order_id_idx").using("btree", table.orderId.asc().nullsLast().op("int4_ops")),
 	index("reviews_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
-]);
-
-export const adminUsers = pgTable("admin_users", {
-	id: serial().primaryKey().notNull(),
-	username: varchar({ length: 50 }).notNull().unique(),
-	password: varchar({ length: 255 }).notNull(),
-	name: varchar({ length: 100 }),
-	email: varchar({ length: 255 }),
-	phone: varchar({ length: 20 }),
-	role: varchar({ length: 20 }).default('admin').notNull(),
-	status: boolean().default(true).notNull(),
-	lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: 'string' }),
-	lastLoginIp: varchar("last_login_ip", { length: 50 }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
-}, (table) => [
-	index("admin_users_username_idx").using("btree", table.username.asc().nullsLast().op("text_ops")),
-	index("admin_users_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
 ]);
 
 export const users = pgTable("users", {
@@ -868,25 +854,6 @@ export const balanceTransactions = pgTable("balance_transactions", {
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 
-export const userOauthAccounts = pgTable("user_oauth_accounts", {
-	id: uuid().defaultRandom().primaryKey().notNull(),
-	userId: varchar("user_id", { length: 36 }).notNull(),
-	provider: varchar({ length: 20 }).notNull(),
-	providerUserId: varchar("provider_user_id", { length: 255 }).notNull(),
-	providerEmail: varchar("provider_email", { length: 255 }),
-	providerName: varchar("provider_name", { length: 100 }),
-	providerAvatar: varchar("provider_avatar", { length: 500 }),
-	accessToken: text("access_token"),
-	refreshToken: text("refresh_token"),
-	tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true, mode: 'string' }),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
-}, (table) => [
-	index("user_oauth_accounts_provider_idx").using("btree", table.provider.asc().nullsLast().op("text_ops")),
-	index("user_oauth_accounts_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
-	unique("user_oauth_accounts_provider_user_unique").on(table.provider, table.providerUserId),
-]);
-
 export const oauthProviders = pgTable("oauth_providers", {
 	id: serial().primaryKey().notNull(),
 	provider: varchar({ length: 20 }).notNull(),
@@ -907,4 +874,133 @@ export const oauthProviders = pgTable("oauth_providers", {
 	pgPolicy("oauth_providers_允许公开更新", { as: "permissive", for: "update", to: ["public"] }),
 	pgPolicy("oauth_providers_允许公开写入", { as: "permissive", for: "insert", to: ["public"] }),
 	pgPolicy("oauth_providers_允许公开读取", { as: "permissive", for: "select", to: ["public"] }),
+]);
+
+export const userOauthAccounts = pgTable("user_oauth_accounts", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	userId: varchar("user_id", { length: 36 }).notNull(),
+	provider: varchar({ length: 20 }).notNull(),
+	providerUserId: varchar("provider_user_id", { length: 255 }).notNull(),
+	providerEmail: varchar("provider_email", { length: 255 }),
+	providerName: varchar("provider_name", { length: 100 }),
+	providerAvatar: varchar("provider_avatar", { length: 500 }),
+	accessToken: text("access_token"),
+	refreshToken: text("refresh_token"),
+	tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("user_oauth_accounts_provider_idx").using("btree", table.provider.asc().nullsLast().op("text_ops")),
+	index("user_oauth_accounts_user_id_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
+	unique("user_oauth_accounts_provider_user_unique").on(table.provider, table.providerUserId),
+	pgPolicy("user_oauth_accounts_允许公开删除", { as: "permissive", for: "delete", to: ["public"], using: sql`true` }),
+	pgPolicy("user_oauth_accounts_允许公开更新", { as: "permissive", for: "update", to: ["public"] }),
+	pgPolicy("user_oauth_accounts_允许公开写入", { as: "permissive", for: "insert", to: ["public"] }),
+	pgPolicy("user_oauth_accounts_允许公开读取", { as: "permissive", for: "select", to: ["public"] }),
+]);
+
+export const pageBlocks = pgTable("page_blocks", {
+	id: serial().primaryKey().notNull(),
+	type: varchar({ length: 50 }).notNull(),
+	title: varchar({ length: 255 }).notNull(),
+	order: integer().default(0).notNull(),
+	visible: boolean().default(true).notNull(),
+	config: jsonb().default({}).notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => [
+	index("idx_page_blocks_order").using("btree", table.order.asc().nullsLast().op("int4_ops")),
+]);
+
+export const aiConfigurations = pgTable("ai_configurations", {
+	id: serial().primaryKey().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	provider: varchar({ length: 50 }).notNull(),
+	modelId: varchar("model_id", { length: 100 }).notNull(),
+	apiKey: text("api_key"),
+	baseUrl: varchar("base_url", { length: 500 }),
+	enabled: boolean().default(true).notNull(),
+	isDefault: boolean("is_default").default(false),
+	settings: jsonb(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("ai_config_enabled_idx").using("btree", table.enabled.asc().nullsLast().op("bool_ops")),
+]);
+
+export const newsSources = pgTable("news_sources", {
+	id: serial().primaryKey().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	keywords: text().notNull(),
+	language: varchar({ length: 10 }).default('zh'),
+	targetLanguage: varchar("target_language", { length: 10 }).default('zh-TW'),
+	categoryId: integer("category_id"),
+	count: integer().default(5),
+	enabled: boolean().default(true).notNull(),
+	lastRunAt: timestamp("last_run_at", { withTimezone: true, mode: 'string' }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("news_sources_enabled_idx").using("btree", table.enabled.asc().nullsLast().op("bool_ops")),
+]);
+
+export const autoPublishTasks = pgTable("auto_publish_tasks", {
+	id: serial().primaryKey().notNull(),
+	name: varchar({ length: 100 }).notNull(),
+	sourceIds: jsonb("source_ids"),
+	schedule: varchar({ length: 50 }).notNull(),
+	status: varchar({ length: 20 }).default('active'),
+	lastRunAt: timestamp("last_run_at", { withTimezone: true, mode: 'string' }),
+	lastResult: jsonb("last_result"),
+	autoPublish: boolean("auto_publish").default(false),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("auto_publish_tasks_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+]);
+
+export const aiGeneratedArticles = pgTable("ai_generated_articles", {
+	id: serial().primaryKey().notNull(),
+	sourceId: integer("source_id").notNull(),
+	taskId: integer("task_id"),
+	originalTitle: text("original_title").notNull(),
+	originalContent: text("original_content"),
+	originalUrl: varchar("original_url", { length: 500 }),
+	originalLanguage: varchar("original_language", { length: 10 }).default('zh'),
+	translatedTitle: text("translated_title"),
+	translatedContent: text("translated_content"),
+	summary: text(),
+	cover: varchar({ length: 500 }),
+	categoryId: integer("category_id"),
+	status: varchar({ length: 20 }).default('pending'),
+	publishedAt: timestamp("published_at", { withTimezone: true, mode: 'string' }),
+	publishedArticleId: integer("published_article_id"),
+	aiModel: varchar("ai_model", { length: 100 }),
+	aiConfigId: integer("ai_config_id"),
+	errorMessage: text("error_message"),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("ai_gen_articles_created_at_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamptz_ops")),
+	index("ai_gen_articles_source_id_idx").using("btree", table.sourceId.asc().nullsLast().op("int4_ops")),
+	index("ai_gen_articles_status_idx").using("btree", table.status.asc().nullsLast().op("text_ops")),
+]);
+
+export const adminUsers = pgTable("admin_users", {
+	id: serial().primaryKey().notNull(),
+	username: varchar({ length: 50 }).notNull(),
+	password: varchar({ length: 255 }).notNull(),
+	name: varchar({ length: 100 }),
+	email: varchar({ length: 255 }),
+	phone: varchar({ length: 20 }),
+	role: varchar({ length: 20 }).default('admin').notNull(),
+	status: boolean().default(true).notNull(),
+	lastLoginAt: timestamp("last_login_at", { withTimezone: true, mode: 'string' }),
+	lastLoginIp: varchar("last_login_ip", { length: 50 }),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("admin_users_status_idx").using("btree", table.status.asc().nullsLast().op("bool_ops")),
+	index("admin_users_username_idx").using("btree", table.username.asc().nullsLast().op("text_ops")),
+	unique("admin_users_username_key").on(table.username),
 ]);
