@@ -18,7 +18,6 @@ import {
   Plus,
   Image as ImageIcon,
   Gift,
-  Play,
   Eye,
   Calendar,
   ArrowRight,
@@ -70,27 +69,6 @@ interface News {
   type: number;
   views: number;
   published_at: string | null;
-}
-
-interface Article {
-  id: number;
-  title: string;
-  slug: string | null;
-  cover_image: string | null;
-  summary: string | null;
-  view_count: number;
-  created_at: string;
-}
-
-interface Video {
-  id: number;
-  title: string;
-  slug: string | null;
-  cover: string | null;
-  duration: number;
-  views: number;
-  author: string;
-  category: { name: string } | null;
 }
 
 // 功能入口组件 - 使用 memo 优化
@@ -256,61 +234,6 @@ const NewsCard = memo(function NewsCard({ item, t }: { item: News; t: any }) {
 });
 
 // 视频卡片组件 - 使用 memo 优化
-const VideoCard = memo(function VideoCard({ item }: { item: Video }) {
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <Link 
-      href={`/videos/${item.id}`}
-      className="group block"
-      aria-label={item.title}
-    >
-      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-        <div className="relative aspect-video bg-muted overflow-hidden">
-          {item.cover ? (
-            <Image
-              src={item.cover}
-              alt={item.title}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/10 to-primary/5">
-              <Play className="text-4xl text-primary/30 w-12 h-12" />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-            <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300">
-              <Play className="w-6 h-6 text-primary-foreground ms-1" />
-            </div>
-          </div>
-          <div className="absolute bottom-2 end-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-            {formatDuration(item.duration)}
-          </div>
-        </div>
-        <CardContent className="p-4">
-          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors min-h-[2.5rem]">
-            {item.title}
-          </h3>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{item.author}</span>
-            <span className="flex items-center gap-1">
-              <Eye className="w-3 h-3" />
-              {item.views}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  );
-});
-
 // Banner 指示器组件
 const BannerIndicator = memo(function BannerIndicator({ 
   total, 
@@ -346,8 +269,6 @@ export function HomePage() {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [goods, setGoods] = useState<Goods[]>([]);
   const [news, setNews] = useState<News[]>([]);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [todayArticle, setTodayArticle] = useState<Article | null>(null);
   const [currentBanner, setCurrentBanner] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -355,27 +276,21 @@ export function HomePage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [bannersRes, goodsRes, newsRes, wikiRes, videosRes] = await Promise.all([
+        const [bannersRes, goodsRes, newsRes] = await Promise.all([
           fetch('/api/banners?position=home'),
           fetch('/api/goods?hot=true&limit=10'),
           fetch('/api/news?limit=4'),
-          fetch('/api/wiki/articles?limit=1&is_featured=true'),
-          fetch('/api/videos?limit=4&is_featured=true'),
         ]);
 
-        const [bannersData, goodsData, newsData, wikiData, videosData] = await Promise.all([
+        const [bannersData, goodsData, newsData] = await Promise.all([
           bannersRes.json(),
           goodsRes.json(),
           newsRes.json(),
-          wikiRes.json(),
-          videosRes.json(),
         ]);
 
         if (bannersData.data) setBanners(bannersData.data);
         if (goodsData.data) setGoods(goodsData.data);
         if (newsData.data) setNews(newsData.data);
-        if (wikiData.data?.[0]) setTodayArticle(wikiData.data[0]);
-        if (videosData.data) setVideos(videosData.data);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
@@ -497,54 +412,6 @@ export function HomePage() {
           ))}
         </div>
       </section>
-
-      {/* 今日推荐 */}
-      {todayArticle && (
-        <section className="container mx-auto px-4 py-8" aria-label="Today's Article">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">今日推薦</h2>
-            <Button variant="ghost" asChild className="group">
-              <Link href="/news" className="text-muted-foreground hover:text-foreground">
-                {t.home.viewMore}
-                <ArrowRight className={`ms-2 w-4 h-4 group-hover:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover:-translate-x-1' : ''}`} />
-              </Link>
-            </Button>
-          </div>
-          <Link href={`/news/${todayArticle.slug || todayArticle.id}`} className="block group">
-            <Card className="overflow-hidden md:flex hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-              <div className="relative w-full md:w-80 h-48 md:h-auto flex-shrink-0 overflow-hidden">
-                {todayArticle.cover_image ? (
-                  <Image
-                    src={todayArticle.cover_image}
-                    alt={todayArticle.title}
-                    fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full bg-gradient-to-br from-primary/20 to-primary/10">
-                    <BookOpen className="text-6xl text-primary/30 w-16 h-16" />
-                  </div>
-                )}
-              </div>
-              <CardContent className="flex-1 p-6 md:p-8 flex flex-col justify-center">
-                <Badge className="mb-4 w-fit">{t.home.recommendedReading}</Badge>
-                <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
-                  {todayArticle.title}
-                </h3>
-                {todayArticle.summary && (
-                  <p className="text-muted-foreground line-clamp-3">
-                    {todayArticle.summary}
-                  </p>
-                )}
-                <Button variant="link" className="mt-4 p-0 text-primary w-fit group/btn">
-                  {t.home.readFull}
-                  <ArrowRight className={`ms-2 w-4 h-4 group-hover/btn:translate-x-1 transition-transform ${isRTL ? 'rotate-180 group-hover/btn:-translate-x-1' : ''}`} />
-                </Button>
-              </CardContent>
-            </Card>
-          </Link>
-        </section>
-      )}
 
       {/* 免费领专属入口 */}
       <section className="container mx-auto px-4 py-4" aria-label="Free Gifts">

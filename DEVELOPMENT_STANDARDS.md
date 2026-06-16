@@ -9,45 +9,80 @@
 
 | 层级 | 技术 | 版本 | 说明 |
 |------|------|------|------|
-| 框架 | Next.js | 16 (App Router) | 全栈框架，前后端一体 |
+| 前端框架 | Next.js | 16 (App Router) | 前端 SSR/SSG + 开发用 API Routes |
+| 后端（生产） | PHP | 8.x + ThinkPHP | 生产环境后端，`php/` 目录 |
+| 后端（开发） | Next.js API Routes | - | 开发/预览用后端，`src/app/api/` 目录 |
 | UI库 | React | 19 | 禁止使用 React 17 旧语法 |
-| 语言 | TypeScript | 5 | 严格模式，零 any |
+| 语言 | TypeScript / PHP | TS5 / PHP8 | 前端 TS 严格模式；后端 PHP 强类型 |
 | 样式 | Tailwind CSS | 4 | 语义化变量，禁止硬编码颜色 |
 | 组件库 | shadcn/ui | 最新 | 基础UI组件唯一来源 |
-| 包管理 | pnpm | - | **严禁** npm / yarn |
+| 包管理 | pnpm / composer | - | 前端 pnpm（**严禁** npm/yarn）；后端 composer |
 | 数据库 | MySQL | 8.x | 生产环境；开发降级到 Mock DB |
-| 缓存 | 内存 | - | Mock DB 文件持久化 (.db-data/) |
 | AI | 豆包/DeepSeek/Kimi | - | SSE 流式输出 |
-| 邮件 | nodemailer | - | QQ邮箱 SMTP |
+| 邮件 | nodemailer / PHPMailer | - | QQ邮箱 SMTP (smtp.qq.com:465 SSL) |
 
 ---
 
 ## 二、目录结构规范
 
 ```
-src/
-├── app/                          # Next.js App Router 页面
-│   ├── page.tsx                  # 首页
-│   ├── layout.tsx                # 根布局
-│   ├── {module}/                 # 功能模块页面
-│   │   ├── page.tsx              # 列表页
-│   │   ├── [id]/page.tsx         # 详情页
-│   │   └── loading.tsx           # 加载态（可选）
-│   └── api/                      # API Routes（后端）
-│       └── {module}/route.ts     # 一个文件一个路由
-├── components/                   # 组件
-│   ├── ui/                       # shadcn/ui 基础组件（禁止手动修改）
-│   ├── {module}/                 # 业务模块组件
-│   └── common/                   # 跨模块通用组件
-└── lib/                          # 工具库
-    ├── db.ts                     # 数据库访问层（唯一入口）
-    ├── mysql.ts                  # MySQL 连接池
-    ├── auth/                     # 认证模块
-    ├── ai/                       # AI 模块
-    ├── email/                    # 邮件模块
-    ├── hooks/                    # 通用 Hooks
-    └── i18n/                     # 国际化
+src/                                # Next.js 前端 + 开发用 API
+├── app/                            # Next.js App Router 页面
+│   ├── page.tsx                    # 首页
+│   ├── layout.tsx                  # 根布局
+│   ├── {module}/                   # 功能模块页面
+│   │   ├── page.tsx                # 列表页
+│   │   ├── [id]/page.tsx           # 详情页
+│   │   └── loading.tsx             # 加载态（可选）
+│   └── api/                        # API Routes（开发用后端，生产用PHP）
+│       └── {module}/route.ts       # 一个文件一个路由
+├── components/                     # 组件
+│   ├── ui/                         # shadcn/ui 基础组件（禁止手动修改）
+│   ├── {module}/                   # 业务模块组件
+│   └── common/                     # 跨模块通用组件
+└── lib/                            # 工具库
+    ├── db.ts                       # 数据库访问层（唯一入口）
+    ├── mysql.ts                    # MySQL 连接池
+    ├── auth/                       # 认证模块
+    ├── ai/                         # AI 模块
+    ├── email/                      # 邮件模块
+    ├── hooks/                      # 通用 Hooks
+    └── i18n/                       # 国际化
+
+php/                                # PHP 后端（生产环境）
+├── app/
+│   ├── controller/                 # 控制器（与前端 API 路由一一对应）
+│   │   ├── admin/                  # 管理后台控制器
+│   │   ├── Auth.php                # 认证
+│   │   ├── Goods.php               # 商品
+│   │   ├── Order.php               # 订单
+│   │   └── ...                     # 其他业务控制器
+│   ├── common/                     # 公共模块（Jwt/Response/Validator/Cache）
+│   ├── middleware/                  # 中间件（AdminAuth）
+│   └── think/                      # ThinkPHP 核心扩展
+├── config/
+│   ├── database.php                # 数据库配置（环境变量驱动）
+│   └── app.php                     # 应用配置
+├── route/
+│   └── router.php                  # 路由映射（与前端 API 路径一一对应）
+├── public/
+│   └── index.php                   # 入口文件
+└── nginx.conf                      # Nginx 配置（API 域名指向 php/public）
+
+sql/                                # 数据库脚本
+├── schema.sql                      # 建表 DDL
+├── seed.sql                        # 种子数据
+└── deploy-mysql.sh                 # 一键部署
 ```
+
+### 双后端架构说明
+
+| 环境 | 后端 | 入口 | 数据库 |
+|------|------|------|--------|
+| **生产** | PHP (ThinkPHP) | `php/public/index.php` + Nginx | MySQL |
+| **开发/预览** | Next.js API Routes | `src/app/api/*/route.ts` | MySQL 优先，Mock DB 降级 |
+
+**核心原则**：前后端 API 接口路径和响应格式必须保持一致，PHP 控制器和 Next.js API Route 做到一一对应。
 
 ### 文件命名
 
@@ -225,6 +260,164 @@ if (!admin) return NextResponse.json({ error: '管理員權限不足' }, { statu
 - ❌ 在 API Route 中使用 `'use client'`
 - ❌ `catch` 块吞掉错误不处理
 - ❌ 返回非标准格式（如裸数组 `return NextResponse.json(data)`）
+
+---
+
+## 四-B、PHP 后端开发标准（生产环境）
+
+### 4B.1 架构概述
+
+PHP 后端基于 **ThinkPHP** 框架，运行在 Nginx + PHP-FPM 上，通过 `php/route/router.php` 做路由映射。所有 API 路径与 Next.js API Routes **一一对应**。
+
+```
+请求流程：Nginx → php/public/index.php → router.php → Controller → MySQL
+```
+
+### 4B.2 目录结构
+
+```
+php/
+├── app/
+│   ├── controller/            # 控制器（与前端 API 路径一一对应）
+│   │   ├── admin/             # 管理后台（admin/前缀）
+│   │   ├── Auth.php           # 认证 → /api/auth/*
+│   │   ├── Goods.php          # 商品 → /api/goods/*
+│   │   ├── Order.php          # 订单 → /api/orders/*
+│   │   ├── Cart.php           # 购物车 → /api/cart
+│   │   └── ...                # 其他业务控制器
+│   ├── common/                # 公共模块（必须复用）
+│   │   ├── Jwt.php            # JWT 认证
+│   │   ├── Response.php       # 统一响应格式
+│   │   ├── Validator.php      # 参数校验
+│   │   ├── Cache.php          # 缓存
+│   │   ├── Logger.php         # 日志
+│   │   └── Sms.php            # 短信
+│   ├── middleware/
+│   │   └── AdminAuth.php      # 管理员认证中间件
+│   └── think/                 # ThinkPHP 核心扩展
+├── config/
+│   ├── database.php           # 数据库配置（环境变量驱动）
+│   └── app.php                # 应用配置
+├── route/
+│   └── router.php             # 路由映射
+└── public/
+    └── index.php              # 入口文件
+```
+
+### 4B.3 控制器编写规范
+
+```php
+<?php
+namespace app\controller;
+
+use app\common\Jwt;
+use app\common\Response;
+use app\common\Validator;
+
+class Goods
+{
+    /**
+     * 商品列表 - GET /api/goods
+     */
+    public function index()
+    {
+        try {
+            // 1. 参数获取与校验
+            $page = (int)input('page', 1);
+            $pageSize = (int)input('pageSize', 20);
+            $categoryId = input('category_id');
+            
+            // 2. 构建查询
+            $where = ['status' => 1];
+            if ($categoryId) $where['category_id'] = $categoryId;
+            
+            // 3. 查询数据（参数绑定防SQL注入）
+            $total = db('goods')->where($where)->count();
+            $data = db('goods')->where($where)
+                ->page($page, $pageSize)
+                ->order('id DESC')
+                ->select();
+            
+            // 4. 返回统一格式（与 Next.js API 保持一致）
+            Response::success([
+                'data' => $data,
+                'total' => $total,
+                'page' => $page,
+                'page_size' => $pageSize,
+            ]);
+        } catch (\Exception $e) {
+            Response::error($e->getMessage());
+        }
+    }
+}
+```
+
+### 4B.4 统一响应格式（与 Next.js API 一致）
+
+```php
+// app/common/Response.php
+class Response
+{
+    public static function success($data = [], $message = '操作成功')
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => true,
+            'message' => $message,
+            'data' => $data,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    
+    public static function error($message = '操作失敗', $code = 500)
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code($code);
+        echo json_encode([
+            'error' => $message,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+```
+
+### 4B.5 路由注册规范
+
+在 `php/route/router.php` 中注册，路径**必须**与 Next.js `src/app/api/` 下的路径一致：
+
+```php
+// 新增路由必须同步两端
+'routers = [
+    // Next.js: src/app/api/goods/route.ts → PHP: app/controller/Goods.php
+    'api/goods' => ['app\controller\Goods::index', ['GET']],
+    'api/goods/create' => ['app\controller\Goods::create', ['POST']],
+    // ...
+];
+```
+
+### 4B.6 认证规范
+
+```php
+// 用户认证（从 Header 获取 token）
+$userId = Jwt::getUserIdFromHeader();
+if (!$userId) Response::error('請先登錄', 401);
+
+// 管理员认证
+$adminId = Jwt::getAdminIdFromHeader();
+if (!$adminId) Response::error('管理員權限不足', 403);
+```
+
+### 4B.7 新增 API 同步清单
+
+新增后端接口时，**必须**同时维护两端：
+
+| 步骤 | Next.js (开发) | PHP (生产) |
+|------|---------------|------------|
+| 1 | `src/app/api/{module}/route.ts` | `php/app/controller/{Module}.php` |
+| 2 | 函数签名 `GET/POST/PUT/DELETE` | 对应方法 `index/create/update/delete` |
+| 3 | 响应格式一致 | 响应格式一致 |
+| 4 | 认证方式 `getAuthUserId` | 认证方式 `Jwt::getUserIdFromHeader` |
+| 5 | 路由自动注册 | 手动注册到 `router.php` |
 
 ---
 
@@ -509,31 +702,56 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 
 ## 十、部署相关
 
+### 双后端部署架构
+
+```
+                        ┌─────────────────────┐
+                        │     Nginx 反向代理    │
+                        └──────────┬───────────┘
+                    ┌──────────────┼──────────────┐
+                    ▼                              ▼
+          /api/* → PHP-FPM              / * → Next.js (SSR)
+          (php/public/index.php)        (localhost:5000)
+                    │                              │
+                    ▼                              ▼
+               MySQL 8.x                    MySQL 8.x
+            (fubao database)            (fubao database)
+```
+
+- **前端页面**：Next.js 提供服务，端口 5000
+- **API 请求**：生产环境由 PHP (ThinkPHP + Nginx) 处理
+- **数据库**：两端共用同一 MySQL 实例
+
 ### 环境变量
 
 ```bash
-# 必需
+# Next.js 前端
 DEPLOY_RUN_PORT=5000                    # 服务监听端口
 COZE_WORKSPACE_PATH=/workspace/projects # 工作目录
+NEXT_PUBLIC_API_MODE=local              # API 模式
 
-# MySQL（可选，未配置则用Mock DB）
+# MySQL（前端 + PHP 共用）
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=fubao
 MYSQL_PASSWORD=xxx
 MYSQL_DATABASE=fubao
 
+# PHP 后端（php/config/database.php 读取）
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=fubao
+DB_PASSWORD=xxx
+DB_NAME=fubao
+
 # AI
 AI_PROVIDER=volcengine
-
-# 前端
-NEXT_PUBLIC_API_MODE=local
 ```
 
 ### 部署脚本
 
 ```bash
-# 一键更新
+# 一键更新（Next.js 前端 + Docker）
 bash update-fubao.sh
 
 # MySQL初始化

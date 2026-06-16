@@ -5,13 +5,15 @@
 | 项目 | 值 |
 |------|-----|
 | 名称 | 符寶網 - 全球玄門文化科普交易平台 |
-| 框架 | Next.js 16 (App Router) + React 19 |
+| 前端 | Next.js 16 (App Router) + React 19 |
+| 后端(生产) | **PHP 8.x + ThinkPHP** (`php/` 目录) |
+| 后端(开发) | Next.js API Routes (`src/app/api/` 目录) |
 | UI | shadcn/ui + Tailwind CSS 4 |
-| 语言 | TypeScript 5 |
-| 包管理 | **pnpm** (强制) |
+| 语言 | TypeScript 5 / PHP 8 |
+| 包管理 | 前端 **pnpm** (强制) / 后端 composer |
 | 数据库 | MySQL 优先 + Mock DB 自动降级 |
 | AI 集成 | 豆包/DeepSeek/Kimi (流式输出) |
-| 邮件 | QQ邮箱SMTP (nodemailer) |
+| 邮件 | QQ邮箱SMTP (nodemailer / PHPMailer) |
 
 ---
 
@@ -19,7 +21,7 @@
 
 ```
 /workspace/projects/
-├── src/
+├── src/                        # Next.js 前端 + 开发用 API
 │   ├── app/                    # 页面 (Next.js App Router)
 │   │   ├── page.tsx           # 首页
 │   │   ├── ai-assistant/      # AI 助手页面
@@ -34,7 +36,7 @@
 │   │   ├── admin/             # 管理后台
 │   │   ├── login/             # 用户登录
 │   │   ├── register/          # 用户注册
-│   │   └── api/               # API Routes
+│   │   └── api/               # API Routes（开发用后端）
 │   ├── components/            # 组件
 │   │   ├── ui/               # shadcn/ui 基础组件
 │   │   ├── ai/               # AI 组件
@@ -54,6 +56,20 @@
 │       ├── auth/             # 认证相关
 │       ├── ai/               # AI 相关
 │       └── hooks/            # 自定义 Hooks
+├── php/                        # PHP 后端（生产环境）
+│   ├── app/
+│   │   ├── controller/        # 控制器（与前端 API 一一对应）
+│   │   ├── common/            # 公共模块（Jwt/Response/Validator/Cache）
+│   │   ├── middleware/         # 中间件（AdminAuth）
+│   │   └── think/             # ThinkPHP 核心扩展
+│   ├── config/
+│   │   ├── database.php       # 数据库配置（环境变量驱动）
+│   │   └── app.php            # 应用配置
+│   ├── route/
+│   │   └── router.php         # 路由映射
+│   ├── public/
+│   │   └── index.php          # 入口文件
+│   └── nginx.conf             # Nginx 配置
 ├── sql/                       # MySQL 建表和种子数据
 │   ├── schema.sql            # 15张表DDL
 │   ├── seed.sql              # 种子数据
@@ -273,12 +289,19 @@ import { mockUsers } from '@/lib/auth/mockStore';
 ## 环境变量
 
 ```bash
-# 数据库
+# 数据库（前端 + PHP 共用同一 MySQL 实例）
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=fubao
 MYSQL_PASSWORD=XNmEbBwKKe5HwnNW
 MYSQL_DATABASE=fubao
+
+# PHP 后端（php/config/database.php 读取）
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=fubao
+DB_PASSWORD=XNmEbBwKKe5HwnNW
+DB_NAME=fubao
 
 # API 模式
 NEXT_PUBLIC_API_MODE=local
