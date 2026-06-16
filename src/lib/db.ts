@@ -2,7 +2,18 @@
  * @fileoverview 内存 Mock 数据库（替代 MySQL）
  * @description 提供统一的数据库访问，使用内存存储，支持完整 CRUD 和条件查询
  * @module lib/db
+ * 
+ * 【数据持久化】数据会自动保存到 JSON 文件，服务重启后自动恢复，
+ * 新增的商家、商品、设置等数据不会因更新代码而丢失。
  */
+
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
+
+// ========== 持久化配置 ==========
+const DATA_DIR = join(process.env.COZE_WORKSPACE_PATH || '/workspace/projects', '.db-data');
+const DATA_FILE = join(DATA_DIR, 'mock-db.json');
+const SAVE_INTERVAL = 3000; // 3秒防抖保存
 
 // ========== 数据存储 ==========
 
@@ -107,10 +118,83 @@ for (const [table, rows] of Object.entries(initialData)) {
   nextIds[table] = rows.length > 0 ? Math.max(...rows.map((r: any) => r.id || 0)) + 1 : 1;
 }
 
-// 使用 globalThis 保持数据一致性（热更新不丢失）
+// ========== 文件持久化 ==========
+
+/** 从 JSON 文件加载数据（启动时调用） */
+function loadPersistedData(): { data: Record<string, any[]>; ids: Record<string, number> } | null {
+  try {
+    if (!existsSync(DATA_FILE)) return null;
+    const raw = readFileSync(DATA_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.data && parsed.ids) {
+      console.log('[Mock DB] 從持久化文件恢復數據，共', Object.keys(parsed.data).length, '張表');
+      return parsed as { data: Record<string, any[]>; ids: Record<string, number> };
+    }
+  } catch (e) {
+    console.error('[Mock DB] 讀取持久化文件失敗，使用初始數據:', e);
+  }
+  return null;
+}
+
+/** 将数据保存到 JSON 文件 */
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let hasPendingChanges = false;
+
+function persistToDisk() {
+  try {
+    if (!existsSync(DATA_DIR)) {
+      mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const data = getData();
+    const ids = getIds();
+    writeFileSync(DATA_FILE, JSON.stringify({ data, ids }, null, 2), 'utf-8');
+    hasPendingChanges = false;
+  } catch (e) {
+    console.error('[Mock DB] 持久化數據失敗:', e);
+  }
+}
+
+/** 标记数据变更，防抖保存 */
+export function markDirty() {
+  hasPendingChanges = true;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (hasPendingChanges) persistToDisk();
+    saveTimer = null;
+  }, SAVE_INTERVAL);
+}
+
+/** 立即保存（用于进程退出前） */
+export function flushPersist() {
+  if (saveTimer) clearTimeout(saveTimer);
+  if (hasPendingChanges) persistToDisk();
+}
+
+// 进程退出前保存
+if (typeof process !== 'undefined') {
+  const exitHandler = () => flushPersist();
+  process.on('SIGTERM', exitHandler);
+  process.on('SIGINT', exitHandler);
+  process.on('beforeExit', exitHandler);
+}
+
+// 使用 globalThis 保持数据一致性（热更新不丢失），优先从文件恢复
+const persisted = loadPersistedData();
 if (typeof globalThis !== 'undefined') {
-  (globalThis as any).__mockData = (globalThis as any).__mockData || initialData;
-  (globalThis as any).__nextIds = (globalThis as any).__nextIds || nextIds;
+  if (persisted) {
+    // 合并：持久化数据为主，新增的表用初始数据补充
+    const merged = { ...initialData };
+    for (const [table, rows] of Object.entries(persisted.data)) {
+      merged[table] = rows;
+    }
+    (globalThis as any).__mockData = merged;
+    (globalThis as any).__nextIds = persisted.ids;
+  } else {
+    (globalThis as any).__mockData = (globalThis as any).__mockData || initialData;
+    (globalThis as any).__nextIds = (globalThis as any).__nextIds || nextIds;
+    // 首次启动，保存初始数据
+    setTimeout(() => persistToDisk(), 1000);
+  }
 }
 
 const getData = (): Record<string, any[]> => (globalThis as any).__mockData || initialData;
@@ -451,6 +535,7 @@ export async function insert(
   mockData[table].push(newRecord);
 
   console.log('[Mock DB] Insert into', table, 'id:', id);
+  markDirty();
   return id;
 }
 
@@ -501,6 +586,7 @@ export async function update(
   }
 
   console.log('[Mock DB] Update', table, 'count:', updateCount);
+  if (updateCount > 0) markDirty();
   return updateCount;
 }
 
@@ -526,6 +612,7 @@ export async function remove(
 
   const count = initialLength - mockData[table].length;
   console.log('[Mock DB] Remove', table, 'where:', where, 'count:', count);
+  if (count > 0) markDirty();
   return count;
 }
 

@@ -24,6 +24,9 @@ coverage/
 .env.test.local
 .env.production.local
 
+# Mock DB persistence data
+.db-data/
+
 # Logs
 logs/
 *.log
