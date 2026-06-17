@@ -48,7 +48,6 @@ COPY --from=builder /app/php ./php
 COPY --from=builder /app/sql ./sql
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/tailwind.config.ts ./
 COPY --from=builder /app/postcss.config.mjs ./
 COPY --from=builder /app/components.json ./
 
