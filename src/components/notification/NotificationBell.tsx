@@ -61,16 +61,22 @@ export function NotificationBell() {
     }
   }, []);
 
+  // WebSocket 暂未部署服务端，通知通过 HTTP 轮询获取
+  // enabled: false 避免无 WS 服务端时连接失败报错
   useWebSocket({
     path: user?.id ? `/ws/notifications?userId=${user.id}` : '/ws/notifications',
     onMessage: handleWsMessage,
-    enabled: !!user,
+    enabled: false,
   });
 
   useEffect(() => {
     if (user) {
       fetchNotifications();
       requestNotificationPermission();
+
+      // HTTP 轮询降级：每 30 秒刷新一次通知（替代 WebSocket 实时推送）
+      const pollInterval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(pollInterval);
     }
   }, [user]);
 

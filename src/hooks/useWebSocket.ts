@@ -24,7 +24,7 @@ export function useWebSocket({
   onOpen,
   onClose,
   onError,
-  enabled = true,
+  enabled = false, // 默认关闭：项目未部署 WS 服务端，避免连接失败报错
 }: UseWebSocketOptions) {
   const connRef = useRef<ReturnType<typeof createWsConnection> | null>(null);
   const onMessageRef = useRef(onMessage);
