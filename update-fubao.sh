@@ -16,7 +16,28 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # ---------- 配置 ----------
-SITE_DIR="/root/fubao"                    # 项目目录
+# 自动检测项目目录：优先用环境变量，其次自动查找
+if [ -n "$FUBAO_DIR" ]; then
+    SITE_DIR="$FUBAO_DIR"
+elif [ -d "/root/fubao" ]; then
+    SITE_DIR="/root/fubao"
+elif [ -d "/opt/fubao" ]; then
+    SITE_DIR="/opt/fubao"
+elif [ -d "/home/fubao" ]; then
+    SITE_DIR="/home/fubao"
+else
+    # 自动查找：从 git remote 或当前目录推断
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # 检查脚本所在目录是否就是项目根目录（有 package.json）
+    if [ -f "$SCRIPT_DIR/package.json" ]; then
+        SITE_DIR="$SCRIPT_DIR"
+    else
+        echo -e "${RED}✗${NC} 找不到项目目录！请设置环境变量："
+        echo "  export FUBAO_DIR=/你的项目路径"
+        echo "  然后重新运行脚本"
+        exit 1
+    fi
+fi
 CONTAINER_NAME="fubao-web"                # 容器名
 IMAGE_NAME="fubao-web"                    # 镜像名
 HOST_PORT=5000                            # 宿主机端口
