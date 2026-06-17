@@ -107,6 +107,12 @@ const initialData: Record<string, any[]> = {
   ],
   ai_training_tasks: [],
   ai_model_configs: [],
+  baike_articles: [
+    { id: 1, title: '符咒入門', slug: 'fuzhou-intro', category: '符咒', cover_image: '', content: '<h2>什麼是符咒</h2><p>符咒是道教法術的重要組成部分，是溝通天地、驅邪鎮煞的靈力載體。符為書寫的圖文，咒為口誦的密言，二者相輔相成。</p><h2>符咒的種類</h2><p>常見的符咒種類包括：鎮宅符、平安符、招財符、姻緣符、文昌符等。</p>', sort_order: 1, status: 1, views: 1256, created_at: '2025-01-10T00:00:00.000Z', updated_at: '2025-01-10T00:00:00.000Z' },
+    { id: 2, title: '八卦基礎知識', slug: 'bagua-basics', category: '易經', cover_image: '', content: '<h2>八卦簡介</h2><p>八卦是《易經》的基本概念，由陽爻（—）和陰爻（--）組合而成，共八種基本圖形。乾、坤、震、巽、坎、離、艮、兌，分別代表天、地、雷、風、水、火、山、澤八種自然現象。</p>', sort_order: 2, status: 1, views: 980, created_at: '2025-01-11T00:00:00.000Z', updated_at: '2025-01-11T00:00:00.000Z' },
+    { id: 3, title: '風水堪輿概論', slug: 'fengshui-intro', category: '風水', cover_image: '', content: '<h2>風水的起源</h2><p>風水，又稱堪輿，是中國古代的環境哲學。其核心思想是通過觀察自然環境的山水形勢，選擇最適合人類居住和活動的空間。</p>', sort_order: 3, status: 1, views: 856, created_at: '2025-01-12T00:00:00.000Z', updated_at: '2025-01-12T00:00:00.000Z' },
+    { id: 4, title: '五行生剋原理', slug: 'wuxing-theory', category: '命理', cover_image: '', content: '<h2>五行學說</h2><p>五行即金、木、水、火、土，是中國古代哲學對宇宙萬物構成的基本分類。五行之間存在相生相剋的關係，構成了一個動態平衡的系統。</p><h2>相生關係</h2><p>木生火、火生土、土生金、金生水、水生木</p><h2>相剋關係</h2><p>木剋土、土剋水、水剋火、火剋金、金剋木</p>', sort_order: 4, status: 1, views: 742, created_at: '2025-01-13T00:00:00.000Z', updated_at: '2025-01-13T00:00:00.000Z' },
+  ],
   goods_i18n: [
     { id: 1, goods_id: 1, locale: 'en', name: 'Tai Chi Amulet', subtitle: 'Dao follows nature·Tai Chi Guardian', description: 'A Tai Chi amulet hand-drawn by a Taoist priest, with powerful evil-warding and protective effects.', created_at: '2025-01-15T00:00:00.000Z', updated_at: '2025-01-15T00:00:00.000Z' },
     { id: 2, goods_id: 1, locale: 'ja', name: '太極護身符', subtitle: '道法自然·太極守護', description: '道士が手書きした太極護身符、強力な厄除け護身の効能があります。', created_at: '2025-01-15T00:00:00.000Z', updated_at: '2025-01-15T00:00:00.000Z' },

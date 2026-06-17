@@ -119,7 +119,8 @@ export function ImageUpload({
         const result = await response.json();
 
         if (result.data) {
-          uploadedUrls.push(result.data.url);
+          // 存储 key 而非签名 URL，避免过期；渲染时通过 /api/file/key 代理访问
+          uploadedUrls.push(result.data.key ? `/api/file/${result.data.key}` : result.data.url);
           setUploadingFiles(prev =>
             prev.map(f =>
               f.id === uploadFile.id
@@ -354,7 +355,9 @@ export function SingleImageUpload({
       const result = await response.json();
 
       if (result.data) {
-        onChange?.(result.data.url);
+        // 存储 key 而非签名 URL，通过 /api/file/[key] 代理访问（签名 URL 会过期）
+        const displayUrl = result.data.key ? `/api/file/${result.data.key}` : result.data.url;
+        onChange?.(displayUrl);
         toast.success('上傳成功');
       } else {
         throw new Error(result.error || '上傳失敗');

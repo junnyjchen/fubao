@@ -572,4 +572,23 @@ CREATE TABLE IF NOT EXISTS `merchant_certificates` (
   INDEX `idx_merchant_id` (`merchant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 百科文章表
+CREATE TABLE IF NOT EXISTS `baike_articles` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `title` VARCHAR(200) NOT NULL COMMENT '标题',
+  `slug` VARCHAR(200) NOT NULL COMMENT 'URL标识',
+  `category` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '分类',
+  `cover_image` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '封面图key',
+  `content` LONGTEXT NOT NULL COMMENT '富文本内容',
+  `sort_order` INT NOT NULL DEFAULT 0 COMMENT '排序',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:0下架,1上架',
+  `views` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '浏览量',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_slug` (`slug`),
+  INDEX `idx_category` (`category`),
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

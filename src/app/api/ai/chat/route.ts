@@ -1,200 +1,101 @@
-/**
- * AI 聊天 API - 支持多模型切换和知识库检索
- * POST /api/ai/chat
- * Body: { messages, modelId?, temperature?, maxTokens? }
- * Response: SSE stream
- */
+import { NextRequest, NextResponse } from 'next/server';
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
-import { NextRequest } from 'next/server';
-import { getModelConfigs, getActiveModel, searchKnowledge } from '@/lib/ai/store';
+// 符寶網 AI 助手系统提示词
+const SYSTEM_PROMPT = `你是「符寶網」的玄門文化AI助手，你的名字叫「符寶」。
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+你的专业领域：
+- 中国传统玄学文化（风水、命理、卜卦、择日）
+- 道教科仪、符咒法器知识
+- 佛学基础、禅修入门
+- 传统节日与民俗文化
+- 中医养生与气功基础
 
-/** 默认系统提示词 */
-const DEFAULT_SYSTEM_PROMPT = `你是符寶網的AI助手，專注於玄門文化、道教、風水命理等傳統文化領域的知識解答。請用繁體中文回答，語氣專業且親切。`;
+你的回答风格：
+- 专业但通俗易懂，避免过度玄奥
+- 客观中立，不迷信不封建
+- 尊重传统文化的同时保持科学态度
+- 适当引用经典文献，增加权威性
+- 回答使用繁体中文
 
-interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+注意事项：
+- 不提供具体的算命占卜服务
+- 不推荐任何超自然解决方案
+- 涉及健康问题建议咨询专业医生
+- 对于不确定的内容，坦诚说明`;
 
-/** 调用 OpenAI 兼容 API */
-async function callLLM(
-  modelConfig: { baseUrl: string; apiKey: string; model: string },
-  messages: ChatMessage[],
-  temperature: number,
-  maxTokens: number,
-  signal?: AbortSignal
-): Promise<ReadableStream<Uint8Array>> {
-  const { baseUrl: apiUrl, apiKey, model: modelId } = modelConfig;
-
-  // 确保 API URL 以 /v1 结尾
-  let baseUrl = apiUrl.replace(/\/+$/, '');
-  if (!baseUrl.endsWith('/v1')) {
-    baseUrl = baseUrl + '/v1';
-  }
-
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages,
-      temperature: temperature ?? 0.7,
-      max_tokens: maxTokens ?? 2048,
-      stream: true,
-    }),
-    signal,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API 请求失败 (${response.status}): ${errorText}`);
-  }
-
-  if (!response.body) {
-    throw new Error('API 未返回流式响应');
-  }
-
-  return response.body;
-}
-
-/** 从知识库检索相关上下文 */
-async function getKnowledgeContext(userMessage: string): Promise<string> {
-  try {
-    const results = await searchKnowledge(userMessage, 3);
-    if (results.length === 0) return '';
-
-    return results
-      .map((r, i) => `【参考资料${i + 1}】${r.title}\n${r.snippet}`)
-      .join('\n\n');
-  } catch {
-    return '';
-  }
-}
+// 支持的模型映射
+const MODEL_MAP: Record<string, string> = {
+  'deepseek-default': 'deepseek-v3-2-251201',
+  'doubao-lite': 'doubao-seed-2-0-lite-260215',
+  'doubao-mini': 'doubao-seed-2-0-mini-260215',
+  'doubao-pro': 'doubao-seed-2-0-pro-260215',
+  'doubao-default': 'doubao-seed-1-8-251228',
+  'kimi': 'kimi-k2-5-260127',
+  'glm': 'glm-5-0-260211',
+  'qwen': 'qwen-3-5-plus-260215',
+};
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages, modelId, temperature, maxTokens } = body;
+    const { messages = [], model = 'doubao-lite', thinking = false } = body;
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(JSON.stringify({ error: '請提供對話內容' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+    if (!messages.length) {
+      return NextResponse.json({ error: '请提供对话消息' }, { status: 400 });
     }
 
-    // 获取模型配置
-    let modelConfig;
-    if (modelId) {
-      const configs = getModelConfigs();
-      modelConfig = configs.find(c => c.id === modelId && c.isActive);
-    }
-    if (!modelConfig) {
-      modelConfig = getActiveModel();
-    }
-    if (!modelConfig) {
-      return new Response(
-        JSON.stringify({ error: '尚未配置 AI 模型，請先在管理後台「AI 配置 → 大模型配置」中添加模型' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    // 映射模型ID
+    const mappedModel = MODEL_MAP[model] || model;
 
     // 构建消息列表
-    const chatMessages: ChatMessage[] = [
-      { role: 'system', content: DEFAULT_SYSTEM_PROMPT },
+    const sdkMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: SYSTEM_PROMPT },
     ];
 
-    // 获取最后一条用户消息用于知识库检索
-    const lastUserMsg = [...messages].reverse().find((m: ChatMessage) => m.role === 'user');
-    if (lastUserMsg) {
-      const knowledgeContext = await getKnowledgeContext(lastUserMsg.content);
-      if (knowledgeContext) {
-        chatMessages.push({
-          role: 'system',
-          content: `以下是與用戶問題相關的參考資料，請基於這些資料回答。如果資料不足以回答，請如實告知並結合你的知識補充：\n\n${knowledgeContext}`,
-        });
+    for (const msg of messages) {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        sdkMessages.push({ role: msg.role, content: msg.content });
       }
     }
 
-    // 添加历史消息（最多保留最近 20 条）
-    const recentMessages = messages.slice(-20);
-    for (const msg of recentMessages) {
-      if (msg.role === 'system') continue; // 跳过客户端传来的 system 消息
-      chatMessages.push({ role: msg.role, content: msg.content });
+    // 确保至少有一条 user 消息
+    const hasUserMsg = sdkMessages.some(m => m.role === 'user');
+    if (!hasUserMsg) {
+      return NextResponse.json({ error: '对话消息必须包含用户消息' }, { status: 400 });
     }
 
-    // 创建 SSE 流
+    // 初始化LLM客户端
+    const config = new Config();
+    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+    const client = new LLMClient(config, customHeaders);
+
+    // SSE 流式输出
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const abortController = new AbortController();
-
-        // 超时处理（60 秒）
-        const timeout = setTimeout(() => {
-          abortController.abort();
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: '請求超時，請稍後重試' })}\n\n`));
-          controller.close();
-        }, 60000);
-
         try {
-          const llmStream = await callLLM(
-            modelConfig!,
-            chatMessages,
-            temperature ?? 0.7,
-            maxTokens ?? 2048,
-            abortController.signal
-          );
+          const llmStream = client.stream(sdkMessages, {
+            model: mappedModel,
+            thinking: thinking ? 'enabled' : 'disabled',
+            temperature: 0.8,
+          });
 
-          const reader = llmStream.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let hasContent = false;
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-              const data = trimmed.slice(6);
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content;
-                if (delta) {
-                  hasContent = true;
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: delta })}\n\n`));
-                }
-              } catch {
-                // 跳过无法解析的行
-              }
+          for await (const chunk of llmStream) {
+            if (chunk.content) {
+              const text = chunk.content.toString();
+              const data = JSON.stringify({ content: text });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
           }
 
-          if (!hasContent) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: '抱歉，模型沒有返回任何內容，請稍後重試。' })}\n\n`));
-          }
-        } catch (error: any) {
-          console.error('AI 聊天错误:', error);
-          const errorMsg = error.name === 'AbortError'
-            ? '請求超時，請稍後重試'
-            : `AI 服務錯誤: ${error.message || '未知錯誤'}`;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMsg })}\n\n`));
-        } finally {
-          clearTimeout(timeout);
+          // 发送结束标记
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.close();
+        } catch (error: unknown) {
+          const errMsg = error instanceof Error ? error.message : 'AI 服务暂时不可用';
+          const errorData = JSON.stringify({ error: errMsg });
+          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
           controller.close();
         }
@@ -205,15 +106,12 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
+        Connection: 'keep-alive',
       },
     });
-  } catch (error: any) {
-    console.error('AI 聊天请求处理错误:', error);
-    return new Response(
-      JSON.stringify({ error: `服務錯誤: ${error.message || '未知錯誤'}` }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+  } catch (error: unknown) {
+    console.error('[AI Chat] Error:', error);
+    const message = error instanceof Error ? error.message : 'AI 服务暂时不可用';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

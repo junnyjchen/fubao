@@ -114,8 +114,9 @@ export default function NewsManagePage() {
     formData.append('folder', 'news');
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
     const data = await res.json();
-    if (!data.data?.url) throw new Error(data.error || '上傳失敗');
-    return data.data.url;
+    if (!data.data?.key) throw new Error(data.error || '上傳失敗');
+    // 存储 key 而非签名 URL，避免过期
+    return `/api/file/${data.data.key}`;
   }, []);
 
   useEffect(() => {

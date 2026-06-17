@@ -1,16 +1,112 @@
 /**
- * @fileoverview 百科文章详情页面重定向
- * @description 重定向到新的百科文章路径 /wiki/[slug]
- * @module app/baike/[slug]/page
+ * @fileoverview 百科文章详情页
  */
+'use client';
 
-import { redirect } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowLeft, Eye, Calendar } from 'lucide-react';
+import { EmptyState, EmptyIcon } from '@/components/ui/empty-state';
 
-interface Props {
-  params: Promise<{ slug: string }>;
+interface Article {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  summary: string;
+  category: string;
+  cover_image: string;
+  views: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export default async function ArticleDetail({ params }: Props) {
-  const { slug } = await params;
-  redirect(`/wiki/${slug}`);
+export default function BaikeArticlePage() {
+  const params = useParams();
+  const slug = params.slug as string;
+  const [article, setArticle] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (slug) fetchArticle();
+  }, [slug]);
+
+  const fetchArticle = async () => {
+    try {
+      const res = await fetch(`/api/articles?slug=${slug}`);
+      const data = await res.json();
+      if (data.data && data.data.length > 0) {
+        setArticle(data.data[0]);
+      }
+    } catch {
+      setArticle(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="h-8 bg-muted rounded animate-pulse mb-4" />
+        <div className="h-4 bg-muted rounded animate-pulse mb-2" />
+        <div className="h-4 bg-muted rounded animate-pulse mb-2" />
+        <div className="h-64 bg-muted rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!article) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16">
+        <EmptyState
+          icon={<EmptyIcon type="data" />}
+          title="文章未找到"
+          description="該百科文章不存在或已被删除"
+        />
+        <div className="text-center mt-4">
+          <Link href="/baike" className="text-primary hover:underline">返回百科首頁</Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-8">
+      <Link href="/baike" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-6">
+        <ArrowLeft className="w-4 h-4 mr-1" /> 返回百科
+      </Link>
+
+      <article>
+        <header className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
+              {article.category}
+            </span>
+          </div>
+          <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Eye className="w-4 h-4" /> {article.views} 次閱讀
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-4 h-4" /> {new Date(article.created_at).toLocaleDateString('zh-CN')}
+            </span>
+          </div>
+        </header>
+
+        {article.cover_image && (
+          <div className="mb-8 rounded-lg overflow-hidden">
+            <img src={article.cover_image} alt={article.title} className="w-full object-cover max-h-80" />
+          </div>
+        )}
+
+        <div
+          className="prose prose-sm max-w-none dark:prose-invert"
+          dangerouslySetInnerHTML={{ __html: article.content || article.summary || '' }}
+        />
+      </article>
+    </div>
+  );
 }

@@ -89,6 +89,7 @@ const navItems: NavItem[] = [
       { key: 'content', label: '內容管理', icon: FileText, href: '/admin/content', permission: 'content.view' },
       { key: 'banners', label: '輪播圖管理', icon: Image, href: '/admin/banners', permission: 'operation.banner' },
       { key: 'news', label: '新聞管理', icon: FileText, href: '/admin/news', permission: 'content.news' },
+      { key: 'baike', label: '百科管理', icon: FileText, href: '/admin/baike', permission: 'content.baike' },
       { key: 'ai-content', label: 'AI內容生成', icon: FileText, href: '/admin/ai-content', permission: 'content.news' },
       { key: 'ai-training', label: 'AI訓練中心', icon: Brain, href: '/admin/ai-training', permission: 'system.settings' },
       { key: 'ai-assistant', label: 'AI助手', icon: MessageSquare, href: '/admin/ai-assistant', permission: 'content.view' },

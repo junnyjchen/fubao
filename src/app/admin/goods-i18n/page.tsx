@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Globe, Plus, Edit2, Trash2, Save, Search, Loader2, Check, X, Languages } from 'lucide-react';
+import { Globe, Plus, Edit2, Trash2, Save, Search, Loader2, Check, X, Languages, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const LOCALE_LABELS: Record<string, string> = {
@@ -82,6 +82,7 @@ export default function GoodsI18nPage() {
   const [editTranslations, setEditTranslations] = useState<Record<string, { name: string; subtitle: string; description: string }>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [aiTranslating, setAiTranslating] = useState<Record<string, boolean>>({});
   const [searchKeyword, setSearchKeyword] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [addLocale, setAddLocale] = useState('');
@@ -155,6 +156,40 @@ export default function GoodsI18nPage() {
       toast.error('保存失敗');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAITranslate = async (locale: string) => {
+    if (!selectedGoods) return;
+    setAiTranslating(prev => ({ ...prev, [locale]: true }));
+    try {
+      const res = await fetch('/api/ai/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'goods',
+          id: selectedGoods.id,
+          target_locale: locale,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setEditTranslations(prev => ({
+          ...prev,
+          [locale]: {
+            name: data.data.name || '',
+            subtitle: data.data.subtitle || '',
+            description: data.data.description || '',
+          },
+        }));
+        toast.success(`${LOCALE_LABELS[locale] || locale} AI翻譯完成，請檢查後保存`);
+      } else {
+        toast.error(data.error || 'AI翻譯失敗');
+      }
+    } catch (error) {
+      toast.error('AI翻譯失敗，請稍後重試');
+    } finally {
+      setAiTranslating(prev => ({ ...prev, [locale]: false }));
     }
   };
 
@@ -404,6 +439,15 @@ export default function GoodsI18nPage() {
                                 <Badge variant="outline" className="text-xs">{t.locale}</Badge>
                               </div>
                               <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAITranslate(t.locale)}
+                                  disabled={aiTranslating[t.locale]}
+                                >
+                                  {aiTranslating[t.locale] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Languages className="w-3 h-3" />}
+                                  <span className="ml-1">AI翻譯</span>
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
