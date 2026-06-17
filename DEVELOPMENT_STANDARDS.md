@@ -1,7 +1,7 @@
 # 符寶網 - 开发技术框架与标准文档
 
 > 本文档为符寶網项目开发的**唯一技术标准**，所有新增、修改代码必须遵循。
-> 最后更新: 2025-01-15
+> 最后更新: 2025-06-17
 
 ---
 
@@ -10,7 +10,7 @@
 | 层级 | 技术 | 版本 | 说明 |
 |------|------|------|------|
 | 前端框架 | Next.js | 16 (App Router) | **SSR 渲染层**，SEO友好，不含API逻辑 |
-| 后端（唯一） | PHP | 8.x + ThinkPHP | **生产 + 开发共用后端**，`php/` 目录 |
+| 后端（生产唯一） | PHP | 8.x + ThinkPHP | **生产 API 后端**，`php/` 目录 |
 | 后端（开发降级） | Next.js API Routes | - | 仅当 PHP 不可用时降级使用 |
 | UI库 | React | 19 | 禁止使用 React 17 旧语法 |
 | 语言 | TypeScript / PHP | TS5 / PHP8 | 前端 TS 严格模式；后端 PHP 强类型 |
@@ -18,10 +18,12 @@
 | 组件库 | shadcn/ui | 最新 | 基础UI组件唯一来源 |
 | 包管理 | pnpm / composer | - | 前端 pnpm（**严禁** npm/yarn）；后端 composer |
 | 数据库 | MySQL | 8.x | 生产环境；开发降级到 Mock DB |
-| AI | 豆包/DeepSeek/Kimi | - | SSE 流式输出 |
+| AI SDK | coze-coding-dev-sdk | 最新 | LLM 调用唯一入口，支持豆包/DeepSeek/Kimi |
+| 对象存储 | S3Storage (coze-coding-dev-sdk) | 最新 | 图片/文件上传唯一入口 |
 | 邮件 | nodemailer / PHPMailer | - | QQ邮箱 SMTP (smtp.qq.com:465 SSL) |
+| 富文本 | Tiptap | 最新 | 通过 `@/components/ui/rich-text-editor` |
 
-### 架构核心原则：PHP是唯一API源
+### 架构核心原则：PHP是唯一生产API源
 
 ```
 生产环境：
@@ -56,24 +58,32 @@ src/                                # Next.js 前端 + 开发用 API
 │       └── {module}/route.ts       # 一个文件一个路由
 ├── components/                     # 组件
 │   ├── ui/                         # shadcn/ui 基础组件（禁止手动修改）
+│   ├── upload/                     # 上传组件
 │   ├── {module}/                   # 业务模块组件
 │   └── common/                     # 跨模块通用组件
 └── lib/                            # 工具库
     ├── db.ts                       # 数据库访问层（唯一入口）
-    ├── mysql.ts                    # MySQL 连接池
+    ├── mysql.ts                    # MySQL 连接池（内部模块，禁止直接使用）
+    ├── api-config.ts               # API 路由配置
+    ├── api-request.ts              # 统一请求封装
     ├── auth/                       # 认证模块
     ├── ai/                         # AI 模块
     ├── email/                      # 邮件模块
     ├── hooks/                      # 通用 Hooks
     └── i18n/                       # 国际化
 
-php/                                # PHP 后端（生产环境）
+php/                                # PHP 后端（生产环境唯一API）
 ├── app/
 │   ├── controller/                 # 控制器（与前端 API 路由一一对应）
 │   │   ├── admin/                  # 管理后台控制器
 │   │   ├── Auth.php                # 认证
 │   │   ├── Goods.php               # 商品
 │   │   ├── Order.php               # 订单
+│   │   ├── MerchantCenter.php      # 商家中心
+│   │   ├── FreeGift.php            # 免费送
+│   │   ├── News.php                # 新闻
+│   │   ├── Setting.php             # 设置
+│   │   ├── GoodsI18n.php           # 商品多语言
 │   │   └── ...                     # 其他业务控制器
 │   ├── common/                     # 公共模块（Jwt/Response/Validator/Cache）
 │   ├── middleware/                  # 中间件（AdminAuth）
@@ -85,7 +95,7 @@ php/                                # PHP 后端（生产环境）
 │   └── router.php                  # 路由映射（与前端 API 路径一一对应）
 ├── public/
 │   └── index.php                   # 入口文件
-└── nginx.conf                      # Nginx 配置（API 域名指向 php/public）
+└── nginx.conf                      # Nginx 配置
 
 sql/                                # 数据库脚本
 ├── schema.sql                      # 建表 DDL
@@ -281,9 +291,9 @@ if (!admin) return NextResponse.json({ error: '管理員權限不足' }, { statu
 
 ---
 
-## 四-B、PHP 后端开发标准（唯一生产 API）
+## 五、PHP 后端开发标准（唯一生产 API）
 
-### 4B.1 架构概述
+### 5.1 架构概述
 
 **PHP 是唯一的生产环境 API 后端**。Next.js API Routes 仅用于开发/预览环境。
 
@@ -303,10 +313,14 @@ if (!admin) return NextResponse.json({ error: '管理員權限不足' }, { statu
 - `NEXT_PUBLIC_API_MODE=local`（默认）→ `/api/*`（Next.js API Routes，开发用）
 - `NEXT_PUBLIC_API_MODE=php` → PHP 后端 URL（生产用）
 
-### 4B.2 新增 PHP 控制器清单
+### 5.2 PHP 控制器清单
 
 | 控制器 | API 路径 | 说明 |
 |--------|---------|------|
+| `Auth.php` | `/api/auth/*` | 认证（登录/注册/个人信息） |
+| `Goods.php` | `/api/goods/*` | 商品 CRUD |
+| `Order.php` | `/api/orders/*` | 订单管理 |
+| `Cart.php` | `/api/cart` | 购物车 |
 | `MerchantCenter.php` | `/api/merchant/*` | 商家中心（登录/商品/订单/入驻/统计） |
 | `FreeGift.php` | `/api/free-gifts/*` | 免费送活动 |
 | `News.php` | `/api/news/*` | 新闻资讯 |
@@ -315,38 +329,7 @@ if (!admin) return NextResponse.json({ error: '管理員權限不足' }, { statu
 | `admin/Database.php` | `/api/admin/database` | 数据库管理 |
 | `admin/Email.php` | `/api/admin/email` | 邮件服务管理 |
 
-### 4B.3 目录结构
-
-```
-php/
-├── app/
-│   ├── controller/            # 控制器（与前端 API 路径一一对应）
-│   │   ├── admin/             # 管理后台（admin/前缀）
-│   │   ├── Auth.php           # 认证 → /api/auth/*
-│   │   ├── Goods.php          # 商品 → /api/goods/*
-│   │   ├── Order.php          # 订单 → /api/orders/*
-│   │   ├── Cart.php           # 购物车 → /api/cart
-│   │   └── ...                # 其他业务控制器
-│   ├── common/                # 公共模块（必须复用）
-│   │   ├── Jwt.php            # JWT 认证
-│   │   ├── Response.php       # 统一响应格式
-│   │   ├── Validator.php      # 参数校验
-│   │   ├── Cache.php          # 缓存
-│   │   ├── Logger.php         # 日志
-│   │   └── Sms.php            # 短信
-│   ├── middleware/
-│   │   └── AdminAuth.php      # 管理员认证中间件
-│   └── think/                 # ThinkPHP 核心扩展
-├── config/
-│   ├── database.php           # 数据库配置（环境变量驱动）
-│   └── app.php                # 应用配置
-├── route/
-│   └── router.php             # 路由映射
-└── public/
-    └── index.php              # 入口文件
-```
-
-### 4B.3 控制器编写规范
+### 5.3 控制器编写规范
 
 ```php
 <?php
@@ -394,7 +377,7 @@ class Goods
 }
 ```
 
-### 4B.4 统一响应格式（与 Next.js API 一致）
+### 5.4 统一响应格式（与 Next.js API 一致）
 
 ```php
 // app/common/Response.php
@@ -423,7 +406,7 @@ class Response
 }
 ```
 
-### 4B.5 路由注册规范
+### 5.5 路由注册规范
 
 在 `php/route/router.php` 中注册，路径**必须**与 Next.js `src/app/api/` 下的路径一致：
 
@@ -437,7 +420,7 @@ class Response
 ];
 ```
 
-### 4B.6 认证规范
+### 5.6 认证规范
 
 ```php
 // 用户认证（从 Header 获取 token）
@@ -449,7 +432,7 @@ $adminId = Jwt::getAdminIdFromHeader();
 if (!$adminId) Response::error('管理員權限不足', 403);
 ```
 
-### 4B.8 新增 API 开发流程
+### 5.7 新增 API 开发流程
 
 **PHP 优先原则**：新增后端接口时，**必须先写 PHP 控制器**，Next.js API Routes 作为开发环境副本。
 
@@ -462,9 +445,7 @@ if (!$adminId) Response::error('管理員權限不足', 403);
 | 5 | 响应 `Response::success/error` | 响应 `NextResponse.json` |
 | 6 | **必须** | 可选（开发环境兜底） |
 
-### 4B.9 API 路由完整映射
-
-所有 `/api/*` 请求在生产环境由 PHP 处理，Nginx 规则：
+### 5.8 Nginx 配置
 
 ```nginx
 # 生产环境 Nginx 配置（php/nginx.conf）
@@ -474,25 +455,277 @@ location /api/ {
 }
 
 location / {
-    proxy_pass http://127.0.0.1:3000;  # Next.js SSR
+    proxy_pass http://127.0.0.1:5000;  # Next.js SSR
 }
-```
-
-前端 `api-request.ts` 自动适配：
-
-```typescript
-// 开发环境：fetch('/api/goods') → Next.js API Routes
-// 生产环境：fetch('https://domain/api/goods') → PHP API
-const baseURL = process.env.NEXT_PUBLIC_API_MODE === 'php' 
-  ? (process.env.NEXT_PUBLIC_PHP_API_URL || '') 
-  : '';
 ```
 
 ---
 
-## 五、前端开发标准
+## 六、AI 集成标准
 
-### 5.1 页面组件模式
+### 6.1 SDK 唯一入口：coze-coding-dev-sdk
+
+**严禁**自建 HTTP 请求调用大模型 API，**必须**使用 `coze-coding-dev-sdk`。
+
+```typescript
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+```
+
+### 6.2 客户端初始化
+
+```typescript
+// ✅ 正确：使用 Config + HeaderUtils
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+
+const config = new Config();
+const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+const client = new LLMClient(config, customHeaders);
+```
+
+**重要**：
+- `HeaderUtils.extractForwardHeaders(request.headers)` **必须调用**，用于请求追踪和认证
+- `coze-coding-dev-sdk` **仅限后端使用**，禁止在客户端代码中 import
+
+### 6.3 调用方式
+
+```typescript
+// 非流式调用（翻译、摘要等单次响应场景）
+const result = await client.invoke(messages, { model: 'doubao-seed-2-0-lite-260215', temperature: 0.3 });
+const text = result.content;
+
+// 流式调用（聊天、长文生成等实时输出场景）
+const stream = client.stream(messages, { model: 'doubao-seed-2-0-lite-260215' });
+for await (const chunk of stream) {
+  if (chunk.content) {
+    // chunk.content 为文本片段
+  }
+}
+```
+
+### 6.4 消息格式（严格类型）
+
+```typescript
+// ✅ 正确：使用类型注解确保 role 为字面量类型
+const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+  { role: 'system', content: '你是一个翻译专家' },
+  { role: 'user', content: '翻译以下内容' },
+];
+
+// ❌ 错误：TypeScript 推断 role 为 string，导致 TS2345
+const messages = [
+  { role: 'system', content: '...' },
+  { role: 'user', content: '...' },
+];
+```
+
+### 6.5 可用模型
+
+| 模型 ID | 名称 | 特点 |
+|---------|------|------|
+| `doubao-seed-2-0-lite-260215` | 豆包 Seed Lite | 均衡型，兼顾性能与成本 |
+| `doubao-seed-2-0-mini-260215` | 豆包 Seed Mini | 低时延，轻量级任务 |
+| `doubao-seed-2-0-pro-260215` | 豆包 Seed Pro | 旗舰级，复杂推理 |
+| `deepseek-v3-2-251201` | DeepSeek V3 | 平衡推理能力与输出长度 |
+| `kimi-k2-5-260127` | Kimi K2.5 | 长上下文 |
+
+> 完整模型列表通过 `/api/ai/models` 接口获取。
+
+### 6.6 SSE 流式输出规范
+
+AI 聊天接口**必须**使用 SSE 流式输出：
+
+```typescript
+// 后端：src/app/api/ai/chat/route.ts
+export async function POST(request: NextRequest) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      const llmStream = client.stream(messages, { model });
+      for await (const chunk of llmStream) {
+        if (chunk.content) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: chunk.content })}\n\n`));
+        }
+      }
+      controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+```
+
+```typescript
+// 前端：消费 SSE 流
+const response = await fetch('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message }) });
+const reader = response.body?.getReader();
+const decoder = new TextDecoder();
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  const text = decoder.decode(value);
+  // 解析 SSE data: 行
+}
+```
+
+### 6.7 AI 翻译接口
+
+用于商品多语言翻译，非流式调用：
+
+```typescript
+// POST /api/ai/translate
+// 请求体：{ text: string, targetLocale: string, sourceLocale?: string, context?: string }
+// 响应体：{ success: true, translatedText: string, sourceLocale: string, targetLocale: string }
+```
+
+---
+
+## 七、图片上传与文件管理标准
+
+### 7.1 上传组件
+
+| 组件 | 路径 | 说明 |
+|------|------|------|
+| ImageUpload | `@/components/upload/ImageUpload` | 图片上传（单图/多图） |
+| FileUpload | `@/components/ui/FileUpload` | 通用文件上传 |
+
+### 7.2 对象存储规范
+
+使用 `coze-coding-dev-sdk` 的 S3Storage，**禁止**自行搭建文件存储。
+
+```typescript
+import { S3Storage } from 'coze-coding-dev-sdk';
+```
+
+### 7.3 图片 URL 存储规则
+
+**存 key，不存签名 URL**：
+
+```typescript
+// ✅ 正确：存储 S3 key（不会过期）
+// 数据库存储：/api/file/{key}
+// 前端显示：<img src="/api/file/{key}" />
+
+// ❌ 错误：存储签名 URL（会过期，通常1小时）
+// 数据库存储：https://s3.xxx.com/bucket/xxx?X-Amz-Signature=...
+```
+
+### 7.4 文件代理 API
+
+`/api/file/route.ts` 或 `/api/file/[key]/route.ts` 根据 key 动态生成签名 URL 并重定向：
+
+```typescript
+// 访问 /api/file/abc123.jpg → 302 重定向到 S3 签名 URL
+```
+
+---
+
+## 八、富文本编辑器标准
+
+### 8.1 唯一编辑器：RichTextEditor
+
+基于 Tiptap，路径：`@/components/ui/rich-text-editor`
+
+```tsx
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+
+<RichTextEditor
+  content={content}
+  onChange={setContent}
+  placeholder="请输入内容..."
+/>
+```
+
+### 8.2 使用场景
+
+- 商品详情（管理后台商品编辑）
+- 新闻内容（管理后台新闻编辑）
+- 百科文章（管理后台百科编辑）
+- 公告内容（管理后台公告编辑）
+- AI 生成内容编辑
+
+### 8.3 富文本内容渲染
+
+```tsx
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
+
+<RichTextRenderer content={htmlContent} />
+```
+
+### 8.4 编辑器中的图片
+
+富文本编辑器中的图片**必须**通过 ImageUpload 组件上传后插入，禁止使用外部图片 URL。
+
+---
+
+## 九、多语言（i18n）标准
+
+### 9.1 方案：AI 辅助翻译 + 人工校对
+
+采用 AI 自动翻译 + 人工微调的方式，**不手动逐语言录入**。
+
+### 9.2 翻译流程
+
+```
+1. 商家/管理员录入源语言内容（zh-TW）
+2. 点击「一键AI翻译」按钮
+3. 系统调用 /api/ai/translate 生成目标语言内容
+4. 管理员校对微调后保存
+```
+
+### 9.3 翻译 API
+
+```typescript
+// POST /api/ai/translate
+{
+  text: string,           // 待翻译文本
+  targetLocale: string,   // 目标语言（en/ja/ko/vi/th/fr/de/es）
+  sourceLocale?: string,  // 源语言（默认 zh-TW）
+  context?: string        // 翻译上下文（如"商品名称"/"商品描述"）
+}
+
+// 响应
+{
+  success: true,
+  translatedText: string,
+  sourceLocale: string,
+  targetLocale: string
+}
+```
+
+### 9.4 支持的语言
+
+| 语言代码 | 名称 |
+|---------|------|
+| `zh-TW` | 繁體中文（源语言） |
+| `zh-CN` | 简体中文 |
+| `en` | English |
+| `ja` | 日本語 |
+| `ko` | 한국어 |
+| `vi` | Tiếng Việt |
+| `th` | ไทย |
+| `fr` | Français |
+| `de` | Deutsch |
+| `es` | Español |
+
+### 9.5 商品翻译管理
+
+通过 `/admin/goods-i18n` 页面管理商品多语言内容，支持：
+- 逐语言手动编辑
+- 一键 AI 翻译（调用 `/api/ai/translate`）
+- 翻译后人工校对微调
+
+---
+
+## 十、前端开发标准
+
+### 10.1 页面组件模式
 
 ```tsx
 'use client';  // 仅交互页面需要
@@ -536,7 +769,7 @@ export default function ExamplePage() {
 }
 ```
 
-### 5.2 Hydration 安全
+### 10.2 Hydration 安全
 
 ```tsx
 // ✅ 正确：客户端挂载后渲染动态内容
@@ -554,7 +787,7 @@ export function Component() {
 <div>{typeof window !== 'undefined' && ...}</div>  // Hydration 不匹配
 ```
 
-### 5.3 样式规范
+### 10.3 样式规范
 
 ```tsx
 // ✅ 正确：使用语义化变量
@@ -577,16 +810,16 @@ export function Component() {
 
 ---
 
-## 六、可复用模块清单
+## 十一、可复用模块清单
 
-### 6.1 数据库层
+### 11.1 数据库层
 
 | 模块 | 路径 | 说明 | 复用方式 |
 |------|------|------|---------|
 | 数据库访问 | `@/lib/db` | query/queryOne/insert/update/remove/count | `import { query } from '@/lib/db'` |
-| MySQL连接池 | `@/lib/mysql` | 连接池管理（内部模块） | 不直接使用 |
+| MySQL连接池 | `@/lib/mysql` | 连接池管理（内部模块） | **禁止直接使用** |
 
-### 6.2 认证模块
+### 11.2 认证模块
 
 | 模块 | 路径 | 说明 | 复用方式 |
 |------|------|------|---------|
@@ -597,7 +830,7 @@ export function Component() {
 | 前端守卫 | `@/components/auth/RequireAuth` | 登录拦截 | 包裹需要登录的页面 |
 | 前端守卫 | `@/components/auth/GuestGuard` | 游客拦截 | 登录/注册页 |
 
-### 6.3 请求层
+### 11.3 请求层
 
 | 模块 | 路径 | 说明 | 复用方式 |
 |------|------|------|---------|
@@ -607,7 +840,15 @@ export function Component() {
 | 通用Hooks | `@/lib/hooks` | useDebounce / useLocalStorage | 工具Hook |
 | Toast | `@/lib/hooks/use-toast` | useToast | 消息提示 |
 
-### 6.4 工具函数
+### 11.4 AI 模块
+
+| 模块 | 路径 | 说明 | 复用方式 |
+|------|------|------|---------|
+| LLM 客户端 | `coze-coding-dev-sdk` | LLMClient / Config / HeaderUtils | 后端 AI 调用唯一入口 |
+| AI聊天组件 | `@/components/ai/AIChat` | 对话界面 | AI 助手页面 |
+| AI浮动按钮 | `@/components/ai/FloatingAIButton` | 全局AI入口 | 页面级AI入口 |
+
+### 11.5 工具函数
 
 | 模块 | 路径 | 说明 | 复用方式 |
 |------|------|------|---------|
@@ -617,23 +858,30 @@ export function Component() {
 | 常量定义 | `@/lib/constants` | ORDER_STATUS / PAGINATION | 业务常量 |
 | 类型定义 | `@/lib/types` | 通用类型 | TypeScript类型 |
 
-### 6.5 UI组件
+### 11.6 UI 组件
 
 | 组件 | 路径 | 说明 | 使用场景 |
 |------|------|------|---------|
 | EmptyState | `@/components/ui/empty-state` | 空状态（通用版） | **所有空态统一用这个** |
+| ErrorState | `@/components/ui/empty-state` | 错误状态 | 已合并到 empty-state |
 | PageLoader | `@/components/ui/PageLoader` | 页面加载 | 页面级loading |
+| Skeleton | `@/components/ui/Skeleton` | 骨架屏 | 组件级loading |
 | Pagination | `@/components/ui/Pagination` | 分页 | 列表分页 |
 | StatusBadge | `@/components/ui/StatusBadge` | 状态标签 | 订单/商品状态 |
 | DataTable | `@/components/ui/DataTable` | 数据表格 | 管理后台列表 |
 | SearchFilter | `@/components/ui/SearchFilter` | 搜索筛选 | 列表筛选 |
 | ConfirmDialog | `@/components/ui/ConfirmDialog` | 确认弹窗 | 删除/操作确认 |
-| ImageUpload | `@/components/upload/ImageUpload` | 图片上传 | 商品/新闻图片 |
+| RichTextEditor | `@/components/ui/rich-text-editor` | 富文本编辑器 | 内容编辑 |
+| RichTextRenderer | `@/components/ui/rich-text-renderer` | 富文本渲染 | 内容展示 |
+| ImageUpload | `@/components/upload/ImageUpload` | 图片上传 | 商品/新闻/百科图片 |
 | FileUpload | `@/components/ui/FileUpload` | 文件上传 | 通用上传 |
+| OptimizedImage | `@/components/common/OptimizedImage` | 图片优化展示 | 商品图/列表图 |
+| ImagePreview | `@/components/ui/ImagePreview` | 图片预览 | 图片查看 |
 | AdminTable | `@/components/admin/AdminTable` | 管理后台表格 | 后台列表页 |
 | AdminForm | `@/components/admin/AdminForm` | 管理后台表单 | 后台编辑页 |
+| ErrorBoundary | `@/components/ui/error-boundary` | 错误边界 | 页面级错误捕获 |
 
-### 6.6 业务组件
+### 11.7 业务组件
 
 | 组件 | 路径 | 说明 | 复用场景 |
 |------|------|------|---------|
@@ -643,12 +891,16 @@ export function Component() {
 | ReviewSection | `@/components/review/ReviewSection` | 评价区块 | 商品详情 |
 | NotificationBell | `@/components/notification/NotificationBell` | 通知铃铛 | Header |
 | AddressList | `@/components/user/AddressList` | 地址管理 | 结算页/用户中心 |
+| NewsPage | `@/components/news/NewsPage` | 新闻列表 | 新闻频道 |
+| NewsDetailPage | `@/components/news/NewsDetailPage` | 新闻详情 | 新闻文章 |
+| BaikePage | `@/components/baike/BaikePage` | 百科首页 | 百科频道 |
+| ArticleDetailPage | `@/components/baike/ArticleDetailPage` | 百科详情 | 百科文章 |
 
 ---
 
-## 七、组件开发规范
+## 十二、组件开发规范
 
-### 7.1 新建组件原则
+### 12.1 新建组件原则
 
 1. **优先复用**：检查上方"可复用模块清单"是否已有满足需求的组件
 2. **禁止重复造轮子**：
@@ -656,10 +908,13 @@ export function Component() {
    - 加载态 → 用 `@/components/ui/PageLoader` 或 `@/components/ui/Skeleton`
    - 分页 → 用 `@/components/ui/Pagination`
    - 确认弹窗 → 用 `@/components/ui/ConfirmDialog`
+   - 富文本 → 用 `@/components/ui/rich-text-editor`
+   - 图片上传 → 用 `@/components/upload/ImageUpload`
+   - 图片展示 → 用 `@/components/common/OptimizedImage`
 3. **模块内聚**：业务组件放在对应模块目录 `src/components/{module}/`
 4. **跨模块通用**：放在 `src/components/common/` 或 `src/components/ui/`
 
-### 7.2 重复组件清理结果
+### 12.2 重复组件清理记录
 
 | 重复项 | 保留 | 已删除 | 状态 |
 |--------|------|--------|------|
@@ -669,6 +924,7 @@ export function Component() {
 | Skeleton (多处) | `ui/Skeleton` | `free-gifts/Skeleton` | 已清理 |
 | empty.tsx vs empty-state.tsx | `ui/empty-state` | `ui/empty.tsx` | 已清理 |
 | ErrorState | `ui/empty-state` (ErrorState) | `free-gifts/EmptyState` (ErrorState) | 已合并 |
+| media/ 整个目录 | 已分散到各规范位置 | `media/` 目录 | 已清理 |
 
 **重要**：新增空状态/错误状态统一使用 `@/components/ui/empty-state`，已包含：
 - `EmptyState` - 通用空状态
@@ -676,7 +932,7 @@ export function Component() {
 - `ErrorState` - 错误状态
 - `NetworkError` - 网络错误状态
 
-### 7.3 组件文件模板
+### 12.3 组件文件模板
 
 ```tsx
 /**
@@ -711,41 +967,48 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 
 ---
 
-## 八、新增功能开发流程
+## 十三、新增功能开发流程
 
-### 8.1 标准开发步骤
+### 13.1 标准开发步骤
 
 ```
 1. 确认需求 → 查阅本文档"可复用模块清单"
 2. 数据库 → SQL建表 + sql/schema.sql同步 + db.ts种子数据
-3. API Route → 按第四章标准编写
-4. 前端页面 → 按第五章标准编写，复用已有组件
-5. 测试 → ts-check + lint + API冒烟测试
+3. PHP控制器 → 按第五章标准编写（生产API必须）
+4. API Route → 按第四章标准编写（开发环境副本）
+5. 前端页面 → 按第十章标准编写，复用已有组件
+6. 测试 → ts-check + lint + API冒烟测试
 ```
 
-### 8.2 新增模块 Checklist
+### 13.2 新增模块 Checklist
 
 - [ ] `sql/schema.sql` 已同步建表语句
 - [ ] `src/lib/db.ts` 已添加种子数据（如Mock DB需初始化）
-- [ ] API Route 遵循第四章标准
+- [ ] PHP 控制器已编写（`php/app/controller/{Module}.php`）
+- [ ] PHP 路由已注册（`php/route/router.php`）
+- [ ] Next.js API Route 已编写（`src/app/api/{module}/route.ts`）
 - [ ] 认证使用 `getAuthUserId` / `getAdminUser`
 - [ ] 数据库操作使用 `@/lib/db` 六个函数
 - [ ] 响应格式遵循 4.2 标准
-- [ ] 前端复用已有组件（对照 6.5 / 6.6）
-- [ ] 无 Hydration 风险（对照 5.2）
-- [ ] 样式使用语义化变量（对照 5.3）
+- [ ] 前端复用已有组件（对照 11.6 / 11.7）
+- [ ] 无 Hydration 风险（对照 10.2）
+- [ ] 样式使用语义化变量（对照 10.3）
+- [ ] AI 功能使用 `coze-coding-dev-sdk`（对照第六章）
+- [ ] 图片上传使用 S3Storage（对照第七章）
 
 ---
 
-## 九、编码红线（必须遵守）
+## 十四、编码红线（必须遵守）
 
-### 9.1 禁止
+### 14.1 禁止
 
 | 红线 | 说明 |
 |------|------|
 | ❌ 直接使用 npm / yarn | 包管理器只用 pnpm |
 | ❌ import `@/lib/mysql` | 数据库操作只用 `@/lib/db` |
 | ❌ 直接使用 `@supabase/*` | 已移除 Supabase |
+| ❌ 自建 HTTP 调用大模型 API | AI 调用只用 `coze-coding-dev-sdk` |
+| ❌ 在客户端使用 `coze-coding-dev-sdk` | SDK 仅限后端 |
 | ❌ 硬编码颜色 | 用 `bg-background` / `text-foreground` 等语义变量 |
 | ❌ 硬编码端口 | 从 `process.env.DEPLOY_RUN_PORT` 读取 |
 | ❌ 硬编码域名 | 从 `process.env.COZE_PROJECT_DOMAIN_DEFAULT` 读取 |
@@ -753,9 +1016,11 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 | ❌ 隐式 any | 函数参数、回调必须标注类型 |
 | ❌ 渲染中使用 `Date.now()` / `Math.random()` | Hydration 不匹配 |
 | ❌ `<p>` 嵌套 `<div>` | 非法 HTML 嵌套 |
-| ❌ 重复造空态/加载态/分页组件 | 复用已有组件 |
+| ❌ 重复造空态/加载态/分页/富文本组件 | 复用已有组件 |
+| ❌ 存储签名 URL 到数据库 | 存储 S3 key，通过 `/api/file/{key}` 动态解析 |
+| ❌ LLMClient 使用 `.chat()` 方法 | SDK 无此方法，用 `.invoke()`（非流式）或 `.stream()`（流式） |
 
-### 9.2 必须
+### 14.2 必须
 
 | 规则 | 说明 |
 |------|------|
@@ -766,10 +1031,14 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 | ✅ 交互组件加 `'use client'` | Next.js App Router 要求 |
 | ✅ 动态内容用 `useState + useEffect` | 避免 Hydration 错误 |
 | ✅ 文件头加 `@fileoverview` 注释 | 代码可读性 |
+| ✅ LLM 消息数组加类型注解 | 避免 TS2345 类型推断错误 |
+| ✅ AI 请求转发 HeaderUtils | `HeaderUtils.extractForwardHeaders(request.headers)` |
+| ✅ 富文本编辑用 RichTextEditor | Tiptap 编辑器统一入口 |
+| ✅ 图片上传用 S3Storage + /api/file/{key} | 对象存储统一管理 |
 
 ---
 
-## 十、部署相关
+## 十五、部署相关
 
 ### 生产架构（SSR + PHP API，SEO 友好）
 
@@ -798,6 +1067,7 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 | 数据库 | Mock DB 降级 / MySQL | MySQL |
 | API 模式变量 | `NEXT_PUBLIC_API_MODE=local` | `NEXT_PUBLIC_API_MODE=php` |
 | 热更新 | HMR 开启 | 关闭 |
+| 服务器目录 | `/workspace/projects` | `/www/wwwroot/116.204.135.69` |
 
 ### 环境变量
 
@@ -805,6 +1075,7 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 # Next.js 前端
 DEPLOY_RUN_PORT=5000                    # 服务监听端口
 COZE_WORKSPACE_PATH=/workspace/projects # 工作目录
+COZE_PROJECT_DOMAIN_DEFAULT=xxx         # 对外访问域名
 NEXT_PUBLIC_API_MODE=local              # 开发=local / 生产=php
 NEXT_PUBLIC_PHP_API_URL=                # PHP API地址（生产环境设置）
 
@@ -824,6 +1095,18 @@ DB_NAME=fubao
 
 # AI
 AI_PROVIDER=volcengine
+```
+
+### Docker 部署
+
+```bash
+# Dockerfile 使用多阶段构建 + BuildKit 缓存
+# pnpm store 缓存挂载，避免重复下载依赖
+DOCKER_BUILDKIT=1 docker build -t fubao .
+
+# 一键更新脚本
+bash update-fubao.sh            # 智能检测，增量更新
+NEED_REBUILD=1 bash update-fubao.sh  # 强制重建
 ```
 
 ### 部署脚本
