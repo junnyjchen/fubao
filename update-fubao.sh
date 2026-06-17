@@ -19,6 +19,8 @@ NC='\033[0m'
 # 自动检测项目目录：优先用环境变量，其次自动查找
 if [ -n "$FUBAO_DIR" ]; then
     SITE_DIR="$FUBAO_DIR"
+elif [ -d "/www/wwwroot/116.204.135.69" ]; then
+    SITE_DIR="/www/wwwroot/116.204.135.69"
 elif [ -d "/root/fubao" ]; then
     SITE_DIR="/root/fubao"
 elif [ -d "/opt/fubao" ]; then
