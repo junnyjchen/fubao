@@ -583,7 +583,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
             role: m.role,
             content: m.content,
           })),
-          modelId: selectedModelId || undefined,
+          model: selectedModelId || undefined,
         }),
       });
 
