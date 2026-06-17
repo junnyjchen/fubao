@@ -4,48 +4,28 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getActiveModel, getModelConfigs } from '@/lib/ai/store';
+import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 /** 内容类型 */
 type ContentType = 'product' | 'wiki' | 'news';
 
-/** 调用LLM生成内容（非流式） */
-async function generateWithLLM(prompt: string): Promise<string> {
-  const modelConfig = getActiveModel() || getModelConfigs().find(c => c.isActive);
-  if (!modelConfig) {
-    throw new Error('未配置AI模型');
-  }
+/** 调用LLM生成内容（非流式，使用 coze-coding-dev-sdk） */
+async function generateWithLLM(prompt: string, request: NextRequest): Promise<string> {
+  const config = new Config();
+  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
+  const client = new LLMClient(config, customHeaders);
 
-  let baseUrl = modelConfig.baseUrl.replace(/\/+$/, '');
-  if (!baseUrl.endsWith('/v1')) {
-    baseUrl = baseUrl + '/v1';
-  }
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: 'system', content: '你是一個專業的玄門文化內容創作專家，擅長撰寫道門、風水、符咒、法器等相關領域的專業內容。請用繁體中文回答。' },
+    { role: 'user', content: prompt },
+  ];
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${modelConfig.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: modelConfig.model,
-      messages: [
-        { role: 'system', content: '你是一個專業的玄門文化內容創作專家，擅長撰寫道門、風水、符咒、法器等相關領域的專業內容。請用繁體中文回答。' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.8,
-      max_tokens: 4096,
-      stream: false,
-    }),
+  const result = await client.invoke(messages, {
+    model: 'doubao-seed-2-0-lite-260215',
+    temperature: 0.8,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`AI API 請求失敗 (${response.status}): ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  return result.content || '';
 }
 
 /** 生成產品內容的提示詞 */
@@ -107,12 +87,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請提供主題' }, { status: 400 });
     }
 
-    // 檢查AI模型是否配置
-    const modelConfig = getActiveModel() || getModelConfigs().find(c => c.isActive);
-    if (!modelConfig) {
-      return NextResponse.json({ error: '未配置AI模型，請先在設置中配置' }, { status: 400 });
-    }
-
     // 構建提示詞
     let prompt: string;
     const contentType = type as ContentType;
@@ -130,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 調用LLM生成內容
-    const rawContent = await generateWithLLM(prompt);
+    const rawContent = await generateWithLLM(prompt, request);
 
     // 解析JSON結果
     let generatedContent: Record<string, unknown>;
