@@ -132,6 +132,12 @@ export default function MerchantGoodsPage() {
                     {item.status === 1 ? '上架' : '下架'}
                   </span>
                   <button
+                    onClick={() => router.push(`/merchant/goods/${item.id}`)}
+                    className="px-3 py-1.5 text-xs border border-primary/30 text-primary rounded-lg hover:bg-primary/10 transition"
+                  >
+                    编辑
+                  </button>
+                  <button
                     onClick={() => toggleStatus(item.id, item.status)}
                     className="px-3 py-1.5 text-xs border border-border rounded-lg hover:bg-muted transition"
                   >
