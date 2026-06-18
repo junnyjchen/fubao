@@ -52,6 +52,7 @@ export function Header() {
   const navItems = [
     { href: '/', label: t.nav.home },
     { href: '/shop', label: t.nav.shop },
+    { href: '/baike', label: t.nav.baike },
     { href: '/free', label: '免費領取', highlight: true, badge: 'NEW' },
     { href: '/news', label: t.nav.news },
     { href: '/ai-assistant', label: t.nav.aiAssistant, icon: Sparkles },
