@@ -4,6 +4,7 @@ const isProd = process.env.COZE_PROJECT_ENV === 'PROD';
 const phpApiUrl = process.env.PHP_API_URL || 'http://127.0.0.1:8080';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   allowedDevOrigins: ['*.dev.coze.site'],
   typescript: {
     ignoreBuildErrors: true,
