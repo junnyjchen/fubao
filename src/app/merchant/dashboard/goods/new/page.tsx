@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/upload/ImageUpload';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface GoodsForm {
   name: string;
@@ -338,11 +339,10 @@ export default function MerchantGoodsNewPage() {
                     <CardDescription>詳細介紹商品特點、使用方法等</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Textarea
+                    <RichTextEditor
                       value={form.content}
-                      onChange={(e) => setForm({ ...form, content: e.target.value })}
-                      placeholder="請輸入商品詳情內容（支持HTML格式）"
-                      rows={12}
+                      onChange={(html) => setForm({ ...form, content: html })}
+                      placeholder="请输入商品详情内容..."
                     />
                   </CardContent>
                 </Card>

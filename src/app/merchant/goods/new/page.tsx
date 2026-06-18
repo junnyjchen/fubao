@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { ImageUpload, SingleImageUpload } from '@/components/upload/ImageUpload';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 export default function MerchantNewGoodsPage() {
   const router = useRouter();
@@ -89,6 +91,7 @@ export default function MerchantNewGoodsPage() {
 
       <div className="max-w-3xl mx-auto px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* 基本信息 */}
           <div className="bg-card rounded-xl border border-border p-6 space-y-5">
             <h2 className="font-semibold text-foreground text-base border-b border-border pb-3">基本信息</h2>
 
@@ -155,21 +158,32 @@ export default function MerchantNewGoodsPage() {
                   className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition" />
               </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">主图URL</label>
-              <input type="text" value={form.main_image} onChange={e => updateForm('main_image', e.target.value)}
-                placeholder="输入图片URL地址"
-                className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition" />
-            </div>
+          {/* 主图上传 */}
+          <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 className="font-semibold text-foreground text-base">主图</h2>
+            <p className="text-sm text-muted-foreground">第一张图片将作为商品主图，建议尺寸 800x800，支持 JPG/PNG/WebP</p>
+            <SingleImageUpload
+              value={form.main_image}
+              onChange={(url) => updateForm('main_image', url)}
+              folder="merchant/goods"
+            />
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">商品描述</label>
-              <textarea value={form.description} onChange={e => updateForm('description', e.target.value)}
-                placeholder="详细描述商品信息" rows={4}
-                className="w-full px-4 py-3 rounded-lg border border-border bg-background text-foreground focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition resize-none" />
-            </div>
+          {/* 商品描述 - 富文本编辑器 */}
+          <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 className="font-semibold text-foreground text-base">商品描述</h2>
+            <RichTextEditor
+              value={form.description}
+              onChange={(html) => updateForm('description', html)}
+              placeholder="详细描述商品信息..."
+            />
+          </div>
 
+          {/* 其他选项 */}
+          <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+            <h2 className="font-semibold text-foreground text-base">其他选项</h2>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={form.is_certified} onChange={e => updateForm('is_certified', e.target.checked)}
                 className="w-4 h-4 rounded border-border" />

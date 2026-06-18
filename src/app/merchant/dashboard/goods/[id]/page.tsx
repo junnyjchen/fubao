@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/upload/ImageUpload';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface GoodsData {
   id: number;
@@ -442,12 +443,13 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
                     <CardTitle className="text-base">商品詳情</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Textarea
-                      value={form.content}
-                      onChange={(e) => setForm({ ...form, content: e.target.value })}
-                      placeholder="請輸入商品詳情內容"
-                      rows={12}
-                    />
+                    {form && (
+                      <RichTextEditor
+                        value={form.content}
+                        onChange={(html) => setForm({ ...form, content: html })}
+                        placeholder="请输入商品详情内容..."
+                      />
+                    )}
                   </CardContent>
                 </Card>
 
