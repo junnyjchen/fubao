@@ -42,10 +42,6 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/php ./php
 
-# 复制静态资源（图片等）
-COPY --from=builder /app/public/images ./public/images
-COPY --from=builder /app/public/uploads ./public/uploads
-
 # 设置时区
 RUN apk add --no-cache tzdata && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
