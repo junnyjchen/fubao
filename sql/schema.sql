@@ -591,4 +591,94 @@ CREATE TABLE IF NOT EXISTS `baike_articles` (
   INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 商品SKU规格表
+CREATE TABLE IF NOT EXISTS `goods_skus` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `goods_id` INT UNSIGNED NOT NULL,
+  `sku_code` VARCHAR(100) NOT NULL DEFAULT '' COMMENT 'SKU编码',
+  `specs` JSON NOT NULL COMMENT '规格组合 {"颜色":"红色","尺寸":"大"}',
+  `price` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT 'SKU售价',
+  `original_price` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT 'SKU原价',
+  `stock` INT NOT NULL DEFAULT 0 COMMENT 'SKU库存',
+  `image` VARCHAR(500) NOT NULL DEFAULT '' COMMENT 'SKU图片',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '0禁用 1启用',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_goods_id` (`goods_id`),
+  UNIQUE KEY `uk_sku_code` (`sku_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 商品规格模板表
+CREATE TABLE IF NOT EXISTS `goods_specs` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `goods_id` INT UNSIGNED NOT NULL,
+  `name` VARCHAR(50) NOT NULL COMMENT '规格名 如颜色/尺寸',
+  `values` JSON NOT NULL COMMENT '规格值 ["红色","蓝色","绿色"]',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_goods_id` (`goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 商家评价表
+CREATE TABLE IF NOT EXISTS `merchant_reviews` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `merchant_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  `order_id` INT UNSIGNED NOT NULL DEFAULT 0,
+  `goods_id` INT UNSIGNED NOT NULL DEFAULT 0,
+  `rating` TINYINT UNSIGNED NOT NULL DEFAULT 5 COMMENT '1-5星评分',
+  `content` TEXT NOT NULL COMMENT '评价内容',
+  `images` JSON COMMENT '评价图片',
+  `reply` TEXT COMMENT '商家回复',
+  `replied_at` DATETIME COMMENT '回复时间',
+  `is_anonymous` TINYINT NOT NULL DEFAULT 0,
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '0隐藏 1显示',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_merchant_id` (`merchant_id`),
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_order_id` (`order_id`),
+  INDEX `idx_goods_id` (`goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 多币种支持表
+CREATE TABLE IF NOT EXISTS `currencies` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `code` VARCHAR(10) NOT NULL UNIQUE COMMENT '货币代码 CNY/USD/EUR',
+  `name` VARCHAR(50) NOT NULL COMMENT '货币名称',
+  `symbol` VARCHAR(10) NOT NULL COMMENT '货币符号 ¥/$/€',
+  `rate` DECIMAL(12,6) NOT NULL DEFAULT 1 COMMENT '兑人民币汇率',
+  `is_default` TINYINT NOT NULL DEFAULT 0 COMMENT '是否默认货币',
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 商品多币种价格表
+CREATE TABLE IF NOT EXISTS `goods_prices` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `goods_id` INT UNSIGNED NOT NULL,
+  `currency_code` VARCHAR(10) NOT NULL,
+  `price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+  `original_price` DECIMAL(10,2) NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_goods_currency` (`goods_id`, `currency_code`),
+  INDEX `idx_currency` (`currency_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 商品多级分类增强：添加 level 和 path 字段
+ALTER TABLE `categories` 
+  ADD COLUMN IF NOT EXISTS `level` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '层级 1/2/3',
+  ADD COLUMN IF NOT EXISTS `path` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '路径 1/2/3',
+  ADD COLUMN IF NOT EXISTS `icon` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '分类图标',
+  ADD COLUMN IF NOT EXISTS `image` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '分类图片';
+
+-- 商家统计字段
+ALTER TABLE `merchants`
+  ADD COLUMN IF NOT EXISTS `avg_rating` DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '平均评分',
+  ADD COLUMN IF NOT EXISTS `review_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '评价数',
+  ADD COLUMN IF NOT EXISTS `total_sales` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '总销量',
+  ADD COLUMN IF NOT EXISTS `level` VARCHAR(20) NOT NULL DEFAULT 'bronze' COMMENT '商家等级 bronze/silver/gold/diamond';
+
 SET FOREIGN_KEY_CHECKS = 1;

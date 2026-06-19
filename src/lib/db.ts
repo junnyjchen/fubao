@@ -134,7 +134,24 @@ const initialData: Record<string, any[]> = {
     { id: 10, category_id: 5, locale: 'ja', name: '風水擺件', created_at: '2025-01-01T00:00:00.000Z' },
     { id: 11, category_id: 6, locale: 'en', name: 'Lucky Accessories', created_at: '2025-01-01T00:00:00.000Z' },
     { id: 12, category_id: 6, locale: 'ja', name: '開運飾品', created_at: '2025-01-01T00:00:00.000Z' },
-  ]
+  ],
+  // ========== 商品 SKU 系统 ==========
+  goods_skus: [] as any[],
+  goods_specs: [] as any[],
+  // ========== 商家评分 ==========
+  merchant_reviews: [] as any[],
+  // ========== 多币种 ==========
+  currencies: [
+    { id: 1, code: 'TWD', name: '新台幣', symbol: 'NT$', rate: 1.00, is_default: 1, status: 1, created_at: new Date().toISOString() },
+    { id: 2, code: 'USD', name: 'US Dollar', symbol: '$', rate: 0.031, is_default: 0, status: 1, created_at: new Date().toISOString() },
+    { id: 3, code: 'CNY', name: '人民幣', symbol: '¥', rate: 0.22, is_default: 0, status: 1, created_at: new Date().toISOString() },
+    { id: 4, code: 'JPY', name: '日本円', symbol: '¥', rate: 4.70, is_default: 0, status: 1, created_at: new Date().toISOString() },
+    { id: 5, code: 'EUR', name: 'Euro', symbol: '€', rate: 0.029, is_default: 0, status: 1, created_at: new Date().toISOString() },
+    { id: 6, code: 'SGD', name: 'Singapore Dollar', symbol: 'S$', rate: 0.042, is_default: 0, status: 1, created_at: new Date().toISOString() },
+    { id: 7, code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM', rate: 0.15, is_default: 0, status: 1, created_at: new Date().toISOString() },
+    { id: 8, code: 'THB', name: 'Thai Baht', symbol: '฿', rate: 1.12, is_default: 0, status: 1, created_at: new Date().toISOString() },
+  ],
+  goods_prices: [] as any[],
 };
 
 let nextIds: Record<string, number> = {};

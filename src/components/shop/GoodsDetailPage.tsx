@@ -44,6 +44,8 @@ import { DetailRecommendations } from '@/components/shop/ProductRecommendations'
 import { GoodsDetailSkeleton } from '@/components/shop/GoodsDetailSkeleton';
 import { useI18n } from '@/lib/i18n';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
+import { SkuSelector } from '@/components/shop/SkuSelector';
+import { MerchantReviews } from '@/components/shop/MerchantReviews';
 
 interface Goods {
   id: number;
@@ -130,6 +132,8 @@ export function GoodsDetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showCoupon, setShowCoupon] = useState(false);
+  const [selectedSku, setSelectedSku] = useState<{id: number; sku_code: string; specs: Record<string, string>; price: number; stock: number} | null>(null);
+  const [skus, setSkus] = useState<Array<{id: number; sku_code: string; specs: Record<string, string>; price: number; stock: number}>>([]);
 
   // 从URL获取商品ID
   useEffect(() => {
@@ -163,6 +167,15 @@ export function GoodsDetailPage() {
     };
     loadGoods();
   }, [goodsId, router]);
+
+  // 加载 SKU 列表
+  useEffect(() => {
+    if (!goodsId) return;
+    fetch(`/api/goods/${goodsId}/skus`)
+      .then(r => r.json())
+      .then(d => { if (d.data) setSkus(d.data); })
+      .catch(() => {});
+  }, [goodsId]);
 
   // 检查收藏状态
   const checkFavoriteStatus = async (goodsId: number) => {
@@ -443,6 +456,13 @@ export function GoodsDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* SKU 选择器 */}
+            <SkuSelector
+              goodsId={goods.id}
+              basePrice={Number(goods.price)}
+              onSkuChange={(sku) => setSelectedSku(sku)}
+            />
 
             {/* 优惠券入口 */}
             <Button variant="outline" className="w-full justify-between group" onClick={() => setShowCoupon(true)}>
