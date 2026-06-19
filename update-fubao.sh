@@ -129,13 +129,18 @@ fi
 echo ""
 echo -e "${BLUE}━━━ Step 4/5: 启动容器 ━━━${NC}"
 
-# 获取数据库配置（从环境变量或 php/config/database.php）
-DB_HOST="${MYSQL_HOST:-localhost}"
+# 获取数据库配置（优先从 .env 文件读取）
+if [ -f "$BASE_DIR/.env" ]; then
+    # shellcheck source=/dev/null
+    source <(grep -E '^(MYSQL_|NEXT_PUBLIC_)' "$BASE_DIR/.env" | sed 's/^/export /')
+fi
+# Docker 容器内连宿主机 MySQL，需用 host.docker.internal（Linux 上可能需要 --add-host）
+DB_HOST="${MYSQL_HOST:-host.docker.internal}"
 DB_PORT="${MYSQL_PORT:-3306}"
 DB_USER="${MYSQL_USER:-fubao}"
 DB_PASS="${MYSQL_PASSWORD:-}"
 DB_NAME="${MYSQL_DATABASE:-fubao}"
-API_MODE="${NEXT_PUBLIC_API_MODE:-php}"
+API_MODE="${NEXT_PUBLIC_API_MODE:-local}"
 
 # 停止旧容器
 if docker ps -q -f name="$CONTAINER_NAME" | grep -q .; then
@@ -148,6 +153,7 @@ echo -e "${YELLOW}🚀 启动新容器...${NC}"
 docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
+    --add-host=host.docker.internal:host-gateway \
     -p "$HOST_PORT:5000" \
     -e NODE_ENV=production \
     -e DEPLOY_RUN_PORT=5000 \

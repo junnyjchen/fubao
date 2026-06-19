@@ -30,7 +30,30 @@ function shouldUseMysql(): boolean {
 }
 
 // ========== 持久化配置 ==========
-const DATA_DIR = join(process.env.COZE_WORKSPACE_PATH || '/workspace/projects', '.db-data');
+// 优先使用项目目录，Docker 内无权限时降级到 /tmp
+function resolveDataDir(): string {
+  const base = process.env.COZE_WORKSPACE_PATH || '/workspace/projects';
+  const preferred = join(base, '.db-data');
+  try {
+    if (!existsSync(preferred)) mkdirSync(preferred, { recursive: true });
+    // 测试写权限
+    const testFile = join(preferred, '.write-test');
+    writeFileSync(testFile, '1', 'utf8');
+    const { unlinkSync } = require('fs');
+    unlinkSync(testFile);
+    return preferred;
+  } catch {
+    console.warn(`[Mock DB] 路径 ${preferred} 不可写，降级到 /tmp`);
+    const fallback = '/tmp/.db-data';
+    try {
+      if (!existsSync(fallback)) mkdirSync(fallback, { recursive: true });
+    } catch {
+      // 完全无法持久化，纯内存模式
+    }
+    return fallback;
+  }
+}
+const DATA_DIR = resolveDataDir();
 const DATA_FILE = join(DATA_DIR, 'mock-db.json');
 const SAVE_INTERVAL = 3000; // 3秒防抖保存
 
