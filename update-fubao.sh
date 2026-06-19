@@ -134,8 +134,11 @@ if [ -f "$BASE_DIR/.env" ]; then
     # shellcheck source=/dev/null
     source <(grep -E '^(MYSQL_|NEXT_PUBLIC_)' "$BASE_DIR/.env" | sed 's/^/export /')
 fi
-# Docker 容器内连宿主机 MySQL，需用 host.docker.internal（Linux 上可能需要 --add-host）
+# Docker 容器内 127.0.0.1/localhost 指向容器自身，必须改为宿主机地址
 DB_HOST="${MYSQL_HOST:-host.docker.internal}"
+if [ "$DB_HOST" = "127.0.0.1" ] || [ "$DB_HOST" = "localhost" ]; then
+    DB_HOST="host.docker.internal"
+fi
 DB_PORT="${MYSQL_PORT:-3306}"
 DB_USER="${MYSQL_USER:-fubao}"
 DB_PASS="${MYSQL_PASSWORD:-}"
@@ -187,9 +190,14 @@ else
     exit 1
 fi
 
-# 检查 Next.js 响应（从容器内部自检，避免宿主机网络干扰）
+# 检查 Next.js 响应（容器内用 node 自检，Alpine 无 curl/wget）
 sleep 2
-if docker exec "$CONTAINER_NAME" wget -q -O /dev/null --timeout=5 http://localhost:3000 2>/dev/null; then
+if docker exec "$CONTAINER_NAME" node -e "
+  const http = require('http');
+  http.get('http://localhost:3000', (res) => {
+    process.exit(res.statusCode === 200 || res.statusCode === 304 ? 0 : 1);
+  }).on('error', () => process.exit(1));
+" 2>/dev/null; then
     echo -e "${GREEN}✅ Next.js SSR 正常响应 (容器内 :3000 → 宿主机 :${HOST_PORT})${NC}"
 else
     echo -e "${RED}❌ Next.js 无响应，查看日志：docker logs $CONTAINER_NAME${NC}"
