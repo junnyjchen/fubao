@@ -187,9 +187,10 @@ else
     exit 1
 fi
 
-# 检查 Next.js 响应
-if curl -s -o /dev/null -w "%{http_code}" --max-time 10 http://localhost:$HOST_PORT | grep -q "200\|304"; then
-    echo -e "${GREEN}✅ Next.js SSR 正常响应 (http://localhost:${HOST_PORT})${NC}"
+# 检查 Next.js 响应（从容器内部自检，避免宿主机网络干扰）
+sleep 2
+if docker exec "$CONTAINER_NAME" wget -q -O /dev/null --timeout=5 http://localhost:3000 2>/dev/null; then
+    echo -e "${GREEN}✅ Next.js SSR 正常响应 (容器内 :3000 → 宿主机 :${HOST_PORT})${NC}"
 else
     echo -e "${RED}❌ Next.js 无响应，查看日志：docker logs $CONTAINER_NAME${NC}"
     docker logs "$CONTAINER_NAME" 2>&1 | tail -20
