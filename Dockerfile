@@ -30,7 +30,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV DEPLOY_RUN_PORT=5000
+ENV PORT=3000
 
 # 创建非 root 用户
 RUN addgroup -g 1001 -S nodejs && \
@@ -57,6 +57,6 @@ RUN mkdir -p /app/public/uploads/goods /app/public/uploads/content \
 
 USER nextjs
 
-EXPOSE 5000
+EXPOSE 3000
 
 CMD ["node", "server.js"]

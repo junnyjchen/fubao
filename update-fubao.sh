@@ -154,9 +154,9 @@ docker run -d \
     --name "$CONTAINER_NAME" \
     --restart unless-stopped \
     --add-host=host.docker.internal:host-gateway \
-    -p "$HOST_PORT:5000" \
+    -p "$HOST_PORT:3000" \
     -e NODE_ENV=production \
-    -e DEPLOY_RUN_PORT=5000 \
+    -e PORT=3000 \
     -e MYSQL_HOST="$DB_HOST" \
     -e MYSQL_PORT="$DB_PORT" \
     -e MYSQL_USER="$DB_USER" \
