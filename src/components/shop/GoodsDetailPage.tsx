@@ -238,21 +238,26 @@ export function GoodsDetailPage() {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/cart', {
+      // 直接创建订单（模式3: 单商品直接购买），跳过购物车
+      const res = await fetch('/api/orders', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ goodsId: goods.id, quantity }),
+        body: JSON.stringify({ goods_id: goods.id, quantity }),
       });
       const data = await res.json();
-      if (data.message) {
-        router.push('/cart');
+      if (data.id) {
+        // 订单创建成功，直接跳结账页
+        router.push(`/checkout?order_id=${data.id}`);
+      } else if (data.error) {
+        toast.error(data.error);
       }
     } catch (error) {
       console.error('购买失败:', error);
+      toast.error(t.shop.detail.addFailed);
     } finally {
       setAddingToCart(false);
     }
-  }, [goods, quantity, router]);
+  }, [goods, quantity, router, t]);
 
   const handleToggleFavorite = useCallback(async () => {
     if (!goods) return;

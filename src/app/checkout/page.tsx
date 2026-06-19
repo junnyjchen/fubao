@@ -120,6 +120,7 @@ function CheckoutPageContent() {
   const { t, isRTL } = useI18n();
   
   const cartItemIds = searchParams.get('cartItemIds')?.split(',').map(Number) || [];
+  const orderId = searchParams.get('order_id');
   const couponId = searchParams.get('couponId');
 
   const [loading, setLoading] = useState(true);
@@ -145,7 +146,7 @@ function CheckoutPageContent() {
 
   useEffect(() => {
     loadData();
-  }, [cartItemIds]);
+  }, [cartItemIds, orderId]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -164,8 +165,32 @@ function CheckoutPageContent() {
         }
       }
 
-      // 加载购物车商品
-      if (cartItemIds.length > 0) {
+      // 模式1: 直接下单 (order_id)
+      if (orderId) {
+        const orderRes = await fetch(`/api/orders?id=${orderId}`, { headers });
+        const orderData = await orderRes.json();
+        if (orderData.data) {
+          const order = orderData.data;
+          // 将订单商品转为 CartItem 格式展示
+          const items = (order.items || []).map((item: { goods_id: number; goods_name: string; price: number; quantity: number; image?: string }) => ({
+            id: item.goods_id,
+            goods_id: item.goods_id,
+            goods_name: item.goods_name,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.image || '',
+            merchant_id: 0,
+            merchant_name: '',
+          }));
+          setCartItems(items);
+          // 如果有已选的地址
+          if (order.address_id) setSelectedAddressId(order.address_id);
+          if (order.payment_method) setPaymentMethod(order.payment_method);
+          if (order.remark) setRemark(order.remark);
+        }
+      }
+      // 模式2: 购物车下单 (cartItemIds)
+      else if (cartItemIds.length > 0) {
         const cartRes = await fetch('/api/cart', { headers });
         const cartData = await cartRes.json();
         if (cartData.data) {
@@ -228,23 +253,47 @@ function CheckoutPageContent() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          address_id: selectedAddressId,
-          cart_item_ids: cartItemIds,
-          coupon_id: selectedCoupon?.id,
-          payment_method: paymentMethod,
-          remark: remark.trim() || undefined,
-        }),
-      });
+      // 直接下单模式：更新已有订单
+      if (orderId) {
+        const res = await fetch(`/api/orders`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            id: parseInt(orderId),
+            address_id: selectedAddressId,
+            coupon_id: selectedCoupon?.id,
+            payment_method: paymentMethod,
+            remark: remark.trim() || undefined,
+            status: 0, // 待付款
+          }),
+        });
+        const data = await res.json();
+        if (data.data || data.success) {
+          router.push(`/payment?orderId=${orderId}`);
+        } else {
+          toast.error(data.error || checkout.submitFailed);
+        }
+      }
+      // 购物车模式：创建新订单
+      else {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            address_id: selectedAddressId,
+            cart_item_ids: cartItemIds,
+            coupon_id: selectedCoupon?.id,
+            payment_method: paymentMethod,
+            remark: remark.trim() || undefined,
+          }),
+        });
 
-      const data = await res.json();
-      if (data.data) {
-        router.push(`/payment?orderId=${data.data.id}`);
-      } else if (data.error) {
-        toast.error(data.error);
+        const data = await res.json();
+        if (data.data) {
+          router.push(`/payment?orderId=${data.data.id}`);
+        } else if (data.error) {
+          toast.error(data.error);
+        }
       }
     } catch (error) {
       console.error('提交订单失败:', error);
@@ -252,7 +301,7 @@ function CheckoutPageContent() {
     } finally {
       setSubmitting(false);
     }
-  }, [selectedAddressId, cartItems, cartItemIds, selectedCoupon, paymentMethod, remark, router, checkout]);
+  }, [selectedAddressId, cartItems, cartItemIds, orderId, selectedCoupon, paymentMethod, remark, router, checkout]);
 
   if (loading) {
     return <CheckoutSkeleton />;

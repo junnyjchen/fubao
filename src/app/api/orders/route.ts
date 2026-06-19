@@ -267,24 +267,43 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { order_id, status, cancel_reason } = body;
+    const { id, order_id, status, cancel_reason, address_id, coupon_id, payment_method, remark } = body;
 
-    if (!order_id) {
+    const effectiveOrderId = id || order_id;
+    if (!effectiveOrderId) {
       return NextResponse.json({ error: '缺少訂單ID' }, { status: 400 });
     }
 
-    const order = await queryOne('SELECT * FROM orders WHERE id = ? AND user_id = ?', [order_id, userId]) as any;
+    const order = await queryOne('SELECT * FROM orders WHERE id = ? AND user_id = ?', [effectiveOrderId, userId]) as any;
     if (!order) {
       return NextResponse.json({ error: '訂單不存在' }, { status: 404 });
     }
 
+    // 更新订单信息（待付款状态下可修改地址、支付方式等）
+    if (address_id || payment_method || remark !== undefined) {
+      if (order.status !== 'pending') {
+        return NextResponse.json({ error: '僅待付款訂單可修改' }, { status: 400 });
+      }
+      const updates: Record<string, any> = {};
+      if (address_id) {
+        const addr = await queryOne('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [address_id, userId]) as any;
+        if (!addr) return NextResponse.json({ error: '地址不存在' }, { status: 404 });
+        updates.address_snapshot = JSON.stringify(addr);
+      }
+      if (payment_method) updates.payment_method = payment_method;
+      if (remark !== undefined) updates.remark = remark || null;
+      if (coupon_id) updates.coupon_id = coupon_id;
+      await dbUpdate('orders', effectiveOrderId, updates);
+      return NextResponse.json({ success: true, message: '訂單已更新' });
+    }
+
     if (status === 'cancelled') {
       // 取消订单 - 恢复库存
-      const items = await query('SELECT * FROM order_items WHERE order_id = ?', [order_id]) as any[];
+      const items = await query('SELECT * FROM order_items WHERE order_id = ?', [effectiveOrderId]) as any[];
       for (const item of items) {
         await query('UPDATE goods SET stock = stock + ?, sales = GREATEST(sales - ?, 0) WHERE id = ?', [item.quantity, item.quantity, item.goods_id]);
       }
-      await dbUpdate('orders', order_id, {
+      await dbUpdate('orders', effectiveOrderId, {
         status: 'cancelled',
         cancel_reason: cancel_reason || '用戶取消',
         cancelled_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -293,7 +312,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (status === 'confirmed') {
-      await dbUpdate('orders', order_id, {
+      await dbUpdate('orders', effectiveOrderId, {
         status: 'confirmed',
         confirmed_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
       });
