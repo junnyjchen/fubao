@@ -91,6 +91,18 @@ if [ "$NEED_INSTALL" = true ]; then
     pnpm install
     echo -e "${GREEN}✅ 依赖安装完成${NC}"
 
+    # 创建必要目录
+    echo -e "${YELLOW}📁 创建必要目录...${NC}"
+    mkdir -p "$BASE_DIR/public/uploads/goods"
+    mkdir -p "$BASE_DIR/public/uploads/content"
+    mkdir -p "$BASE_DIR/public/uploads/news"
+    mkdir -p "$BASE_DIR/public/uploads/baike"
+    mkdir -p "$BASE_DIR/php/runtime/cache"
+    mkdir -p "$BASE_DIR/php/runtime/log"
+    sudo chown -R www:www "$BASE_DIR/public/uploads" "$BASE_DIR/php/runtime"
+    sudo chmod -R 755 "$BASE_DIR/public/uploads" "$BASE_DIR/php/runtime"
+    echo -e "${GREEN}✅ 目录创建完成${NC}"
+
     # 安装 systemd 服务
     echo -e "${YELLOW}📋 注册 systemd 服务...${NC}"
     sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
@@ -133,6 +145,8 @@ echo ""
 echo -e "${BLUE}━━━ Step 2/5: 拉取代码 ━━━${NC}"
 
 if [ -d ".git" ]; then
+    # 修复 Ubuntu 24.04 git 安全目录限制
+    git config --global --add safe.directory "$BASE_DIR" 2>/dev/null
     git pull origin main || git pull origin master || {
         echo -e "${YELLOW}⚠️  Git pull 失败，使用本地代码继续${NC}"
     }

@@ -22,13 +22,11 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=fubao-nextjs
 
-# 安全加固
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/www/wwwroot/fubao/public/uploads /www/wwwroot/fubao/php/runtime /tmp
-ReadOnlyPaths=/www/wwwroot/fubao
+# 安全加固（生产环境可按需开启）
+# NoNewPrivileges=true
+# PrivateTmp=true
+# ProtectSystem=strict
+# ProtectHome=true
 
 [Install]
 WantedBy=multi-user.target
