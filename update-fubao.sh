@@ -190,14 +190,9 @@ else
     exit 1
 fi
 
-# 检查 Next.js 响应（容器内用 node 自检，Alpine 无 curl/wget）
+# 检查 Next.js 响应（容器内用 curl 自检）
 sleep 2
-if docker exec "$CONTAINER_NAME" node -e "
-  const http = require('http');
-  http.get('http://localhost:3000', (res) => {
-    process.exit(res.statusCode === 200 || res.statusCode === 304 ? 0 : 1);
-  }).on('error', () => process.exit(1));
-" 2>/dev/null; then
+if docker exec "$CONTAINER_NAME" curl -sf --max-time 5 http://localhost:3000 > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Next.js SSR 正常响应 (容器内 :3000 → 宿主机 :${HOST_PORT})${NC}"
 else
     echo -e "${RED}❌ Next.js 无响应，查看日志：docker logs $CONTAINER_NAME${NC}"

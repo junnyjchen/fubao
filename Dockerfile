@@ -42,8 +42,8 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/php ./php
 
-# 设置时区
-RUN apk add --no-cache tzdata && \
+# 设置时区 + 安装 curl（用于健康检查）
+RUN apk add --no-cache tzdata curl && \
     cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone
 
