@@ -1,0 +1,34 @@
+[Unit]
+Description=符寶網 Next.js SSR Service
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/fubao
+Environment=NODE_ENV=production
+Environment=PORT=5000
+Environment=MYSQL_HOST=127.0.0.1
+Environment=MYSQL_PORT=3306
+Environment=MYSQL_USER=fubao
+Environment=MYSQL_PASSWORD=CZDhXEb8M7t1jheP
+Environment=MYSQL_DATABASE=fubao
+Environment=NEXT_PUBLIC_API_MODE=local
+ExecStart=/usr/bin/node /www/wwwroot/fubao/.next/standalone/server.js
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fubao-nextjs
+
+# 安全加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/www/wwwroot/fubao/public/uploads /www/wwwroot/fubao/php/runtime /tmp
+ReadOnlyPaths=/www/wwwroot/fubao
+
+[Install]
+WantedBy=multi-user.target

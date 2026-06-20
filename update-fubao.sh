@@ -1,15 +1,16 @@
 #!/bin/bash
 # ============================================================
-# 符寶網 - 服务器一键更新部署脚本
+# 符寶網 - 服务器一键更新部署脚本（原生模式）
 #
 # 架构：
-#   宿主机: Nginx + PHP-FPM（非容器）
-#   Docker:  Next.js SSR（端口 5000）
+#   宿主机: Nginx + PHP-FPM + Next.js（全部原生，无 Docker）
+#   Next.js 端口: 5000
 #
 # 使用方法：
-#   bash update-fubao.sh              # 增量更新（推荐，快速）
-#   bash update-fubao.sh --rebuild     # 强制重建镜像（package.json 变更后）
+#   bash update-fubao.sh              # 增量更新（拉代码 + 装依赖 + 重启）
+#   bash update-fubao.sh --rebuild     # 强制完整构建
 #   bash update-fubao.sh --check-php   # 检测 PHP 环境
+#   bash update-fubao.sh --install     # 首次安装（装 Node.js + 初始化）
 #
 # 服务器目录: /www/wwwroot/fubao
 # 项目域名: www.fubao.ltd
@@ -25,16 +26,17 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # ===== 配置 =====
-IMAGE_NAME="fubao-web"
-CONTAINER_NAME="fubao-nextjs"
-HOST_PORT=5000          # Next.js 端口（Docker 内部固定 5000）
+SERVICE_NAME="fubao-nextjs"
+HOST_PORT=5000
 BASE_DIR=""
 NEED_REBUILD=false
+NEED_INSTALL=false
 
 # 解析参数
 for arg in "$@"; do
     case $arg in
         --rebuild) NEED_REBUILD=true ;;
+        --install) NEED_INSTALL=true ;;
         --check-php)
             cd /www/wwwroot/fubao 2>/dev/null || cd "$(dirname "$0")"
             bash php/install-php-centos7.sh "$@"
@@ -59,25 +61,68 @@ cd "$BASE_DIR"
 echo -e "${BLUE}📂 项目目录: $BASE_DIR${NC}"
 
 # ============================================================
-# Step 1: 检测是否需要重建镜像
+# Step 0: 首次安装（--install）
+# ============================================================
+if [ "$NEED_INSTALL" = true ]; then
+    echo ""
+    echo -e "${BLUE}━━━ Step 0: 首次安装 ━━━${NC}"
+
+    # 安装 Node.js 20（如果未安装）
+    if ! command -v node &>/dev/null || [ "$(node -v | cut -d. -f1 | tr -d 'v')" -lt 18 ]; then
+        echo -e "${YELLOW}📦 安装 Node.js 20...${NC}"
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        echo -e "${GREEN}✅ Node.js $(node -v)${NC}"
+    else
+        echo -e "${GREEN}✅ Node.js $(node -v)${NC}"
+    fi
+
+    # 安装 pnpm
+    if ! command -v pnpm &>/dev/null; then
+        echo -e "${YELLOW}📦 安装 pnpm...${NC}"
+        npm install -g pnpm
+        echo -e "${GREEN}✅ pnpm $(pnpm -v)${NC}"
+    else
+        echo -e "${GREEN}✅ pnpm $(pnpm -v)${NC}"
+    fi
+
+    # 安装依赖
+    echo -e "${YELLOW}📦 安装项目依赖...${NC}"
+    pnpm install
+    echo -e "${GREEN}✅ 依赖安装完成${NC}"
+
+    # 安装 systemd 服务
+    echo -e "${YELLOW}📋 注册 systemd 服务...${NC}"
+    sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable "$SERVICE_NAME"
+    echo -e "${GREEN}✅ systemd 服务已注册${NC}"
+
+    echo ""
+    echo -e "${GREEN}🎉 首次安装完成！${NC}"
+    echo "  执行 bash update-fubao.sh --rebuild 构建并启动"
+    exit 0
+fi
+
+# ============================================================
+# Step 1: 检测是否需要完整构建
 # ============================================================
 echo ""
 echo -e "${BLUE}━━━ Step 1/5: 检测变更 ━━━${NC}"
 
-# 检查 package.json 是否变化（判断是否需要 rebuild）
 if [ "$NEED_REBUILD" = true ]; then
     echo -e "${YELLOW}⚠️  强制重建模式 (--rebuild)${NC}"
-elif [ -f ".docker-package-hash" ]; then
+elif [ -f ".build-hash" ]; then
     CURRENT_HASH=$(md5sum package.json pnpm-lock.yaml 2>/dev/null | md5sum | awk '{print $1}')
-    OLD_HASH=$(cat .docker-package-hash 2>/dev/null)
+    OLD_HASH=$(cat .build-hash 2>/dev/null)
     if [ "$CURRENT_HASH" != "$OLD_HASH" ]; then
-        echo -e "${YELLOW}📦 package.json 已变更，需要重建镜像${NC}"
+        echo -e "${YELLOW}📦 package.json 已变更，需要重新构建${NC}"
         NEED_REBUILD=true
     else
-        echo -e "${GREEN}✅ package.json 未变更，跳过重建${NC}"
+        echo -e "${GREEN}✅ package.json 未变更，跳过构建${NC}"
     fi
 else
-    echo -e "${YELLOW}⚠️  首次构建或无缓存记录，执行完整构建${NC}"
+    echo -e "${YELLOW}⚠️  首次构建${NC}"
     NEED_REBUILD=true
 fi
 
@@ -97,77 +142,44 @@ else
 fi
 
 # ============================================================
-# Step 3: 构建/更新 Docker 镜像
+# Step 3: 安装依赖 + 构建
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 3/5: 构建 Docker ━━━${NC}"
+echo -e "${BLUE}━━━ Step 3/5: 构建项目 ━━━${NC}"
 
-if [ "$NEED_REBUILD" = true ] || ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
-    echo -e "${YELLOW}🔨 正在构建 Docker 镜像...${NC}"
-    
-    # 使用 BuildKit 缓存加速
-    DOCKER_BUILDKIT=1 docker build \
-        --cache-from="$IMAGE_NAME:latest" \
-        --tag="$IMAGE_NAME:latest" \
-        --tag="$IMAGE_NAME:$(date +%Y%m%d-%H%M)" \
-        .
-    
-    # 记录 hash 用于增量判断
-    md5sum package.json pnpm-lock.yaml 2>/dev/null | md5sum > .docker-package_hash
-    
-    echo -e "${GREEN}✅ 镜像构建完成${NC}"
+# 安装依赖
+echo -e "${YELLOW}📦 安装依赖...${NC}"
+pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+echo -e "${GREEN}✅ 依赖安装完成${NC}"
+
+# 构建
+if [ "$NEED_REBUILD" = true ]; then
+    echo -e "${YELLOW}🔨 构建 Next.js...${NC}"
+    pnpm build
+    md5sum package.json pnpm-lock.yaml 2>/dev/null | md5sum > .build-hash
+    echo -e "${GREEN}✅ 构建完成${NC}"
 else
-    echo -e "${GREEN}✅ 镜像已存在且无需重建${NC}"
+    echo -e "${GREEN}✅ 跳过构建（代码未变更）${NC}"
 fi
 
 # ============================================================
-# Step 4: 更新容器
+# Step 4: 重启服务
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 4/5: 启动容器 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 4/5: 重启服务 ━━━${NC}"
 
-# 获取数据库配置（优先从 .env 文件读取）
-if [ -f "$BASE_DIR/.env" ]; then
-    # shellcheck source=/dev/null
-    source <(grep -E '^(MYSQL_|NEXT_PUBLIC_)' "$BASE_DIR/.env" | sed 's/^/export /')
-fi
-# Docker 容器内 127.0.0.1/localhost 指向容器自身，必须改为宿主机地址
-DB_HOST="${MYSQL_HOST:-host.docker.internal}"
-if [ "$DB_HOST" = "127.0.0.1" ] || [ "$DB_HOST" = "localhost" ]; then
-    DB_HOST="host.docker.internal"
-fi
-DB_PORT="${MYSQL_PORT:-3306}"
-DB_USER="${MYSQL_USER:-fubao}"
-DB_PASS="${MYSQL_PASSWORD:-}"
-DB_NAME="${MYSQL_DATABASE:-fubao}"
-API_MODE="${NEXT_PUBLIC_API_MODE:-local}"
-
-# 停止旧容器
-if docker ps -q -f name="$CONTAINER_NAME" | grep -q .; then
-    echo -e "${YELLOW}⏹  停止旧容器...${NC}"
-    docker stop "$CONTAINER_NAME" && docker rm "$CONTAINER_NAME"
+# 确保 systemd 服务文件存在
+if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
+    echo -e "${YELLOW}📋 注册 systemd 服务...${NC}"
+    sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
+    sudo systemctl daemon-reload
+    sudo systemctl enable "$SERVICE_NAME"
 fi
 
-# 启动新容器
-echo -e "${YELLOW}🚀 启动新容器...${NC}"
-docker run -d \
-    --name "$CONTAINER_NAME" \
-    --restart unless-stopped \
-    --add-host=host.docker.internal:host-gateway \
-    -p "$HOST_PORT:3000" \
-    -e NODE_ENV=production \
-    -e PORT=3000 \
-    -e MYSQL_HOST="$DB_HOST" \
-    -e MYSQL_PORT="$DB_PORT" \
-    -e MYSQL_USER="$DB_USER" \
-    -e MYSQL_PASSWORD="$DB_PASS" \
-    -e MYSQL_DATABASE="$DB_NAME" \
-    -e NEXT_PUBLIC_API_MODE="$API_MODE" \
-    -v "$BASE_DIR/public/uploads:/app/public/uploads" \
-    -v "$BASE_DIR/php/runtime:/app/php/runtime" \
-    "$IMAGE_NAME:latest"
-
-echo -e "${GREEN}✅ 容器已启动${NC}"
+# 重启服务
+echo -e "${YELLOW}🔄 重启 $SERVICE_NAME...${NC}"
+sudo systemctl restart "$SERVICE_NAME"
+echo -e "${GREEN}✅ 服务已重启${NC}"
 
 # ============================================================
 # Step 5: 验证
@@ -175,48 +187,46 @@ echo -e "${GREEN}✅ 容器已启动${NC}"
 echo ""
 echo -e "${BLUE}━━━ Step 5/5: 验证服务 ━━━${NC}"
 
-sleep 3
-
-# 检查容器状态
-if docker ps -q -f name="$CONTAINER_NAME" | grep -q .; then
-    echo -e "${GREEN}✅ Docker 容器运行中${NC}"
-    docker ps -f name="$CONTAINER_NAME" --format "  → {{.Status}} (端口: ${HOST_PORT})"
+# 检查 systemd 服务状态
+if systemctl is-active --quiet "$SERVICE_NAME"; then
+    echo -e "${GREEN}✅ systemd 服务运行中${NC}"
 else
-    echo -e "${RED}❌ 容器未运行！查看日志：docker logs $CONTAINER_NAME${NC}"
-    docker logs "$CONTAINER_NAME" 2>&1 | tail -20
+    echo -e "${RED}❌ 服务未运行！查看日志：${NC}"
+    echo "  sudo journalctl -u $SERVICE_NAME -n 30 --no-pager"
+    sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager
     exit 1
 fi
 
-# 检查 Next.js 响应（容器内用 curl 自检，最多等 30 秒）
+# 检查 Next.js 响应（最多等 30 秒）
 echo -n "⏳ 等待 Next.js 启动"
 for i in $(seq 1 15); do
     sleep 2
     echo -n "."
-    if docker exec "$CONTAINER_NAME" curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1; then
+    if curl -sf --max-time 3 http://localhost:$HOST_PORT > /dev/null 2>&1; then
         echo ""
-        echo -e "${GREEN}✅ Next.js SSR 正常响应 (容器内 :3000 → 宿主机 :${HOST_PORT})${NC}"
+        echo -e "${GREEN}✅ Next.js SSR 正常响应 (端口 $HOST_PORT)${NC}"
         break
     fi
     if [ "$i" -eq 15 ]; then
         echo ""
-        echo -e "${RED}❌ Next.js 超时无响应，查看日志：docker logs $CONTAINER_NAME${NC}"
-        docker logs "$CONTAINER_NAME" 2>&1 | tail -20
+        echo -e "${RED}❌ Next.js 超时无响应，查看日志：${NC}"
+        echo "  sudo journalctl -u $SERVICE_NAME -n 30 --no-pager"
+        sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager
     fi
 done
 
-# 检查 PHP-FPM（宿主机）
-if pgrep -x "php-fpm" >/dev/null || pgrep "php-fpm:" >/dev/null; then
-    echo -e "${GREEN}✅ PHP-FPM 运行中（宿主机）${NC}"
+# 检查 PHP-FPM
+if pgrep -x "php-fpm" >/dev/null || pgrep "php-fpm:" >/dev/null 2>/dev/null; then
+    echo -e "${GREEN}✅ PHP-FPM 运行中${NC}"
 else
-    echo -e "${RED}❌ PHP-FPM 未运行！（宿主机）${NC}"
-    echo -e "${YELLOW}  安装/修复: bash $0 --check-php${NC}"
+    echo -e "${YELLOW}⚠️  PHP-FPM 未运行（如不需要 PHP API 可忽略）${NC}"
 fi
 
-# 检查 Nginx（宿主机）
+# 检查 Nginx
 if pgrep -x "nginx" >/dev/null; then
-    echo -e "${GREEN}✅ Nginx 运行中（宿主机）${NC}"
+    echo -e "${GREEN}✅ Nginx 运行中${NC}"
 else
-    echo -e "${RED}❌ Nginx 未运行！（宿主机）${NC}"
+    echo -e "${YELLOW}⚠️  Nginx 未运行${NC}"
 fi
 
 # ============================================================
@@ -228,8 +238,8 @@ echo -e "${GREEN}  🎉 部署完成！${NC}"
 echo "=============================================="
 echo ""
 echo "  🌐 访问地址: https://www.fubao.ltd"
-echo "  🐳 容器状态: docker ps -f name=$CONTAINER_NAME"
-echo "  📋 容器日志: docker logs -f $CONTAINER_NAME"
+echo "  📋 服务状态: sudo systemctl status $SERVICE_NAME"
+echo "  📋 服务日志: sudo journalctl -u $SERVICE_NAME -f"
 echo "  🔧 PHP 检测: bash $0 --check-php"
 echo ""
 echo "  如需强制重建:"
