@@ -187,14 +187,22 @@ else
     exit 1
 fi
 
-# 检查 Next.js 响应（容器内用 curl 自检）
-sleep 2
-if docker exec "$CONTAINER_NAME" curl -sf --max-time 5 http://localhost:3000 > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Next.js SSR 正常响应 (容器内 :3000 → 宿主机 :${HOST_PORT})${NC}"
-else
-    echo -e "${RED}❌ Next.js 无响应，查看日志：docker logs $CONTAINER_NAME${NC}"
-    docker logs "$CONTAINER_NAME" 2>&1 | tail -20
-fi
+# 检查 Next.js 响应（容器内用 curl 自检，最多等 30 秒）
+echo -n "⏳ 等待 Next.js 启动"
+for i in $(seq 1 15); do
+    sleep 2
+    echo -n "."
+    if docker exec "$CONTAINER_NAME" curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1; then
+        echo ""
+        echo -e "${GREEN}✅ Next.js SSR 正常响应 (容器内 :3000 → 宿主机 :${HOST_PORT})${NC}"
+        break
+    fi
+    if [ "$i" -eq 15 ]; then
+        echo ""
+        echo -e "${RED}❌ Next.js 超时无响应，查看日志：docker logs $CONTAINER_NAME${NC}"
+        docker logs "$CONTAINER_NAME" 2>&1 | tail -20
+    fi
+done
 
 # 检查 PHP-FPM（宿主机）
 if pgrep -x "php-fpm" >/dev/null || pgrep "php-fpm:" >/dev/null; then
