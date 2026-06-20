@@ -1067,7 +1067,7 @@ export function {ComponentName}({ data, className, onItemClick }: {ComponentName
 | 数据库 | Mock DB 降级 / MySQL | MySQL |
 | API 模式变量 | `NEXT_PUBLIC_API_MODE=local` | `NEXT_PUBLIC_API_MODE=php` |
 | 热更新 | HMR 开启 | 关闭 |
-| 服务器目录 | `/workspace/projects` | `/www/wwwroot/116.204.135.69` |
+| 服务器目录 | `/workspace/projects` | `/www/wwwroot/fubao` |
 
 ### 环境变量
 

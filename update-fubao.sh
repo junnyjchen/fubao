@@ -11,7 +11,7 @@
 #   bash update-fubao.sh --rebuild     # 强制重建镜像（package.json 变更后）
 #   bash update-fubao.sh --check-php   # 检测 PHP 环境
 #
-# 服务器目录: /www/wwwroot/116.204.135.69
+# 服务器目录: /www/wwwroot/fubao
 # 项目域名: www.fubao.ltd
 # ============================================================
 
@@ -36,7 +36,7 @@ for arg in "$@"; do
     case $arg in
         --rebuild) NEED_REBUILD=true ;;
         --check-php)
-            cd /www/wwwroot/116.204.135.69 2>/dev/null || cd "$(dirname "$0")"
+            cd /www/wwwroot/fubao 2>/dev/null || cd "$(dirname "$0")"
             bash php/install-php-centos7.sh "$@"
             exit $?
             ;;
@@ -44,16 +44,13 @@ for arg in "$@"; do
 done
 
 # ===== 自动检测项目目录 =====
-if [ -d "/www/wwwroot/116.204.135.69" ]; then
-    BASE_DIR="/www/wwwroot/116.204.135.69"
-elif [ -d "/www/wwwroot/fubao" ]; then
+if [ -d "/www/wwwroot/fubao" ]; then
     BASE_DIR="/www/wwwroot/fubao"
 elif [ -d "$(dirname "$0")/src" ]; then
     BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 else
     echo -e "${RED}❌ 无法找到项目目录${NC}"
-    echo "请确认项目位于以下位置之一："
-    echo "  /www/wwwroot/116.204.135.69"
+    echo "请确认项目位于以下位置："
     echo "  /www/wwwroot/fubao"
     exit 1
 fi

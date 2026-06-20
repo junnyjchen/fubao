@@ -1,93 +1,61 @@
+# 符寶網 快速部署指南
 
-# 快速部署指南
+## 架构
 
-## 📦 部署包已准备好！
+```
+用户 → Nginx (宝塔) → /api/* → PHP-FPM (宿主机)
+                     → /*    → Docker Next.js (:3000)
+```
 
-已生成部署包：`fubao-deploy-20260606-214829.tar.gz` (1.4 MB)
+## 服务器环境
+
+| 项目 | 值 |
+|------|-----|
+| 网站目录 | `/www/wwwroot/fubao` |
+| 域名 | `www.fubao.ltd` |
+| 面板 | 宝塔面板 |
+| Docker | Next.js SSR（端口映射 5000→3000） |
+| PHP | 宿主机 PHP-FPM（宝塔安装） |
+| MySQL | 宿主机（宝塔安装） |
 
 ---
 
-## 🚀 三步完成部署
+## 一键部署
 
-### 第一步：上傳部署包到服務器
 ```bash
-# 在本地電腦執行
-scp /workspace/projects/fubao-deploy-20260606-214829.tar.gz root@116.204.135.69:/root/
-```
+# 1. 克隆项目到网站目录
+cd /www/wwwroot
+git clone https://github.com/junnyjchen/fubao.git fubao
+cd fubao
 
-### 第二步：連接服務器並運行自動部署腳本
-```bash
-# 1. 連接到服務器
-ssh root@116.204.135.69
-# 密碼: X3bNZ3nVc5LH
+# 2. 配置 .env（数据库密码等）
+cp .env.example .env
+vi .env
 
-# 2. 上傳自動部署腳本（在本地新開一個終端）
-scp /workspace/projects/deploy.sh root@116.204.135.69:/root/
-
-# 3. 回到服務器 SSH，運行部署腳本
-chmod +x /root/deploy.sh
-/root/deploy.sh
-```
-
-### 第三步：完成部署
-當自動部署腳本完成後：
-```bash
-# 1. 解壓項目代碼
-cd /var/www/fubao
-tar -xzf /root/fubao-deploy-20260606-214829.tar.gz
-
-# 2. 安裝依賴
-pnpm install
-
-# 3. 構建項目
-pnpm build
-
-# 4. 啟動服務
-systemctl start fubao
-systemctl enable fubao
-systemctl start nginx
-systemctl enable nginx
+# 3. 一键部署
+bash update-fubao.sh --rebuild
 ```
 
 ---
 
-## ✅ 驗證部署
+## 更新部署
 
-訪問：`http://116.204.135.69`
-
----
-
-## 📋 常用命令
-
-### 查看服務狀態
 ```bash
-systemctl status fubao    # 查看應用狀態
-systemctl status nginx    # 查看 Nginx 狀態
-```
-
-### 查看日誌
-```bash
-journalctl -u fubao -f               # 實時查看應用日誌
-tail -f /var/log/nginx/fubao_*.log  # 查看 Nginx 日誌
-```
-
-### 重啟服務
-```bash
-systemctl restart fubao  # 重啟應用
-systemctl restart nginx  # 重啟 Nginx
+cd /www/wwwroot/fubao
+bash update-fubao.sh              # 增量更新
+bash update-fubao.sh --rebuild     # 强制重建镜像
 ```
 
 ---
 
-## 🔑 測試賬號
+## 常用命令
 
-- **用戶賬號**: test@example.com / admin123
-- **管理員賬號**: admin / admin123
+```bash
+# Docker 容器
+docker ps -f name=fubao-nextjs     # 查看容器状态
+docker logs -f fubao-nextjs        # 查看日志
+docker restart fubao-nextjs        # 重启
 
----
-
-## 📚 詳細文檔
-
-如需更詳細的部署說明，請參考：
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - 完整部署指南
-
+# PHP 环境检测
+bash update-fubao.sh --check-php
+```

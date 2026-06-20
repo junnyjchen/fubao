@@ -158,7 +158,7 @@ fi
 # ---- 7. 目录权限 ----
 echo ""
 echo "--- [7] 目录权限 ---"
-BASE_DIR="/www/wwwroot/116.204.135.69"
+BASE_DIR="/www/wwwroot/fubao"
 DIRS=(
     "$BASE_DIR/public/uploads/goods"
     "$BASE_DIR/public/uploads/content"
