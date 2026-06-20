@@ -1,20 +1,13 @@
 /**
  * @fileoverview 文件上传 API
- * @description 处理图片文件上传，返回存储URL
+ * @description 处理图片文件上传，存储到本地 public/uploads 目录
  * @module app/api/upload/route
  */
 
 import { NextResponse } from 'next/server';
-import { S3Storage } from 'coze-coding-dev-sdk';
-
-/** 初始化对象存储客户端 */
-const storage = new S3Storage({
-  endpointUrl: process.env.COZE_BUCKET_ENDPOINT_URL,
-  accessKey: '',
-  secretKey: '',
-  bucketName: process.env.COZE_BUCKET_NAME,
-  region: 'cn-beijing',
-});
+import { writeFile, mkdir, unlink } from 'fs/promises';
+import { existsSync } from 'fs';
+import path from 'path';
 
 /** 支持的图片类型 */
 const ALLOWED_IMAGE_TYPES = [
@@ -29,6 +22,9 @@ const ALLOWED_IMAGE_TYPES = [
 /** 最大文件大小 (5MB) */
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+/** 上传目录 */
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
+
 /**
  * 上传图片
  * @param request - 请求对象
@@ -38,7 +34,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
-    const folder = formData.get('folder') as string || 'images';
+    const folder = (formData.get('folder') as string) || 'images';
 
     if (!file) {
       return NextResponse.json({ error: '請選擇文件' }, { status: 400 });
@@ -60,33 +56,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // 读取文件内容
-    const arrayBuffer = await file.arrayBuffer();
-    const fileContent = Buffer.from(arrayBuffer);
+    // 确保上传目录存在
+    const targetDir = path.join(UPLOAD_DIR, folder);
+    if (!existsSync(targetDir)) {
+      await mkdir(targetDir, { recursive: true });
+    }
 
     // 生成文件名
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const ext = file.name.split('.').pop() || 'jpg';
-    const fileName = `${folder}/${timestamp}_${randomStr}.${ext}`;
+    const fileName = `${timestamp}_${randomStr}.${ext}`;
 
-    // 上传文件
-    const fileKey = await storage.uploadFile({
-      fileContent,
-      fileName,
-      contentType: file.type,
-    });
+    // 写入文件
+    const arrayBuffer = await file.arrayBuffer();
+    const filePath = path.join(targetDir, fileName);
+    await writeFile(filePath, Buffer.from(arrayBuffer));
 
-    // 生成访问URL (有效期7天)
-    const url = await storage.generatePresignedUrl({
-      key: fileKey,
-      expireTime: 7 * 24 * 60 * 60, // 7天
-    });
+    // 生成访问URL
+    const url = `/uploads/${folder}/${fileName}`;
 
     return NextResponse.json({
       message: '上傳成功',
       data: {
-        key: fileKey,
+        key: `${folder}/${fileName}`,
         url,
         name: file.name,
         size: file.size,
@@ -116,7 +109,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: '缺少文件key' }, { status: 400 });
     }
 
-    await storage.deleteFile({ fileKey: key });
+    // 安全检查：防止路径穿越
+    const safeKey = key.replace(/\.\./g, '').replace(/\/\//g, '/');
+    const filePath = path.join(UPLOAD_DIR, safeKey);
+
+    if (existsSync(filePath)) {
+      await unlink(filePath);
+    }
 
     return NextResponse.json({ message: '刪除成功' });
   } catch (error) {
@@ -137,25 +136,22 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
-    const expireTime = parseInt(searchParams.get('expireTime') || '86400');
 
     if (!key) {
       return NextResponse.json({ error: '缺少文件key' }, { status: 400 });
     }
 
-    // 检查文件是否存在
-    const exists = await storage.fileExists({ fileKey: key });
-    if (!exists) {
+    // 安全检查：防止路径穿越
+    const safeKey = key.replace(/\.\./g, '').replace(/\/\//g, '/');
+    const filePath = path.join(UPLOAD_DIR, safeKey);
+
+    if (!existsSync(filePath)) {
       return NextResponse.json({ error: '文件不存在' }, { status: 404 });
     }
 
-    // 生成访问URL
-    const url = await storage.generatePresignedUrl({
-      key,
-      expireTime,
-    });
+    const url = `/uploads/${safeKey}`;
 
-    return NextResponse.json({ data: { key, url } });
+    return NextResponse.json({ data: { key: safeKey, url } });
   } catch (error) {
     console.error('获取文件URL失败:', error);
     return NextResponse.json(

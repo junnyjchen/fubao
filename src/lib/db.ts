@@ -99,9 +99,9 @@ const initialData: Record<string, any[]> = {
   news: [],
   news_categories: [],
   settings: [
-    { id: 1, key: 'site_name', value: '符寶網' },
-    { id: 2, key: 'site_description', value: '全球玄門文化科普交易平台' },
-    { id: 3, key: 'contact_email', value: 'contact@fubao.com' }
+    { id: 1, key: 'site_name', value: '符寶網', group_name: 'basic' },
+    { id: 2, key: 'site_description', value: '全球玄門文化科普交易平台', group_name: 'basic' },
+    { id: 3, key: 'contact_email', value: 'contact@fubao.com', group_name: 'basic' }
   ],
   cart: [],
   orders: [],

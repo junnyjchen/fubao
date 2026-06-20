@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { query, queryOne, insert as dbInsert, update as dbUpdate } from '@/lib/db';
+import { query, insert, update as dbUpdate } from '@/lib/db';
 
 /** 默认设置配置 */
 const defaultSettings = [
@@ -78,9 +78,9 @@ export async function GET(request: NextRequest) {
 
     let rows;
     if (group) {
-      rows = await query('SELECT * FROM settings WHERE `group` = ? ORDER BY id', [group]);
+      rows = await query('SELECT * FROM settings WHERE `group_name` = ? ORDER BY id', [group]);
     } else {
-      rows = await query('SELECT * FROM settings ORDER BY `group`, id');
+      rows = await query('SELECT * FROM settings ORDER BY `group_name`, id');
     }
 
     // 确保所有分组的默认设置都存在
@@ -89,17 +89,17 @@ export async function GET(request: NextRequest) {
 
     if (missingSettings.length > 0) {
       for (const setting of missingSettings) {
-        await dbInsert('settings', {
-          'group': setting.group,
+        await insert('settings', {
+          'group_name': setting.group,
           'key': setting.key,
           value: setting.value,
         });
       }
       // 重新查询
       if (group) {
-        rows = await query('SELECT * FROM settings WHERE `group` = ? ORDER BY id', [group]);
+        rows = await query('SELECT * FROM settings WHERE `group_name` = ? ORDER BY id', [group]);
       } else {
-        rows = await query('SELECT * FROM settings ORDER BY `group`, id');
+        rows = await query('SELECT * FROM settings ORDER BY `group_name`, id');
       }
     }
 
@@ -144,13 +144,13 @@ export async function PUT(request: NextRequest) {
     }
 
     for (const [key, value] of Object.entries(settings)) {
-      const existing = await queryOne('SELECT id FROM settings WHERE `key` = ?', [key]);
-      if (existing) {
+      const existingRows = await query('SELECT id FROM settings WHERE `key` = ?', [key]);
+      if (existingRows && (existingRows as any[]).length > 0) {
         await dbUpdate('settings', { value }, { key });
       } else {
         // 找到默认设置中的 group
         const defaultItem = defaultSettings.find(s => s.key === key);
-        await dbInsert('settings', { 'group': defaultItem?.group || 'basic', 'key': key, value });
+        await insert('settings', { 'group_name': defaultItem?.group || 'basic', 'key': key, value });
       }
     }
 
