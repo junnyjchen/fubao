@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   turbopack: {
-    root: __dirname,
+    root: process.cwd(),
   },
   images: {
     remotePatterns: [
