@@ -25,8 +25,8 @@ mysql -u root -p
 
 ```sql
 CREATE DATABASE IF NOT EXISTS fubao DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS 'fubao'@'%' IDENTIFIED BY 'XNmEbBwKKe5HwnNW';
-CREATE USER IF NOT EXISTS 'fubao'@'localhost' IDENTIFIED BY 'XNmEbBwKKe5HwnNW';
+CREATE USER IF NOT EXISTS 'fubao'@'%' IDENTIFIED BY 'CZDhXEb8M7t1jheP';
+CREATE USER IF NOT EXISTS 'fubao'@'localhost' IDENTIFIED BY 'CZDhXEb8M7t1jheP';
 GRANT ALL PRIVILEGES ON fubao.* TO 'fubao'@'%';
 GRANT ALL PRIVILEGES ON fubao.* TO 'fubao'@'localhost';
 FLUSH PRIVILEGES;
@@ -36,13 +36,13 @@ EXIT;
 ### 第3步：建表
 
 ```bash
-mysql -u fubao -p'XNmEbBwKKe5HwnNW' fubao < /workspace/projects/sql/schema.sql
+mysql -u fubao -p'CZDhXEb8M7t1jheP' fubao < /workspace/projects/sql/schema.sql
 ```
 
 ### 第4步：導入種子數據
 
 ```bash
-mysql -u fubao -p'XNmEbBwKKe5HwnNW' fubao < /workspace/projects/sql/seed.sql
+mysql -u fubao -p'CZDhXEb8M7t1jheP' fubao < /workspace/projects/sql/seed.sql
 ```
 
 ### 第5步：配置環境變量
@@ -53,7 +53,7 @@ mysql -u fubao -p'XNmEbBwKKe5HwnNW' fubao < /workspace/projects/sql/seed.sql
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_USER=fubao
-MYSQL_PASSWORD=XNmEbBwKKe5HwnNW
+MYSQL_PASSWORD=CZDhXEb8M7t1jheP
 MYSQL_DATABASE=fubao
 ```
 
@@ -96,7 +96,7 @@ curl -X POST -H 'Content-Type: application/json' \
 |------|-----|
 | 數據庫名 | fubao |
 | 用戶名 | fubao |
-| 密碼 | XNmEbBwKKe5HwnNW |
+| 密碼 | CZDhXEb8M7t1jheP |
 | 主機 | 127.0.0.1 |
 | 端口 | 3306 |
 | 字符集 | utf8mb4 |
@@ -105,7 +105,7 @@ curl -X POST -H 'Content-Type: application/json' \
 
 ```bash
 # 登入數據庫
-mysql -u fubao -p'XNmEbBwKKe5HwnNW' fubao
+mysql -u fubao -p'CZDhXEb8M7t1jheP' fubao
 
 # 查看所有表
 SHOW TABLES;

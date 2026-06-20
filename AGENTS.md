@@ -293,14 +293,14 @@ import { mockUsers } from '@/lib/auth/mockStore';
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=fubao
-MYSQL_PASSWORD=XNmEbBwKKe5HwnNW
+MYSQL_PASSWORD=CZDhXEb8M7t1jheP
 MYSQL_DATABASE=fubao
 
 # PHP 后端（php/config/database.php 读取）
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=fubao
-DB_PASSWORD=XNmEbBwKKe5HwnNW
+DB_PASSWORD=CZDhXEb8M7t1jheP
 DB_NAME=fubao
 
 # API 模式
