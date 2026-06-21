@@ -172,19 +172,28 @@ function CheckoutPageContent() {
         if (orderData.data) {
           const order = orderData.data;
           // 将订单商品转为 CartItem 格式展示
-          const items = (order.items || []).map((item: { goods_id: number; goods_name: string; price: number; quantity: number; image?: string }) => ({
-            id: item.goods_id,
+          const items = (order.items || []).map((item: any) => ({
+            id: item.id || item.goods_id,
             goods_id: item.goods_id,
-            goods_name: item.goods_name,
-            price: item.price,
             quantity: item.quantity,
-            image: item.image || '',
+            goods: {
+              id: item.goods_id,
+              name: item.goods_name,
+              price: parseFloat(item.price || '0'),
+              image: item.goods_image || null,
+            },
             merchant_id: 0,
             merchant_name: '',
           }));
           setCartItems(items);
-          // 如果有已选的地址
-          if (order.address_id) setSelectedAddressId(order.address_id);
+          // 如果有已选的地址快照
+          if (order.address_snapshot) {
+            try {
+              const addr = JSON.parse(order.address_snapshot);
+              // 从地址列表中找到匹配的或使用快照
+              if (addr.id) setSelectedAddressId(addr.id);
+            } catch { /* ignore */ }
+          }
           if (order.payment_method) setPaymentMethod(order.payment_method);
           if (order.remark) setRemark(order.remark);
         }

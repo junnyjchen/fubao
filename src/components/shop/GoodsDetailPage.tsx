@@ -258,9 +258,9 @@ export function GoodsDetailPage() {
         body: JSON.stringify({ goods_id: goods.id, quantity }),
       });
       const data = await res.json();
-      if (data.id) {
+      if (data.data?.id) {
         // 订单创建成功，直接跳结账页
-        router.push(`/checkout?order_id=${data.id}`);
+        router.push(`/checkout?order_id=${data.data.id}`);
       } else if (data.error) {
         toast.error(data.error);
       }

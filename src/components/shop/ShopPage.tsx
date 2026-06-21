@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { Card, CardContent } from '@/components/ui/card';
@@ -238,10 +239,39 @@ export function ShopPage() {
 
 function ProductCard({ item, t }: { item: Goods; t: ReturnType<typeof useI18n>['t'] }) {
   const isOutOfStock = item.stock <= 0;
+  const [buying, setBuying] = useState(false);
+  const router = useRouter();
+
+  const handleBuyNow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isOutOfStock || buying) return;
+    setBuying(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: [{ goods_id: item.id, quantity: 1 }],
+          source: 'buy_now',
+        }),
+      });
+      const data = await res.json();
+      if (data.data?.id) {
+        router.push(`/checkout?order_id=${data.data.id}`);
+      } else {
+        alert(data.error || '下單失敗');
+      }
+    } catch (err) {
+      alert('網絡錯誤，請重試');
+    } finally {
+      setBuying(false);
+    }
+  };
 
   return (
-    <Link href={`/shop/${item.id}`}>
-      <Card className={`group overflow-hidden hover:shadow-lg transition-all duration-300 h-full ${isOutOfStock ? 'opacity-60' : ''}`}>
+    <Card className={`group overflow-hidden hover:shadow-lg transition-all duration-300 h-full relative ${isOutOfStock ? 'opacity-60' : ''}`}>
+      <Link href={`/shop/${item.id}`} className="block">
         <div className="relative aspect-square bg-muted">
           {item.main_image ? (
             <Image
@@ -300,7 +330,20 @@ function ProductCard({ item, t }: { item: Goods; t: ReturnType<typeof useI18n>['
             </span>
           </div>
         </CardContent>
-      </Card>
-    </Link>
+      </Link>
+      {/* 快速下单按钮 - 移动端始终可见，桌面端 hover 显示 */}
+      {!isOutOfStock && (
+        <div className="absolute bottom-4 right-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+          <Button
+            size="sm"
+            onClick={handleBuyNow}
+            disabled={buying}
+            className="shadow-lg"
+          >
+            {buying ? '處理中...' : '快速下單'}
+          </Button>
+        </div>
+      )}
+    </Card>
   );
 }

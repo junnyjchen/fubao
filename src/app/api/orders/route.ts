@@ -28,6 +28,24 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const orderId = searchParams.get('id');
+
+    // 单条订单查询（用于 buy now 直接下单后跳转结账页）
+    if (orderId) {
+      const order = await queryOne(
+        'SELECT * FROM orders WHERE id = ? AND user_id = ?',
+        [orderId, userId]
+      ) as any;
+      if (!order) {
+        return NextResponse.json({ error: '訂單不存在' }, { status: 404 });
+      }
+      const items = await query(
+        'SELECT * FROM order_items WHERE order_id = ?',
+        [order.id]
+      );
+      return NextResponse.json({ data: { ...order, items } });
+    }
+
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('page_size') || '10');
     const status = searchParams.get('status') || '';
