@@ -60,7 +60,16 @@ async function generateImage(prompt: string): Promise<string[]> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`图片生成 API 错误 (${response.status}): ${errorText.slice(0, 300)}`);
+    if (response.status === 403 && errorText.includes('not supported')) {
+      throw new Error('圖片生成服務暫不支持當前地區，請聯繫管理員配置可用地區的 API Key');
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('圖片生成服務認證失敗，請檢查 API Key 是否正確');
+    }
+    if (response.status === 429) {
+      throw new Error('圖片生成服務請求過於頻繁，請稍後重試');
+    }
+    throw new Error(`圖片生成 API 錯誤 (${response.status}): ${errorText.slice(0, 300)}`);
   }
 
   const data = await response.json();

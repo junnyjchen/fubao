@@ -178,7 +178,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isLLMConfigured()) {
-      return NextResponse.json({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }, { status: 503 });
+      return NextResponse.json({ 
+        error: 'AI 服務未配置。請在 .env 中設置 ARK_API_KEY（火山引擎）或 DEEPSEEK_API_KEY 或 KIMI_API_KEY，並將 AI_PROVIDER 設為對應值' 
+      }, { status: 503 });
     }
 
     // 初始化LLM客户端
