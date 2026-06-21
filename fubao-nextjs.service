@@ -8,6 +8,8 @@ User=www
 Group=www
 WorkingDirectory=/www/wwwroot/fubao
 Environment=NODE_ENV=production
+Environment=COZE_PROJECT_ENV=PROD
+Environment=HOSTNAME=0.0.0.0
 Environment=PORT=5000
 Environment=MYSQL_HOST=127.0.0.1
 Environment=MYSQL_PORT=3306
@@ -15,6 +17,11 @@ Environment=MYSQL_USER=fubao
 Environment=MYSQL_PASSWORD=CZDhXEb8M7t1jheP
 Environment=MYSQL_DATABASE=fubao
 Environment=NEXT_PUBLIC_API_MODE=local
+# AI 服务配置（按需选择一个 Provider）
+# Environment=AI_PROVIDER=volcengine
+# Environment=ARK_API_KEY=your-ark-api-key
+# Environment=AI_PROVIDER=deepseek
+# Environment=DEEPSEEK_API_KEY=your-deepseek-api-key
 ExecStart=/usr/bin/node /www/wwwroot/fubao/.next/standalone/server.js
 Restart=always
 RestartSec=3

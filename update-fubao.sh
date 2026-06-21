@@ -171,6 +171,19 @@ if [ "$NEED_REBUILD" = true ]; then
     echo -e "${YELLOW}🔨 构建 Next.js...${NC}"
     pnpm build
     md5sum package.json pnpm-lock.yaml 2>/dev/null | md5sum > .build-hash
+
+    # Standalone 模式需要手动复制 public 和 .env
+    echo -e "${YELLOW}📦 准备 Standalone 部署文件...${NC}"
+    # 复制 public 目录到 standalone 输出
+    if [ -d ".next/standalone" ]; then
+        cp -r public .next/standalone/ 2>/dev/null || true
+        # 复制 .env 文件
+        cp .env .next/standalone/ 2>/dev/null || true
+        # 复制 .next/static
+        cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
+        echo -e "${GREEN}✅ Standalone 文件准备完成${NC}"
+    fi
+
     echo -e "${GREEN}✅ 构建完成${NC}"
 else
     echo -e "${GREEN}✅ 跳过构建（代码未变更）${NC}"

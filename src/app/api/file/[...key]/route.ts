@@ -1,36 +1,33 @@
 /**
- * @fileoverview 文件访问 API - 提供本地文件访问
- * @description 用于富文本中图片的动态URL生成
- * 路由: GET /api/file?key=xxx 或 GET /api/file?path=folder/name.png
+ * @fileoverview 文件访问 API - 动态路径模式
+ * @description 处理 /api/file/{key} 格式的文件访问请求
+ * 前端使用 /api/file/goods/xxx.png 格式引用上传的图片
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import { readFile } from 'fs/promises';
 
-/**
- * 通过 key/path 获取文件并返回
- * GET /api/file?key=xxx
- * GET /api/file?path=folder/name.png
- */
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ key: string[] }> }
+) {
   try {
-    const key = request.nextUrl.searchParams.get('key') || request.nextUrl.searchParams.get('path');
-    if (!key) {
-      return NextResponse.json({ error: '缺少key参数' }, { status: 400 });
+    const { key: keyParts } = await params;
+    if (!keyParts || keyParts.length === 0) {
+      return NextResponse.json({ error: '缺少文件路径' }, { status: 400 });
     }
 
+    const key = keyParts.join('/');
+
     // 本地文件路径（uploads 目录）
-    // 生产环境: /www/wwwroot/fubao/public/uploads/
-    // 开发环境: ${workspace}/public/uploads/
     const cwd = process.cwd();
     const safeKey = key.replace(/\.\./g, '').replace(/\/\//g, '/');
-    const filePath = path.join(cwd, 'public', 'uploads', safeKey.replace(/^\/+/, ''));
+    const filePath = path.join(cwd, 'public', 'uploads', safeKey);
 
-    // 尝试读取文件
     try {
       const fileBuffer = await readFile(filePath);
-      
+
       // 根据扩展名设置 Content-Type
       const ext = key.split('.').pop()?.toLowerCase();
       const mimeTypes: Record<string, string> = {
@@ -52,7 +49,6 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch {
-      // 文件不存在，返回 404
       return NextResponse.json({ error: '文件不存在' }, { status: 404 });
     }
   } catch (error) {
