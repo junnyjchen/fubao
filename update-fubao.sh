@@ -195,9 +195,41 @@ fi
 echo ""
 echo -e "${BLUE}━━━ Step 4/5: 重启服务 ━━━${NC}"
 
+# --- 部署 Nginx 配置 ---
+echo -e "${YELLOW}📋 部署 Nginx 配置...${NC}"
+NGINX_CONF=""
+# 宝塔面板路径
+if [ -d "/www/server/panel/vhost/nginx" ]; then
+    NGINX_CONF="/www/server/panel/vhost/nginx/www.fubao.ltd.conf"
+# 手动安装路径
+elif [ -d "/etc/nginx/conf.d" ]; then
+    NGINX_CONF="/etc/nginx/conf.d/fubao.conf"
+fi
+if [ -n "$NGINX_CONF" ]; then
+    sudo cp "$BASE_DIR/php/nginx.conf" "$NGINX_CONF"
+    if sudo nginx -t 2>/dev/null; then
+        sudo nginx -s reload 2>/dev/null || true
+        echo -e "${GREEN}✅ Nginx 配置已更新${NC}"
+    else
+        echo -e "${RED}❌ Nginx 配置语法错误，已部署但未重载${NC}"
+        echo "  请手动检查: sudo nginx -t"
+    fi
+else
+    echo -e "${YELLOW}⚠️  未检测到 Nginx 配置目录，请手动部署 php/nginx.conf${NC}"
+fi
+
+# --- 确保上传目录存在且可写 ---
+mkdir -p "$BASE_DIR/public/uploads/goods" \
+         "$BASE_DIR/public/uploads/banners" \
+         "$BASE_DIR/public/uploads/news" \
+         "$BASE_DIR/public/uploads/avatars" \
+         "$BASE_DIR/public/uploads/baike" \
+         "$BASE_DIR/public/uploads/images"
+chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
+
 # 确保 systemd 服务文件存在
-if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ]; then
-    echo -e "${YELLOW}📋 注册 systemd 服务...${NC}"
+if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/fubao-nextjs.service" "/etc/systemd/system/$SERVICE_NAME.service" >/dev/null 2>&1; then
+    echo -e "${YELLOW}📋 更新 systemd 服务...${NC}"
     sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
     sudo systemctl daemon-reload
     sudo systemctl enable "$SERVICE_NAME"
