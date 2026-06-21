@@ -1,11 +1,10 @@
 /**
  * @fileoverview AI内容批量生成API
  * @description 批量生成多个内容，支持队列处理
- * @module app/api/admin/ai-content/batch/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import { getLLMClient, isLLMConfigured, LLMClient } from '@/lib/ai/llm-client';
 
 /** 内容类型 */
 type ContentType = 'product' | 'wiki' | 'news';
@@ -178,10 +177,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!isLLMConfigured()) {
+      return NextResponse.json({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }, { status: 503 });
+    }
+
     // 初始化LLM客户端
-    const config = new Config();
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const client = new LLMClient(config, customHeaders);
+    const client = getLLMClient();
 
     // 并行生成所有内容
     const results = await Promise.all(

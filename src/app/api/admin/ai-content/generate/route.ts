@@ -4,16 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import { getLLMClient, isLLMConfigured } from '@/lib/ai/llm-client';
 
 /** 内容类型 */
 type ContentType = 'product' | 'wiki' | 'news';
 
-/** 调用LLM生成内容（非流式，使用 coze-coding-dev-sdk） */
-async function generateWithLLM(prompt: string, request: NextRequest): Promise<string> {
-  const config = new Config();
-  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-  const client = new LLMClient(config, customHeaders);
+/** 调用LLM生成内容（非流式） */
+async function generateWithLLM(prompt: string): Promise<string> {
+  const client = getLLMClient();
 
   const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
     { role: 'system', content: '你是一個專業的玄門文化內容創作專家，擅長撰寫道門、風水、符咒、法器等相關領域的專業內容。請用繁體中文回答。' },
@@ -87,6 +85,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請提供主題' }, { status: 400 });
     }
 
+    if (!isLLMConfigured()) {
+      return NextResponse.json({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }, { status: 503 });
+    }
+
     // 構建提示詞
     let prompt: string;
     const contentType = type as ContentType;
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 調用LLM生成內容
-    const rawContent = await generateWithLLM(prompt, request);
+    const rawContent = await generateWithLLM(prompt);
 
     // 解析JSON結果
     let generatedContent: Record<string, unknown>;

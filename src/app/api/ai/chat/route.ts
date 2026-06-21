@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { LLMClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
+import { NextRequest } from 'next/server';
+import { getLLMClient, isLLMConfigured } from '@/lib/ai/llm-client';
 
 // 符寶網 AI 助手系统提示词
 const SYSTEM_PROMPT = `你是「符寶網」的玄門文化AI助手，你的名字叫「符寶」。
@@ -42,7 +42,18 @@ export async function POST(request: NextRequest) {
     const { messages = [], model = 'doubao-lite', thinking = false } = body;
 
     if (!messages.length) {
-      return NextResponse.json({ error: '请提供对话消息' }, { status: 400 });
+      return new Response(
+        JSON.stringify({ error: '请提供对话消息' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 检查 LLM 是否已配置
+    if (!isLLMConfigured()) {
+      return new Response(
+        JSON.stringify({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     // 映射模型ID
@@ -62,13 +73,14 @@ export async function POST(request: NextRequest) {
     // 确保至少有一条 user 消息
     const hasUserMsg = sdkMessages.some(m => m.role === 'user');
     if (!hasUserMsg) {
-      return NextResponse.json({ error: '对话消息必须包含用户消息' }, { status: 400 });
+      return new Response(
+        JSON.stringify({ error: '对话消息必须包含用户消息' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     }
 
     // 初始化LLM客户端
-    const config = new Config();
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const client = new LLMClient(config, customHeaders);
+    const client = getLLMClient();
 
     // SSE 流式输出
     const encoder = new TextEncoder();
@@ -82,9 +94,9 @@ export async function POST(request: NextRequest) {
           });
 
           for await (const chunk of llmStream) {
+            if (chunk.done) break;
             if (chunk.content) {
-              const text = chunk.content.toString();
-              const data = JSON.stringify({ content: text });
+              const data = JSON.stringify({ content: chunk.content });
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
           }
@@ -94,6 +106,7 @@ export async function POST(request: NextRequest) {
           controller.close();
         } catch (error: unknown) {
           const errMsg = error instanceof Error ? error.message : 'AI 服务暂时不可用';
+          console.error('[AI Chat] Stream error:', errMsg);
           const errorData = JSON.stringify({ error: errMsg });
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
@@ -112,6 +125,9 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error('[AI Chat] Error:', error);
     const message = error instanceof Error ? error.message : 'AI 服务暂时不可用';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }

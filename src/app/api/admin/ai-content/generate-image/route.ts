@@ -1,11 +1,9 @@
 /**
  * @fileoverview AI图片生成API
- * @description 为内容生成配图
- * @module app/api/admin/ai-content/generate-image/route
+ * @description 为内容生成配图，使用豆包图片生成 API
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ImageGenerationClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
 /** 图片生成请求 */
 interface ImageGenerateRequest {
@@ -37,6 +35,39 @@ const imagePrompts: Record<string, (title: string, summary?: string) => string> 
 };
 
 /**
+ * 调用豆包图片生成 API
+ */
+async function generateImage(prompt: string): Promise<string[]> {
+  const apiKey = process.env.ARK_API_KEY || process.env.VOLCENGINE_API_KEY || '';
+  if (!apiKey) {
+    throw new Error('图片生成 API 未配置，请设置 ARK_API_KEY 环境变量');
+  }
+
+  const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'doubao-seedream-4-0-250828',
+      prompt,
+      n: 1,
+      size: '1024x1024',
+      response_format: 'url',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`图片生成 API 错误 (${response.status}): ${errorText.slice(0, 300)}`);
+  }
+
+  const data = await response.json();
+  return (data.data || []).map((item: { url: string }) => item.url);
+}
+
+/**
  * POST /api/admin/ai-content/generate-image
  * 为内容生成配图
  */
@@ -52,11 +83,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 初始化图片生成客户端
-    const config = new Config();
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const client = new ImageGenerationClient(config, customHeaders);
-
     // 生成图片提示词
     const prompt = imagePrompts[type](title, summary);
     
@@ -66,25 +92,11 @@ export async function POST(request: NextRequest) {
       : prompt;
 
     // 调用图片生成API
-    const response = await client.generate({
-      prompt: enhancedPrompt,
-      size: '2K',
-      watermark: false,
-    });
-
-    const helper = client.getResponseHelper(response);
-
-    if (!helper.success) {
-      console.error('图片生成失败:', helper.errorMessages);
-      return NextResponse.json(
-        { error: helper.errorMessages.join(', ') || '圖片生成失敗' },
-        { status: 500 }
-      );
-    }
+    const imageUrls = await generateImage(enhancedPrompt);
 
     return NextResponse.json({
       success: true,
-      imageUrls: helper.imageUrls,
+      imageUrls,
       prompt: enhancedPrompt,
     });
   } catch (error) {
@@ -97,7 +109,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * POST /api/admin/ai-content/generate-image/batch
+ * PUT /api/admin/ai-content/generate-image
  * 批量生成配图
  */
 export async function PUT(request: NextRequest) {
@@ -119,29 +131,27 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 初始化图片生成客户端
-    const config = new Config();
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const client = new ImageGenerationClient(config, customHeaders);
-
     // 批量生成
-    const requests = items.map(item => ({
-      prompt: imagePrompts[item.type](item.title, item.summary),
-      size: '2K' as const,
-      watermark: false,
-    }));
-
-    const responses = await client.batchGenerate(requests);
-
-    const results = responses.map((response, index) => {
-      const helper = client.getResponseHelper(response);
-      return {
-        title: items[index].title,
-        success: helper.success,
-        imageUrls: helper.success ? helper.imageUrls : [],
-        error: helper.success ? undefined : helper.errorMessages.join(', '),
-      };
-    });
+    const results = await Promise.all(
+      items.map(async (item) => {
+        try {
+          const prompt = imagePrompts[item.type](item.title, item.summary);
+          const imageUrls = await generateImage(prompt);
+          return {
+            title: item.title,
+            success: true,
+            imageUrls,
+          };
+        } catch (err) {
+          return {
+            title: item.title,
+            success: false,
+            imageUrls: [],
+            error: err instanceof Error ? err.message : '生成失敗',
+          };
+        }
+      })
+    );
 
     const successCount = results.filter(r => r.success).length;
 

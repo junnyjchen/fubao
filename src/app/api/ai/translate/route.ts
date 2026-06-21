@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getLLMClient, isLLMConfigured } from '@/lib/ai/llm-client';
 
 /**
  * AI翻译API - 使用LLM将文本翻译为指定语言
@@ -11,6 +12,10 @@ export async function POST(request: NextRequest) {
 
     if (!text || !targetLocale) {
       return NextResponse.json({ error: '缺少必要参数: text, targetLocale' }, { status: 400 });
+    }
+
+    if (!isLLMConfigured()) {
+      return NextResponse.json({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }, { status: 503 });
     }
 
     const LOCALE_NAMES: Record<string, string> = {
@@ -39,10 +44,7 @@ export async function POST(request: NextRequest) {
 5. 直接输出翻译结果，不要加任何解释或说明
 ${context ? `6. 翻译上下文：这是${context}的内容` : ''}`;
 
-    const { LLMClient, Config, HeaderUtils } = await import('coze-coding-dev-sdk');
-    const customHeaders = HeaderUtils.extractForwardHeaders(request.headers);
-    const config = new Config();
-    const client = new LLMClient(config, customHeaders);
+    const client = getLLMClient();
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },

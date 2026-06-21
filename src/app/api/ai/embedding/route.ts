@@ -1,18 +1,43 @@
 /**
  * @fileoverview 知识库向量化处理API
  * @description 为知识库内容生成向量表示，支持批量处理
+ * 使用豆包 Embedding API
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { EmbeddingClient, Config, HeaderUtils } from 'coze-coding-dev-sdk';
 
-// 初始化Embedding客户端
-const getEmbeddingClient = (request: NextRequest) => {
-  const customHeaders = HeaderUtils.extractForwardHeaders(request.headers) as any;
-  return new EmbeddingClient(customHeaders);
-};
+/**
+ * 调用豆包 Embedding API 生成向量
+ */
+async function getEmbedding(text: string, dimensions: number = 1024): Promise<number[]> {
+  const apiKey = process.env.ARK_API_KEY || process.env.VOLCENGINE_API_KEY || '';
+  if (!apiKey) {
+    throw new Error('Embedding API 未配置，请设置 ARK_API_KEY 环境变量');
+  }
 
-// 向量化单个文本
+  const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/embeddings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'doubao-embedding-text-240715',
+      input: text,
+      encoding_format: 'float',
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Embedding API 错误 (${response.status}): ${errorText.slice(0, 300)}`);
+  }
+
+  const data = await response.json();
+  return data.data?.[0]?.embedding || [];
+}
+
+// 向量化单个/批量文本
 export async function POST(request: NextRequest) {
   try {
     const { texts, dimensions = 1024 } = await request.json();
@@ -24,23 +49,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = getEmbeddingClient(request);
     const embeddings: number[][] = [];
 
-    // 批量处理，每批10条
-    const batchSize = 10;
-    for (let i = 0; i < texts.length; i += batchSize) {
-      const batch = texts.slice(i, i + batchSize);
-      
-      for (const text of batch) {
-        try {
-          const embedding = await client.embedText(text.toString(), { dimensions });
-          embeddings.push(embedding);
-        } catch (err) {
-          console.error(`向量化失敗: ${text.substring(0, 50)}...`, err);
-          // 返回null占位
-          embeddings.push([]);
-        }
+    // 逐条处理
+    for (const text of texts) {
+      try {
+        const embedding = await getEmbedding(text.toString(), dimensions);
+        embeddings.push(embedding);
+      } catch (err) {
+        console.error(`向量化失敗: ${text.toString().substring(0, 50)}...`, err);
+        embeddings.push([]);
       }
     }
 
@@ -71,8 +89,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const client = getEmbeddingClient(request);
-    const embedding = await client.embedText(text, { dimensions });
+    const embedding = await getEmbedding(text, dimensions);
 
     return NextResponse.json({
       success: true,
