@@ -29,10 +29,10 @@ export async function GET(request: NextRequest) {
       params
     );
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('获取轮播图失败:', error);
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ success: true, data: [] });
   }
 }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       is_active: is_active !== undefined ? (is_active ? 1 : 0) : 1,
     });
 
-    return NextResponse.json({ data: { id }, message: '輪播圖創建成功' });
+    return NextResponse.json({ success: true, data: { id }, message: '輪播圖創建成功' });
   } catch (error) {
     console.error('创建轮播图失败:', error);
     return NextResponse.json({ error: '創建輪播圖失敗' }, { status: 500 });
@@ -86,7 +86,7 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('banners', updateData, { id });
 
-    return NextResponse.json({ message: '輪播圖更新成功' });
+    return NextResponse.json({ success: true, message: '輪播圖更新成功' });
   } catch (error) {
     console.error('更新轮播图失败:', error);
     return NextResponse.json({ error: '更新輪播圖失敗' }, { status: 500 });
@@ -107,7 +107,7 @@ export async function DELETE(request: NextRequest) {
 
     await dbRemove('banners', { id: parseInt(id) });
 
-    return NextResponse.json({ message: '輪播圖刪除成功' });
+    return NextResponse.json({ success: true, message: '輪播圖刪除成功' });
   } catch (error) {
     console.error('删除轮播图失败:', error);
     return NextResponse.json({ error: '刪除輪播圖失敗' }, { status: 500 });

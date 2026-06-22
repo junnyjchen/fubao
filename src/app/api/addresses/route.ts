@@ -4,9 +4,10 @@
  * @module app/api/addresses/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate, remove as dbRemove } from '@/lib/db';
 import { getAuthUserId } from '@/lib/auth/apiAuth';
+import { successResponse, errorResponse, messageResponse } from '@/lib/api-response';
 
 
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const data = await query(
@@ -25,10 +26,10 @@ export async function GET(request: NextRequest) {
       [userId]
     );
 
-    return NextResponse.json({ data });
+    return successResponse(data);
   } catch (error) {
     console.error('获取地址失败:', error);
-    return NextResponse.json({ data: [] });
+    return successResponse([]);
   }
 }
 
@@ -39,14 +40,14 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const body = await request.json();
     const { name, phone, province, city, district, address, is_default, tag } = body;
 
     if (!name || !phone || !address) {
-      return NextResponse.json({ error: '請填寫完整地址信息' }, { status: 400 });
+      return errorResponse('請填寫完整地址信息');
     }
 
     // 如果设为默认地址，取消其他默认
@@ -66,10 +67,10 @@ export async function POST(request: NextRequest) {
       tag: tag || null,
     });
 
-    return NextResponse.json({ data: { id }, message: '地址添加成功' });
+    return successResponse({ id }, '地址添加成功');
   } catch (error) {
     console.error('添加地址失败:', error);
-    return NextResponse.json({ error: '添加地址失敗' }, { status: 500 });
+    return errorResponse('添加地址失敗', 500);
   }
 }
 
@@ -80,20 +81,20 @@ export async function PUT(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const body = await request.json();
     const { id, name, phone, province, city, district, address, is_default, tag } = body;
 
     if (!id) {
-      return NextResponse.json({ error: '缺少地址ID' }, { status: 400 });
+      return errorResponse('缺少地址ID');
     }
 
     // 验证地址归属
     const existing = await queryOne('SELECT id FROM addresses WHERE id = ? AND user_id = ?', [id, userId]);
     if (!existing) {
-      return NextResponse.json({ error: '地址不存在' }, { status: 404 });
+      return errorResponse('地址不存在', 404);
     }
 
     // 如果设为默认地址，取消其他默认
@@ -113,10 +114,10 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('addresses', updateData, { id, user_id: userId });
 
-    return NextResponse.json({ message: '地址更新成功' });
+    return messageResponse('地址更新成功');
   } catch (error) {
     console.error('更新地址失败:', error);
-    return NextResponse.json({ error: '更新地址失敗' }, { status: 500 });
+    return errorResponse('更新地址失敗', 500);
   }
 }
 
@@ -127,21 +128,21 @@ export async function DELETE(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: '缺少地址ID' }, { status: 400 });
+      return errorResponse('缺少地址ID');
     }
 
     await dbRemove('addresses', { id: parseInt(id), user_id: userId });
 
-    return NextResponse.json({ message: '地址刪除成功' });
+    return messageResponse('地址刪除成功');
   } catch (error) {
     console.error('删除地址失败:', error);
-    return NextResponse.json({ error: '刪除地址失敗' }, { status: 500 });
+    return errorResponse('刪除地址失敗', 500);
   }
 }

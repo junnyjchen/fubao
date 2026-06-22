@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data, total, page, limit });
   } catch (error) {
     console.error('获取订单列表失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, limit: 10 });
+    return NextResponse.json({ success: true, data: [], total: 0, page: 1, limit: 10 });
   }
 }
 
@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('orders', updateData, { id });
 
-    return NextResponse.json({ message: '訂單更新成功' });
+    return NextResponse.json({ success: true, message: '訂單更新成功' });
   } catch (error) {
     console.error('更新订单失败:', error);
     return NextResponse.json({ error: '更新訂單失敗' }, { status: 500 });

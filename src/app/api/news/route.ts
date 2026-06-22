@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取新闻失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, limit: 20, total_pages: 0 });
+    return NextResponse.json({ success: true, data: [], total: 0, page: 1, limit: 20, total_pages: 0 });
   }
 }
 
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       published_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     });
 
-    return NextResponse.json({ data: { id, slug }, message: '新聞創建成功' });
+    return NextResponse.json({ success: true, data: { id, slug }, message: '新聞創建成功' });
   } catch (error) {
     console.error('创建新闻失败:', error);
     return NextResponse.json({ error: '創建新聞失敗' }, { status: 500 });
@@ -113,7 +113,7 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('news', updateData, { id });
 
-    return NextResponse.json({ message: '新聞更新成功' });
+    return NextResponse.json({ success: true, message: '新聞更新成功' });
   } catch (error) {
     console.error('更新新闻失败:', error);
     return NextResponse.json({ error: '更新新聞失敗' }, { status: 500 });
@@ -134,7 +134,7 @@ export async function DELETE(request: NextRequest) {
 
     await dbRemove('news', { id: parseInt(id) });
 
-    return NextResponse.json({ message: '新聞刪除成功' });
+    return NextResponse.json({ success: true, message: '新聞刪除成功' });
   } catch (error) {
     console.error('删除新闻失败:', error);
     return NextResponse.json({ error: '刪除新聞失敗' }, { status: 500 });

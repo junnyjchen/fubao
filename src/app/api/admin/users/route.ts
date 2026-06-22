@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data, total, page, limit });
   } catch (error) {
     console.error('获取用户失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, limit: 20 });
+    return NextResponse.json({ success: true, data: [], total: 0, page: 1, limit: 20 });
   }
 }
 
@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('users', { status: status ? 1 : 0 }, { id });
 
-    return NextResponse.json({ message: '更新成功' });
+    return NextResponse.json({ success: true, message: '更新成功' });
   } catch (error) {
     console.error('更新用户失败:', error);
     return NextResponse.json({ error: '更新失敗' }, { status: 500 });

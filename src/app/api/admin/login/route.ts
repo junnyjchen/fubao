@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
+      success: true,
       message: '登錄成功',
       token,
       admin: {

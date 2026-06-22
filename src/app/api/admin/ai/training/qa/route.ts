@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
+      success: true,
       data: {
         list: list || [],
         total,
@@ -40,6 +41,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取问答对列表失败:', error);
-    return NextResponse.json({ data: { list: [], total: 0, page: 1, page_size: 10 } });
+    return NextResponse.json({ success: true, data: { list: [], total: 0, page: 1, page_size: 10 } });
   }
 }

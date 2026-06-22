@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate, count, remove as dbRemove } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth/apiAuth';
 import { sendOrderConfirmationEmail } from '@/lib/email/service';
+import { successResponse, listResponse, errorResponse, messageResponse } from '@/lib/api-response';
 
 function generateOrderNo() {
   const now = new Date();
@@ -21,10 +22,10 @@ function generateOrderNo() {
 export async function GET(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request);
-    if (!authUser) return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    if (!authUser) return errorResponse('請先登錄', 401);
     const userId = authUser.userId;
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const { searchParams } = new URL(request.url);
@@ -37,13 +38,13 @@ export async function GET(request: NextRequest) {
         [orderId, userId]
       ) as any;
       if (!order) {
-        return NextResponse.json({ error: '訂單不存在' }, { status: 404 });
+        return errorResponse('訂單不存在', 404);
       }
       const items = await query(
         'SELECT * FROM order_items WHERE order_id = ?',
         [order.id]
       );
-      return NextResponse.json({ data: { ...order, items } });
+      return successResponse({ ...order, items });
     }
 
     const page = parseInt(searchParams.get('page') || '1');
@@ -79,10 +80,10 @@ export async function GET(request: NextRequest) {
       ordersWithItems.push({ ...order, items });
     }
 
-    return NextResponse.json({ data: ordersWithItems, total, page, page_size: pageSize });
+    return listResponse(ordersWithItems, { total, page, pageSize });
   } catch (error) {
     console.error('获取订单失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, page_size: 10 });
+    return listResponse([], { total: 0, page: 1, pageSize: 10 });
   }
 }
 
@@ -96,10 +97,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request);
-    if (!authUser) return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+    if (!authUser) return errorResponse('請先登錄', 401);
     const userId = authUser.userId;
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const body = await request.json();
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (orderItemsInput.length === 0) {
-      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
+      return errorResponse('請選擇商品');
     }
 
     // 获取地址 - 如果没有传address_id，尝试获取默认地址
@@ -158,13 +159,13 @@ export async function POST(request: NextRequest) {
     for (const item of orderItemsInput) {
       const goods = await queryOne('SELECT id, name, main_image, price, stock, status FROM goods WHERE id = ?', [item.goods_id]) as any;
       if (!goods) {
-        return NextResponse.json({ error: `商品ID ${item.goods_id} 不存在` }, { status: 404 });
+        return errorResponse(`商品ID ${item.goods_id} 不存在`, 404);
       }
       if (!goods.status) {
-        return NextResponse.json({ error: `商品「${goods.name}」已下架` }, { status: 400 });
+        return errorResponse(`商品「${goods.name}」已下架`);
       }
       if (item.quantity > goods.stock) {
-        return NextResponse.json({ error: `商品「${goods.name}」庫存不足` }, { status: 400 });
+        return errorResponse(`商品「${goods.name}」庫存不足`);
       }
 
       const itemTotal = parseFloat(String(goods.price)) * item.quantity;
@@ -252,21 +253,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      data: {
-        id: orderId,
-        order_no: orderNo,
-        total_amount: totalAmount.toFixed(2),
-        pay_amount: payAmount.toFixed(2),
-        shipping_fee: shippingFee.toFixed(2),
-        status: 'pending',
-        payment_method: payment_method || 'alipay',
-      },
-      message: '下單成功',
-    });
+    return successResponse({
+      id: orderId,
+      order_no: orderNo,
+      total_amount: totalAmount.toFixed(2),
+      pay_amount: payAmount.toFixed(2),
+      shipping_fee: shippingFee.toFixed(2),
+      status: 'pending',
+      payment_method: payment_method || 'alipay',
+    }, '下單成功');
   } catch (error) {
     console.error('创建订单失败:', error);
-    return NextResponse.json({ error: '創建訂單失敗' }, { status: 500 });
+    return errorResponse('創建訂單失敗', 500);
   }
 }
 
@@ -277,11 +275,11 @@ export async function PUT(request: NextRequest) {
   try {
     const authUser = await getAuthUser(request);
     if (!authUser) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
     const userId = authUser.userId;
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const body = await request.json();
@@ -289,30 +287,30 @@ export async function PUT(request: NextRequest) {
 
     const effectiveOrderId = id || order_id;
     if (!effectiveOrderId) {
-      return NextResponse.json({ error: '缺少訂單ID' }, { status: 400 });
+      return errorResponse('缺少訂單ID');
     }
 
     const order = await queryOne('SELECT * FROM orders WHERE id = ? AND user_id = ?', [effectiveOrderId, userId]) as any;
     if (!order) {
-      return NextResponse.json({ error: '訂單不存在' }, { status: 404 });
+      return errorResponse('訂單不存在', 404);
     }
 
     // 更新订单信息（待付款状态下可修改地址、支付方式等）
     if (address_id || payment_method || remark !== undefined) {
       if (order.status !== 'pending') {
-        return NextResponse.json({ error: '僅待付款訂單可修改' }, { status: 400 });
+        return errorResponse('僅待付款訂單可修改');
       }
       const updates: Record<string, any> = {};
       if (address_id) {
         const addr = await queryOne('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [address_id, userId]) as any;
-        if (!addr) return NextResponse.json({ error: '地址不存在' }, { status: 404 });
+        if (!addr) return errorResponse('地址不存在', 404);
         updates.address_snapshot = JSON.stringify(addr);
       }
       if (payment_method) updates.payment_method = payment_method;
       if (remark !== undefined) updates.remark = remark || null;
       if (coupon_id) updates.coupon_id = coupon_id;
       await dbUpdate('orders', effectiveOrderId, updates);
-      return NextResponse.json({ success: true, message: '訂單已更新' });
+      return messageResponse('訂單已更新');
     }
 
     if (status === 'cancelled') {
@@ -326,7 +324,7 @@ export async function PUT(request: NextRequest) {
         cancel_reason: cancel_reason || '用戶取消',
         cancelled_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
       });
-      return NextResponse.json({ message: '訂單已取消' });
+      return messageResponse('訂單已取消');
     }
 
     if (status === 'confirmed') {
@@ -334,12 +332,12 @@ export async function PUT(request: NextRequest) {
         status: 'confirmed',
         confirmed_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
       });
-      return NextResponse.json({ message: '訂單已確認收貨' });
+      return messageResponse('訂單已確認收貨');
     }
 
-    return NextResponse.json({ error: '不支持的狀態變更' }, { status: 400 });
+    return errorResponse('不支持的狀態變更');
   } catch (error) {
     console.error('更新订单失败:', error);
-    return NextResponse.json({ error: '更新訂單失敗' }, { status: 500 });
+    return errorResponse('更新訂單失敗', 500);
   }
 }

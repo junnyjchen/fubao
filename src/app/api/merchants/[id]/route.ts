@@ -34,6 +34,7 @@ export async function GET(
     );
 
     return NextResponse.json({
+      success: true,
       data: {
         ...merchant,
         goods: goods || [],
@@ -70,7 +71,7 @@ export async function PUT(
 
     await dbUpdate('merchants', updateData, { id: merchantId });
 
-    return NextResponse.json({ message: '商戶更新成功' });
+    return NextResponse.json({ success: true, message: '商戶更新成功' });
   } catch (error) {
     console.error('更新商户失败:', error);
     return NextResponse.json({ error: '更新商戶失敗' }, { status: 500 });

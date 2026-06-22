@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取商品列表失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, pageSize: 20, total_pages: 0 });
+    return NextResponse.json({ success: true, data: [], total: 0, page: 1, pageSize: 20, total_pages: 0 });
   }
 }
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     const goods = await queryOne('SELECT * FROM goods WHERE id = ?', [id]);
 
-    return NextResponse.json({ data: goods, message: '商品創建成功' }, { status: 201 });
+    return NextResponse.json({ success: true, data: goods, message: '商品創建成功' }, { status: 201 });
   } catch (error) {
     console.error('创建商品失败:', error);
     return NextResponse.json({ error: '創建商品失敗' }, { status: 500 });
@@ -132,7 +132,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const updated = await queryOne('SELECT * FROM goods WHERE id = ?', [id]);
-    return NextResponse.json({ data: updated, message: '商品更新成功' });
+    return NextResponse.json({ success: true, data: updated, message: '商品更新成功' });
   } catch (error) {
     console.error('更新商品失败:', error);
     return NextResponse.json({ error: '更新商品失敗' }, { status: 500 });
@@ -148,7 +148,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await remove('goods', { id });
-    return NextResponse.json({ message: '商品刪除成功' });
+    return NextResponse.json({ success: true, message: '商品刪除成功' });
   } catch (error) {
     console.error('删除商品失败:', error);
     return NextResponse.json({ error: '刪除商品失敗' }, { status: 500 });

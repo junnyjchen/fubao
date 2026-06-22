@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
+      success: true,
       message: '登錄成功',
       token,
       user: {
@@ -191,6 +192,7 @@ async function handleRegister(body: {
     });
 
     return NextResponse.json({
+      success: true,
       message: '註冊成功',
       token,
       user: {
@@ -217,5 +219,5 @@ async function handleRegister(body: {
 export async function DELETE() {
   const cookieStore = await cookies();
   cookieStore.delete('auth_token');
-  return NextResponse.json({ message: '登出成功' });
+  return NextResponse.json({ success: true, message: '登出成功' });
 }

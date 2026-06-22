@@ -40,6 +40,7 @@ export async function GET(
       : [];
 
     return NextResponse.json({
+      success: true,
       data: {
         ...article,
         view_count: ((article.view_count as number) || 0) + 1,
@@ -84,7 +85,7 @@ export async function PUT(
 
     await dbUpdate('articles', updateData, { id: article.id });
 
-    return NextResponse.json({ message: '文章更新成功' });
+    return NextResponse.json({ success: true, message: '文章更新成功' });
   } catch (error) {
     console.error('更新文章失败:', error);
     return NextResponse.json({ error: '更新文章失敗' }, { status: 500 });
@@ -112,7 +113,7 @@ export async function DELETE(
       }
     }
 
-    return NextResponse.json({ message: '文章刪除成功' });
+    return NextResponse.json({ success: true, message: '文章刪除成功' });
   } catch (error) {
     console.error('删除文章失败:', error);
     return NextResponse.json({ error: '刪除文章失敗' }, { status: 500 });

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取商户申请列表失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, pageSize: 20, total_pages: 0 });
+    return NextResponse.json({ success: true, data: [], total: 0, page: 1, pageSize: 20, total_pages: 0 });
   }
 }
 
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ message: status === 'approved' ? '審核通過' : '已拒絕申請' });
+    return NextResponse.json({ success: true, message: status === 'approved' ? '審核通過' : '已拒絕申請' });
   } catch (error) {
     console.error('审核商户申请失败:', error);
     return NextResponse.json({ error: '審核操作失敗' }, { status: 500 });

@@ -124,10 +124,10 @@ export async function GET(request: NextRequest) {
       grouped[g].push(item);
     }
 
-    return NextResponse.json({ data: grouped });
+    return NextResponse.json({ success: true, data: grouped });
   } catch (error) {
     console.error('获取设置失败:', error);
-    return NextResponse.json({ data: {} });
+    return NextResponse.json({ success: true, data: {} });
   }
 }
 
@@ -154,7 +154,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ message: '設置保存成功' });
+    return NextResponse.json({ success: true, message: '設置保存成功' });
   } catch (error) {
     console.error('保存设置失败:', error);
     return NextResponse.json({ error: '保存設置失敗' }, { status: 500 });

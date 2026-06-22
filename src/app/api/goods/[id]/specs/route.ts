@@ -14,6 +14,7 @@ export async function GET(
       [goodsId]
     );
     return NextResponse.json({
+      success: true,
       specs: (specs || []).map((s: any) => ({
         ...s,
         values: typeof s.values === 'string' ? JSON.parse(s.values) : s.values,

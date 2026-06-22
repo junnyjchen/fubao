@@ -13,7 +13,7 @@ export async function GET(
       'SELECT * FROM goods_skus WHERE goods_id = ? ORDER BY id ASC',
       [goodsId]
     );
-    return NextResponse.json({ skus: (skus || []).map((s: any) => ({
+    return NextResponse.json({ success: true, skus: (skus || []).map((s: any) => ({
       ...s,
       specs: typeof s.specs === 'string' ? JSON.parse(s.specs) : s.specs,
     })) });

@@ -81,12 +81,12 @@ export async function GET(request: NextRequest) {
 
     if (tree && !parentId) {
       const treeData = buildCategoryTree(categories);
-      return NextResponse.json({ data: treeData });
+      return NextResponse.json({ success: true, data: treeData });
     }
 
-    return NextResponse.json({ data: categories });
+    return NextResponse.json({ success: true, data: categories });
   } catch (error) {
     console.error('获取分类失败:', error);
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ success: true, data: [] });
   }
 }

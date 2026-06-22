@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       status: 'pending',
     });
 
-    return NextResponse.json({ message: '申請提交成功，請等待審核', data: { id } });
+    return NextResponse.json({ success: true, message: '申請提交成功，請等待審核', data: { id } });
   } catch (error) {
     console.error('商户申请失败:', error);
     return NextResponse.json({ error: '申請提交失敗' }, { status: 500 });
@@ -63,9 +63,9 @@ export async function GET(request: NextRequest) {
       [userId]
     );
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     console.error('获取商户申请失败:', error);
-    return NextResponse.json({ data: [] });
+    return NextResponse.json({ success: true, data: [] });
   }
 }

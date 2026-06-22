@@ -37,6 +37,7 @@ export async function GET(
       : [];
 
     return NextResponse.json({
+      success: true,
       data: {
         ...newsItem,
         view_count: ((newsItem.view_count as number) || 0) + 1,
@@ -82,7 +83,7 @@ export async function PUT(
 
     await dbUpdate('news', updateData, { id: newsItem.id });
 
-    return NextResponse.json({ message: '新聞更新成功' });
+    return NextResponse.json({ success: true, message: '新聞更新成功' });
   } catch (error) {
     console.error('更新新闻失败:', error);
     return NextResponse.json({ error: '更新新聞失敗' }, { status: 500 });
@@ -109,7 +110,7 @@ export async function DELETE(
       }
     }
 
-    return NextResponse.json({ message: '新聞刪除成功' });
+    return NextResponse.json({ success: true, message: '新聞刪除成功' });
   } catch (error) {
     console.error('删除新闻失败:', error);
     return NextResponse.json({ error: '刪除新聞失敗' }, { status: 500 });

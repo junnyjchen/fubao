@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     else if (goodsId) { countWhere = 'r.goods_id = ?'; countParams = [parseInt(goodsId)]; }
     const total = await count('merchant_reviews r', countWhere, countParams);
 
-    return NextResponse.json({ reviews, total, page, limit });
+    return NextResponse.json({ success: true, reviews, total, page, limit });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

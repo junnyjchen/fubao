@@ -86,6 +86,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     }
 
     return NextResponse.json({
+      success: true,
       data: {
         ...translatedGoods,
         merchant,

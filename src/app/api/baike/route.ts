@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       if (!article) {
         return NextResponse.json({ error: '文章不存在' }, { status: 404 });
       }
-      return NextResponse.json({ data: article });
+      return NextResponse.json({ success: true, data: article });
     }
 
     // 列表查询
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     const categories = await query('SELECT DISTINCT category FROM baike_articles WHERE category IS NOT NULL AND category != "" ORDER BY category');
 
     return NextResponse.json({
+      success: true,
       data: articles,
       categories: categories.map((c: Record<string, unknown>) => c.category),
       total,
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     });
 
-    return NextResponse.json({ data: { id }, message: '创建成功' });
+    return NextResponse.json({ success: true, data: { id }, message: '创建成功' });
   } catch (error) {
     console.error('[Baike] 创建错误:', error);
     return NextResponse.json({ error: '创建失败' }, { status: 500 });
@@ -106,7 +107,7 @@ export async function PUT(request: NextRequest) {
 
     await update('baike_articles', data, { id });
 
-    return NextResponse.json({ message: '更新成功' });
+    return NextResponse.json({ success: true, message: '更新成功' });
   } catch (error) {
     console.error('[Baike] 更新错误:', error);
     return NextResponse.json({ error: '更新失败' }, { status: 500 });
@@ -125,7 +126,7 @@ export async function DELETE(request: NextRequest) {
 
     await remove('baike_articles', { id: parseInt(id) });
 
-    return NextResponse.json({ message: '删除成功' });
+    return NextResponse.json({ success: true, message: '删除成功' });
   } catch (error) {
     console.error('[Baike] 删除错误:', error);
     return NextResponse.json({ error: '删除失败' }, { status: 500 });

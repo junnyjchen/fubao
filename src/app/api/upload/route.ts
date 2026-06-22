@@ -77,6 +77,7 @@ export async function POST(request: Request) {
     const url = `/uploads/${folder}/${fileName}`;
 
     return NextResponse.json({
+      success: true,
       message: '上傳成功',
       data: {
         key: `${folder}/${fileName}`,
@@ -117,7 +118,7 @@ export async function DELETE(request: Request) {
       await unlink(filePath);
     }
 
-    return NextResponse.json({ message: '刪除成功' });
+    return NextResponse.json({ success: true, message: '刪除成功' });
   } catch (error) {
     console.error('删除文件失败:', error);
     return NextResponse.json(
@@ -151,7 +152,7 @@ export async function GET(request: Request) {
 
     const url = `/uploads/${safeKey}`;
 
-    return NextResponse.json({ data: { key: safeKey, url } });
+    return NextResponse.json({ success: true, data: { key: safeKey, url } });
   } catch (error) {
     console.error('获取文件URL失败:', error);
     return NextResponse.json(

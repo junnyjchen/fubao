@@ -18,6 +18,7 @@ export async function GET() {
     );
 
     return NextResponse.json({
+      success: true,
       data: {
         knowledge: {
           total: knowledgeTotal,
@@ -37,6 +38,7 @@ export async function GET() {
   } catch (error) {
     console.error('获取训练统计失败:', error);
     return NextResponse.json({
+      success: true,
       data: {
         knowledge: { total: 0, active: 0, categories: [] },
         qa: { total: 0, active: 0 },

@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
+      success: true,
       data: enrichedData,
       total,
       page,
@@ -91,6 +92,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('获取商品列表失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, pageSize: 20, total_pages: 0 });
+    return NextResponse.json({ success: true, data: [], total: 0, page: 1, pageSize: 20, total_pages: 0 });
   }
 }

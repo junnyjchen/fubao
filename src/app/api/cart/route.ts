@@ -4,9 +4,10 @@
  * @module app/api/cart/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate, remove as dbRemove } from '@/lib/db';
 import { getAuthUser } from '@/lib/auth/apiAuth';
+import { successResponse, errorResponse, messageResponse } from '@/lib/api-response';
 
 /** 从请求获取用户ID (支持 Authorization header 和 Cookie) */
 async function getUserId(request: NextRequest): Promise<number | null> {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const items = await query(
@@ -79,13 +80,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      data: Object.values(grouped),
+    return successResponse({
+      groups: Object.values(grouped),
       summary: { totalItems, selectedItems, totalPrice, selectedPrice },
     });
   } catch (error) {
     console.error('获取购物车失败:', error);
-    return NextResponse.json({ data: [], summary: { totalItems: 0, selectedItems: 0, totalPrice: 0, selectedPrice: 0 } });
+    return successResponse({
+      groups: [],
+      summary: { totalItems: 0, selectedItems: 0, totalPrice: 0, selectedPrice: 0 },
+    });
   }
 }
 
@@ -96,20 +100,20 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await getUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const body = await request.json();
     const goods_id = body.goods_id || body.goodsId;
     const quantity = body.quantity || 1;
     if (!goods_id) {
-      return NextResponse.json({ error: '請選擇商品' }, { status: 400 });
+      return errorResponse('請選擇商品');
     }
 
     // 检查商品是否存在
     const goods = await queryOne('SELECT id, stock, status FROM goods WHERE id = ?', [goods_id]);
     if (!goods || !goods.status) {
-      return NextResponse.json({ error: '商品不存在或已下架' }, { status: 404 });
+      return errorResponse('商品不存在或已下架', 404);
     }
 
     // 检查是否已在购物车
@@ -123,10 +127,10 @@ export async function POST(request: NextRequest) {
       await dbInsert('cart_items', { user_id: userId, goods_id, quantity, selected: 1 });
     }
 
-    return NextResponse.json({ message: '已添加到購物車' });
+    return messageResponse('已添加到購物車');
   } catch (error) {
     console.error('添加购物车失败:', error);
-    return NextResponse.json({ error: '添加購物車失敗' }, { status: 500 });
+    return errorResponse('添加購物車失敗', 500);
   }
 }
 
@@ -137,13 +141,13 @@ export async function PUT(request: NextRequest) {
   try {
     const userId = await getUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const { id, quantity, selected } = await request.json();
 
     if (!id) {
-      return NextResponse.json({ error: '缺少購物車項ID' }, { status: 400 });
+      return errorResponse('缺少購物車項ID');
     }
 
     const updateData: Record<string, unknown> = {};
@@ -152,10 +156,10 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('cart_items', updateData, { id, user_id: userId });
 
-    return NextResponse.json({ message: '更新成功' });
+    return messageResponse('更新成功');
   } catch (error) {
     console.error('更新购物车失败:', error);
-    return NextResponse.json({ error: '更新購物車失敗' }, { status: 500 });
+    return errorResponse('更新購物車失敗', 500);
   }
 }
 
@@ -166,7 +170,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const userId = await getUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登錄' }, { status: 401 });
+      return errorResponse('請先登錄', 401);
     }
 
     const { searchParams } = new URL(request.url);
@@ -179,9 +183,9 @@ export async function DELETE(request: NextRequest) {
       await dbRemove('cart_items', { user_id: userId });
     }
 
-    return NextResponse.json({ message: '刪除成功' });
+    return messageResponse('刪除成功');
   } catch (error) {
     console.error('删除购物车失败:', error);
-    return NextResponse.json({ error: '刪除購物車失敗' }, { status: 500 });
+    return errorResponse('刪除購物車失敗', 500);
   }
 }

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       currencies = (currencies || []).filter((c: any) => c.code === code);
     }
 
-    return NextResponse.json({ currencies });
+    return NextResponse.json({ success: true, currencies });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

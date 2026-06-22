@@ -4,8 +4,9 @@
  * @module app/api/free-gifts/route
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate } from '@/lib/db';
+import { successResponse, listResponse, errorResponse, messageResponse } from '@/lib/api-response';
 
 /**
  * GET - 获取免费送活动列表
@@ -14,27 +15,21 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = (page - 1) * limit;
+    const pageSize = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * pageSize;
 
     const data = await query(
       'SELECT * FROM free_gifts WHERE status = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [limit, offset]
+      [pageSize, offset]
     );
 
     const totalResult = await queryOne<{ cnt: number }>('SELECT COUNT(*) as cnt FROM free_gifts WHERE status = 1');
     const total = Number(totalResult?.cnt || 0);
 
-    return NextResponse.json({
-      data,
-      total,
-      page,
-      limit,
-      total_pages: Math.ceil(total / limit),
-    });
+    return listResponse(data, { total, page, pageSize });
   } catch (error) {
     console.error('获取免费送列表失败:', error);
-    return NextResponse.json({ data: [], total: 0, page: 1, limit: 20, total_pages: 0 });
+    return listResponse([], { total: 0, page: 1, pageSize: 20 });
   }
 }
 
@@ -47,7 +42,7 @@ export async function POST(request: NextRequest) {
     const { title, description, image, total_count, remaining_count, points_required, start_time, end_time, status } = body;
 
     if (!title) {
-      return NextResponse.json({ error: '標題不能為空' }, { status: 400 });
+      return errorResponse('標題不能為空');
     }
 
     const id = await dbInsert('free_gifts', {
@@ -62,10 +57,10 @@ export async function POST(request: NextRequest) {
       status: status || 1,
     });
 
-    return NextResponse.json({ data: { id }, message: '活動創建成功' });
+    return successResponse({ id }, '活動創建成功');
   } catch (error) {
     console.error('创建免费送活动失败:', error);
-    return NextResponse.json({ error: '創建活動失敗' }, { status: 500 });
+    return errorResponse('創建活動失敗', 500);
   }
 }
 
@@ -78,7 +73,7 @@ export async function PUT(request: NextRequest) {
     const { id, title, description, image, total_count, remaining_count, points_required, start_time, end_time, status } = body;
 
     if (!id) {
-      return NextResponse.json({ error: '缺少活動ID' }, { status: 400 });
+      return errorResponse('缺少活動ID');
     }
 
     const updateData: Record<string, unknown> = {};
@@ -94,9 +89,9 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('free_gifts', updateData, { id });
 
-    return NextResponse.json({ message: '活動更新成功' });
+    return messageResponse('活動更新成功');
   } catch (error) {
     console.error('更新免费送活动失败:', error);
-    return NextResponse.json({ error: '更新活動失敗' }, { status: 500 });
+    return errorResponse('更新活動失敗', 500);
   }
 }

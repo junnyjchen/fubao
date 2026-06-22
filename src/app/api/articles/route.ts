@@ -40,10 +40,10 @@ export async function GET(request: NextRequest) {
       [...params, limit, offset]
     );
 
-    return NextResponse.json({ data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } });
+    return NextResponse.json({ success: true, data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } });
   } catch (error) {
     console.error('获取文章失败:', error);
-    return NextResponse.json({ data: [], pagination: { page: 1, limit: 20, total: 0, total_pages: 0 } });
+    return NextResponse.json({ success: true, data: [], pagination: { page: 1, limit: 20, total: 0, total_pages: 0 } });
   }
 }
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       published_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
     });
 
-    return NextResponse.json({ data: { id, slug }, message: '文章創建成功' });
+    return NextResponse.json({ success: true, data: { id, slug }, message: '文章創建成功' });
   } catch (error) {
     console.error('创建文章失败:', error);
     return NextResponse.json({ error: '創建文章失敗' }, { status: 500 });
@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest) {
 
     await dbUpdate('articles', updateData, { id });
 
-    return NextResponse.json({ message: '文章更新成功' });
+    return NextResponse.json({ success: true, message: '文章更新成功' });
   } catch (error) {
     console.error('更新文章失败:', error);
     return NextResponse.json({ error: '更新文章失敗' }, { status: 500 });
@@ -129,7 +129,7 @@ export async function DELETE(request: NextRequest) {
 
     await dbRemove('articles', { id: parseInt(id) });
 
-    return NextResponse.json({ message: '文章刪除成功' });
+    return NextResponse.json({ success: true, message: '文章刪除成功' });
   } catch (error) {
     console.error('删除文章失败:', error);
     return NextResponse.json({ error: '刪除文章失敗' }, { status: 500 });

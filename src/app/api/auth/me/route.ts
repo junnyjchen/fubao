@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     if (!token) {
       // 未登录，返回 null
-      return NextResponse.json({ user: null });
+      return NextResponse.json({ success: true, user: null });
     }
 
     try {
@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       if (user) {
         const { password: _, ...userWithoutPassword } = user as Record<string, unknown>;
         return NextResponse.json({
+          success: true,
           user: {
             ...userWithoutPassword,
             isGuest: false,
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
 
       // 使用 token 中的信息直接返回
       return NextResponse.json({
+        success: true,
         user: {
           id: decoded.userId,
           email: decoded.email,
@@ -59,10 +61,10 @@ export async function GET(request: NextRequest) {
       });
     } catch (jwtError) {
       console.error('JWT 验证失败:', jwtError);
-      return NextResponse.json({ user: null });
+      return NextResponse.json({ success: true, user: null });
     }
   } catch (error) {
     console.error('获取用户信息失败:', error);
-    return NextResponse.json({ user: null });
+    return NextResponse.json({ success: true, user: null });
   }
 }
