@@ -181,6 +181,10 @@ if [ "$NEED_REBUILD" = true ]; then
         cp .env .next/standalone/ 2>/dev/null || true
         # 复制 .next/static
         cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
+        # 确保 sharp 原生模块在 standalone 中可用
+        if [ -d "node_modules/sharp" ] && [ ! -d ".next/standalone/node_modules/sharp" ]; then
+            cp -r node_modules/sharp .next/standalone/node_modules/ 2>/dev/null || true
+        fi
         echo -e "${GREEN}✅ Standalone 文件准备完成${NC}"
     fi
 
