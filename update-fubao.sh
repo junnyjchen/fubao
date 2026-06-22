@@ -117,65 +117,69 @@ if [ "$NEED_INSTALL" = true ]; then
 fi
 
 # ============================================================
-# Step 1: 检测是否需要完整构建
+# Step 1: Git 拉取最新代码
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 1/5: 检测变更 ━━━${NC}"
-
-if [ "$NEED_REBUILD" = true ]; then
-    echo -e "${YELLOW}⚠️  强制重建模式 (--rebuild)${NC}"
-elif [ -f ".build-hash" ]; then
-    CURRENT_HASH=$(md5sum package.json pnpm-lock.yaml 2>/dev/null | md5sum | awk '{print $1}')
-    OLD_HASH=$(cat .build-hash 2>/dev/null)
-    if [ "$CURRENT_HASH" != "$OLD_HASH" ]; then
-        echo -e "${YELLOW}📦 package.json 已变更，需要重新构建${NC}"
-        NEED_REBUILD=true
-    else
-        echo -e "${GREEN}✅ package.json 未变更，跳过构建${NC}"
-    fi
-else
-    echo -e "${YELLOW}⚠️  首次构建${NC}"
-    NEED_REBUILD=true
-fi
-
-# ============================================================
-# Step 2: Git 拉取最新代码
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 2/5: 拉取代码 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 1/5: 拉取代码 ━━━${NC}"
 
 if [ -d ".git" ]; then
     # 修复 Ubuntu 24.04 git 安全目录限制
     git config --global --add safe.directory "$BASE_DIR" 2>/dev/null
+    git fetch origin 2>/dev/null || true
+    BEFORE_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
     git pull origin main || git pull origin master || {
         echo -e "${YELLOW}⚠️  Git pull 失败，使用本地代码继续${NC}"
     }
-    echo -e "${GREEN}✅ 代码已更新${NC}"
+    AFTER_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+    if [ "$BEFORE_HASH" != "$AFTER_HASH" ]; then
+        echo -e "${GREEN}✅ 代码已更新 (${BEFORE_HASH:0:7} → ${AFTER_HASH:0:7})${NC}"
+        NEED_REBUILD=true
+    else
+        echo -e "${GREEN}✅ 代码已是最新${NC}"
+    fi
 else
     echo -e "${YELLOW}⚠️  非 Git 仓库，跳过拉取${NC}"
+    # 非 git 仓库，检查文件变更
+    CURRENT_TIMESTAMP=$(date +%s)
+    LAST_BUILD=$(cat .build-hash 2>/dev/null || echo "0")
+    if [ "$((CURRENT_TIMESTAMP - LAST_BUILD))" -gt 3600 ]; then
+        NEED_REBUILD=true
+    fi
+fi
+
+# --rebuild 参数强制构建
+if [ "$NEED_REBUILD" = true ]; then
+    echo -e "${YELLOW}📦 需要重新构建${NC}"
+else
+    echo -e "${GREEN}✅ 无需构建（使用 --rebuild 强制构建）${NC}"
 fi
 
 # ============================================================
-# Step 3: 安装依赖 + 构建
+# Step 2: 安装依赖
+# ============================================================
+echo ""
+echo -e "${BLUE}━━━ Step 2/5: 安装依赖 ━━━${NC}"
+
+pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+echo -e "${GREEN}✅ 依赖安装完成${NC}"
+
+# ============================================================
+# Step 3: 构建 Next.js
 # ============================================================
 echo ""
 echo -e "${BLUE}━━━ Step 3/5: 构建项目 ━━━${NC}"
 
-# 安装依赖
-echo -e "${YELLOW}📦 安装依赖...${NC}"
-pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-echo -e "${GREEN}✅ 依赖安装完成${NC}"
-
-# 构建
 if [ "$NEED_REBUILD" = true ]; then
-    echo -e "${YELLOW}🔨 构建 Next.js...${NC}"
+    echo -e "${YELLOW}🔨 构建 Next.js (standalone)...${NC}"
     pnpm build
-    md5sum package.json pnpm-lock.yaml 2>/dev/null | md5sum > .build-hash
 
-    # Standalone 模式需要手动复制 public 和 .env
+    # 记录构建时间
+    date +%s > .build-hash
+
+    # Standalone 模式需要手动复制文件
     echo -e "${YELLOW}📦 准备 Standalone 部署文件...${NC}"
-    # 复制 public 目录到 standalone 输出
     if [ -d ".next/standalone" ]; then
+        # 复制 public 目录到 standalone 输出
         cp -r public .next/standalone/ 2>/dev/null || true
         # 复制 .env 文件
         cp .env .next/standalone/ 2>/dev/null || true
@@ -183,6 +187,7 @@ if [ "$NEED_REBUILD" = true ]; then
         cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
         # 确保 sharp 原生模块在 standalone 中可用
         if [ -d "node_modules/sharp" ] && [ ! -d ".next/standalone/node_modules/sharp" ]; then
+            echo -e "${YELLOW}📦 复制 sharp 原生模块...${NC}"
             cp -r node_modules/sharp .next/standalone/node_modules/ 2>/dev/null || true
         fi
         echo -e "${GREEN}✅ Standalone 文件准备完成${NC}"
@@ -190,14 +195,14 @@ if [ "$NEED_REBUILD" = true ]; then
 
     echo -e "${GREEN}✅ 构建完成${NC}"
 else
-    echo -e "${GREEN}✅ 跳过构建（代码未变更）${NC}"
+    echo -e "${GREEN}✅ 跳过构建（代码未变更，使用 --rebuild 强制构建）${NC}"
 fi
 
 # ============================================================
-# Step 4: 重启服务
+# Step 4: 部署配置 + 重启服务
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 4/5: 重启服务 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 4/5: 部署配置 + 重启服务 ━━━${NC}"
 
 # --- 部署 Nginx 配置 ---
 echo -e "${YELLOW}📋 部署 Nginx 配置...${NC}"
@@ -213,7 +218,7 @@ if [ -n "$NGINX_CONF" ]; then
     sudo cp "$BASE_DIR/php/nginx.conf" "$NGINX_CONF"
     if sudo nginx -t 2>/dev/null; then
         sudo nginx -s reload 2>/dev/null || true
-        echo -e "${GREEN}✅ Nginx 配置已更新${NC}"
+        echo -e "${GREEN}✅ Nginx 配置已更新并重载${NC}"
     else
         echo -e "${RED}❌ Nginx 配置语法错误，已部署但未重载${NC}"
         echo "  请手动检查: sudo nginx -t"
@@ -231,7 +236,7 @@ mkdir -p "$BASE_DIR/public/uploads/goods" \
          "$BASE_DIR/public/uploads/images"
 chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
 
-# 确保 systemd 服务文件存在
+# --- 确保 systemd 服务文件存在且最新 ---
 if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/fubao-nextjs.service" "/etc/systemd/system/$SERVICE_NAME.service" >/dev/null 2>&1; then
     echo -e "${YELLOW}📋 更新 systemd 服务...${NC}"
     sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
@@ -239,7 +244,17 @@ if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/
     sudo systemctl enable "$SERVICE_NAME"
 fi
 
-# 重启服务
+# --- 重启 PHP-FPM ---
+echo -e "${YELLOW}🔄 重启 PHP-FPM...${NC}"
+if command -v systemctl &>/dev/null; then
+    sudo systemctl restart php-fpm 2>/dev/null || \
+    sudo systemctl restart php8.1-fpm 2>/dev/null || \
+    sudo systemctl restart php8.2-fpm 2>/dev/null || \
+    sudo systemctl restart php8.3-fpm 2>/dev/null || true
+fi
+echo -e "${GREEN}✅ PHP-FPM 已重启${NC}"
+
+# --- 重启 Next.js ---
 echo -e "${YELLOW}🔄 重启 $SERVICE_NAME...${NC}"
 sudo systemctl restart "$SERVICE_NAME"
 echo -e "${GREEN}✅ 服务已重启${NC}"
@@ -250,61 +265,52 @@ echo -e "${GREEN}✅ 服务已重启${NC}"
 echo ""
 echo -e "${BLUE}━━━ Step 5/5: 验证服务 ━━━${NC}"
 
-# 检查 systemd 服务状态
-if systemctl is-active --quiet "$SERVICE_NAME"; then
-    echo -e "${GREEN}✅ systemd 服务运行中${NC}"
-else
-    echo -e "${RED}❌ 服务未运行！查看日志：${NC}"
-    echo "  sudo journalctl -u $SERVICE_NAME -n 30 --no-pager"
-    sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager
-    exit 1
-fi
-
-# 检查 Next.js 响应（最多等 30 秒）
-echo -n "⏳ 等待 Next.js 启动"
-for i in $(seq 1 15); do
-    sleep 2
-    echo -n "."
-    if curl -sf --max-time 3 http://localhost:$HOST_PORT > /dev/null 2>&1; then
-        echo ""
-        echo -e "${GREEN}✅ Next.js SSR 正常响应 (端口 $HOST_PORT)${NC}"
+# 等待 Next.js 启动
+echo -e "${YELLOW}⏳ 等待 Next.js 启动...${NC}"
+for i in $(seq 1 30); do
+    if curl -s -o /dev/null -w '' "http://localhost:$HOST_PORT" 2>/dev/null; then
         break
     fi
-    if [ "$i" -eq 15 ]; then
-        echo ""
-        echo -e "${RED}❌ Next.js 超时无响应，查看日志：${NC}"
-        echo "  sudo journalctl -u $SERVICE_NAME -n 30 --no-pager"
-        sudo journalctl -u "$SERVICE_NAME" -n 20 --no-pager
-    fi
+    sleep 1
 done
 
+# 检查 systemd 服务状态
+if sudo systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    echo -e "${GREEN}✅ systemd 服务运行中${NC}"
+else
+    echo -e "${RED}❌ systemd 服务未运行${NC}"
+    echo "  查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
+fi
+
+# 检查 Next.js SSR
+HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$HOST_PORT" 2>/dev/null || echo "000")
+if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ] || [ "$HTTP_CODE" = "302" ]; then
+    echo -e "${GREEN}✅ Next.js SSR 正常响应 (端口 $HOST_PORT)${NC}"
+else
+    echo -e "${RED}❌ Next.js 响应异常 (HTTP $HTTP_CODE)${NC}"
+    echo "  查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
+fi
+
 # 检查 PHP-FPM
-if pgrep -x "php-fpm" >/dev/null || pgrep "php-fpm:" >/dev/null 2>/dev/null; then
+if curl -s -o /dev/null "http://localhost/api/categories" 2>/dev/null; then
     echo -e "${GREEN}✅ PHP-FPM 运行中${NC}"
 else
-    echo -e "${YELLOW}⚠️  PHP-FPM 未运行（如不需要 PHP API 可忽略）${NC}"
+    echo -e "${YELLOW}⚠️  PHP-FPM 可能未运行${NC}"
 fi
 
 # 检查 Nginx
-if pgrep -x "nginx" >/dev/null; then
+if pgrep -x nginx &>/dev/null; then
     echo -e "${GREEN}✅ Nginx 运行中${NC}"
 else
-    echo -e "${YELLOW}⚠️  Nginx 未运行${NC}"
+    echo -e "${RED}❌ Nginx 未运行${NC}"
 fi
 
-# ============================================================
-# 完成
-# ============================================================
 echo ""
 echo "=============================================="
-echo -e "${GREEN}  🎉 部署完成！${NC}"
+echo -e "  🎉 部署完成！"
 echo "=============================================="
 echo ""
 echo "  🌐 访问地址: https://www.fubao.ltd"
 echo "  📋 服务状态: sudo systemctl status $SERVICE_NAME"
 echo "  📋 服务日志: sudo journalctl -u $SERVICE_NAME -f"
-echo "  🔧 PHP 检测: bash $0 --check-php"
-echo ""
-echo "  如需强制重建:"
-echo "    bash $0 --rebuild"
-echo ""
+echo "  🔧 PHP 检测: bash update-fubao.sh --check-php"
