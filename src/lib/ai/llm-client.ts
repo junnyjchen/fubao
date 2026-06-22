@@ -1,8 +1,10 @@
 /**
  * @fileoverview 通用 LLM 客户端 - 直接调用大模型 API
- * @description 替代 coze-coding-dev-sdk，直接调用豆包/DeepSeek/Kimi 等模型 API
- * 支持流式 (SSE) 和非流式调用
+ * @description 优先读取后台 AI 模型配置（/admin/ai-models），无配置时 fallback 到 .env
+ * 支持流式 (SSE) 和非流式调用，兼容 OpenAI API 格式
  */
+
+import { getActiveModel, type AIModelConfig } from './store';
 
 // ============================================================
 // 类型定义
@@ -44,7 +46,7 @@ export interface StreamChunk {
 }
 
 // ============================================================
-// Provider 配置
+// Provider 配置（.env fallback）
 // ============================================================
 
 interface ProviderConfig {
@@ -53,30 +55,15 @@ interface ProviderConfig {
   apiKey: string;
   defaultModel: string;
   models: string[];
+  temperature: number;
+  maxTokens: number;
 }
 
-function getProviderConfig(): ProviderConfig {
-  const provider = process.env.AI_PROVIDER || 'volcengine';
+function getEnvProviderConfig(): ProviderConfig {
+  const provider = process.env.AI_PROVIDER || 'deepseek';
 
   switch (provider) {
-    case 'deepseek':
-      return {
-        name: 'deepseek',
-        baseUrl: 'https://api.deepseek.com/v1',
-        apiKey: process.env.DEEPSEEK_API_KEY || '',
-        defaultModel: 'deepseek-chat',
-        models: ['deepseek-chat', 'deepseek-reasoner'],
-      };
-    case 'kimi':
-      return {
-        name: 'kimi',
-        baseUrl: 'https://api.moonshot.cn/v1',
-        apiKey: process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY || '',
-        defaultModel: 'moonshot-v1-8k',
-        models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-      };
     case 'volcengine':
-    default:
       return {
         name: 'volcengine',
         baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
@@ -90,8 +77,56 @@ function getProviderConfig(): ProviderConfig {
           'deepseek-v3-2-251201',
           'deepseek-r1-250528',
         ],
+        temperature: 0.7,
+        maxTokens: 4096,
+      };
+    case 'kimi':
+      return {
+        name: 'kimi',
+        baseUrl: 'https://api.moonshot.cn/v1',
+        apiKey: process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY || '',
+        defaultModel: 'moonshot-v1-8k',
+        models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+        temperature: 0.7,
+        maxTokens: 4096,
+      };
+    case 'deepseek':
+    default:
+      return {
+        name: 'deepseek',
+        baseUrl: 'https://api.deepseek.com/v1',
+        apiKey: process.env.DEEPSEEK_API_KEY || '',
+        defaultModel: 'deepseek-chat',
+        models: ['deepseek-chat', 'deepseek-reasoner'],
+        temperature: 0.7,
+        maxTokens: 4096,
       };
   }
+}
+
+/**
+ * 从后台配置获取 Provider，fallback 到 .env
+ * 每次调用都重新读取，确保后台修改立即生效
+ */
+function resolveProviderConfig(): ProviderConfig {
+  try {
+    const active = getActiveModel();
+    if (active && active.apiKey) {
+      return {
+        name: active.provider,
+        baseUrl: active.baseUrl,
+        apiKey: active.apiKey,
+        defaultModel: active.model,
+        models: [active.model],
+        temperature: active.temperature ?? 0.7,
+        maxTokens: active.maxTokens ?? 4096,
+      };
+    }
+  } catch {
+    // 后台配置读取失败，fallback 到 .env
+  }
+
+  return getEnvProviderConfig();
 }
 
 // ============================================================
@@ -142,10 +177,11 @@ function toOpenAIMessage(msg: Message): Record<string, unknown> {
 // ============================================================
 
 export class LLMClient {
-  private provider: ProviderConfig;
-
-  constructor() {
-    this.provider = getProviderConfig();
+  /**
+   * 获取当前 Provider 配置（每次调用都重新解析，确保后台配置生效）
+   */
+  private get provider(): ProviderConfig {
+    return resolveProviderConfig();
   }
 
   /**
@@ -172,9 +208,10 @@ export class LLMClient {
     messages: Message[],
     llmConfig?: LLMConfig
   ): Promise<LLMResponse> {
-    const model = llmConfig?.model || this.provider.defaultModel;
-    const temperature = llmConfig?.temperature ?? 0.7;
-    const maxTokens = llmConfig?.maxTokens || 4096;
+    const { provider } = this;
+    const model = llmConfig?.model || provider.defaultModel;
+    const temperature = llmConfig?.temperature ?? provider.temperature;
+    const maxTokens = llmConfig?.maxTokens || provider.maxTokens;
 
     const openaiMessages = messages.map(toOpenAIMessage);
 
@@ -186,24 +223,17 @@ export class LLMClient {
       stream: false,
     };
 
-    // 思考模式（仅豆包支持）
-    if (llmConfig?.thinking === 'enabled' && this.provider.name === 'volcengine') {
-      body.thinking = { type: 'enabled' };
-    }
-
-    const response = await fetch(`${this.provider.baseUrl}/chat/completions`, {
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.provider.apiKey}`,
+        Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      const msg = `LLM API 錯誤 (${response.status}): ${errorText.slice(0, 500)}`;
-      // 友好化常见错误
       if (response.status === 403 && errorText.includes('not supported')) {
         throw new Error('AI 服務暫不支持當前地區，請聯繫管理員配置可用地區的 API Key');
       }
@@ -213,7 +243,7 @@ export class LLMClient {
       if (response.status === 429) {
         throw new Error('AI 服務請求過於頻繁，請稍後重試');
       }
-      throw new Error(msg);
+      throw new Error(`LLM API 錯誤 (${response.status}): ${errorText.slice(0, 500)}`);
     }
 
     const data = await response.json();
@@ -239,9 +269,10 @@ export class LLMClient {
     messages: Message[],
     llmConfig?: LLMConfig
   ): AsyncGenerator<StreamChunk, void, unknown> {
-    const model = llmConfig?.model || this.provider.defaultModel;
-    const temperature = llmConfig?.temperature ?? 0.7;
-    const maxTokens = llmConfig?.maxTokens || 4096;
+    const { provider } = this;
+    const model = llmConfig?.model || provider.defaultModel;
+    const temperature = llmConfig?.temperature ?? provider.temperature;
+    const maxTokens = llmConfig?.maxTokens || provider.maxTokens;
 
     const openaiMessages = messages.map(toOpenAIMessage);
 
@@ -254,16 +285,11 @@ export class LLMClient {
       stream_options: { include_usage: true },
     };
 
-    // 思考模式
-    if (llmConfig?.thinking === 'enabled' && this.provider.name === 'volcengine') {
-      body.thinking = { type: 'enabled' };
-    }
-
-    const response = await fetch(`${this.provider.baseUrl}/chat/completions`, {
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.provider.apiKey}`,
+        Authorization: `Bearer ${provider.apiKey}`,
       },
       body: JSON.stringify(body),
     });
@@ -279,9 +305,7 @@ export class LLMClient {
       if (response.status === 429) {
         throw new Error('AI 服務請求過於頻繁，請稍後重試');
       }
-      throw new Error(
-        `LLM API 錯誤 (${response.status}): ${errorText.slice(0, 500)}`
-      );
+      throw new Error(`LLM API 錯誤 (${response.status}): ${errorText.slice(0, 500)}`);
     }
 
     const reader = response.body?.getReader();
@@ -319,7 +343,7 @@ export class LLMClient {
               yield { content: delta.content, done: false };
             }
 
-            // 思考内容（豆包 thinking 模式）
+            // 思考内容（DeepSeek / 豆包 thinking 模式）
             if (delta?.reasoning_content) {
               yield { content: delta.reasoning_content, done: false };
             }
@@ -350,9 +374,15 @@ export function getLLMClient(): LLMClient {
 }
 
 /**
- * 检查 LLM 是否已配置（有 API Key）
+ * 检查 LLM 是否已配置（后台配置或 .env 任一有 API Key 即可）
  */
 export function isLLMConfigured(): boolean {
-  const provider = getProviderConfig();
-  return !!provider.apiKey;
+  try {
+    const active = getActiveModel();
+    if (active && active.apiKey) return true;
+  } catch {
+    // 读取失败
+  }
+  const envConfig = getEnvProviderConfig();
+  return !!envConfig.apiKey;
 }

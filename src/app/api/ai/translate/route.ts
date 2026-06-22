@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isLLMConfigured()) {
-      return NextResponse.json({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }, { status: 503 });
+      return NextResponse.json({ error: 'AI 服務未配置，請在後台「AI模型配置」中啟用至少一個模型' }, { status: 503 });
     }
 
     const LOCALE_NAMES: Record<string, string> = {

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getLLMClient, isLLMConfigured } from '@/lib/ai/llm-client';
+import { getActiveModel } from '@/lib/ai/store';
 
 // 符寶網 AI 助手系统提示词
 const SYSTEM_PROMPT = `你是「符寶網」的玄門文化AI助手，你的名字叫「符寶」。
@@ -39,7 +40,9 @@ const MODEL_MAP: Record<string, string> = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { messages = [], model = 'doubao-lite', thinking = false } = body;
+    const { messages = [], model: requestedModel, thinking = false } = body;
+    const activeModel = await getActiveModel();
+    const model = requestedModel || (activeModel ? activeModel.model : 'deepseek-chat');
 
     if (!messages.length) {
       return new Response(
@@ -51,7 +54,7 @@ export async function POST(request: NextRequest) {
     // 检查 LLM 是否已配置
     if (!isLLMConfigured()) {
       return new Response(
-        JSON.stringify({ error: 'AI 服务未配置，请设置 ARK_API_KEY 环境变量' }),
+        JSON.stringify({ error: 'AI 服務未配置，請在後台「AI模型配置」中啟用至少一個模型' }),
         { status: 503, headers: { 'Content-Type': 'application/json' } }
       );
     }

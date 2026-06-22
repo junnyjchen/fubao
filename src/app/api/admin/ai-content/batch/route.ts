@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     if (!isLLMConfigured()) {
       return NextResponse.json({ 
-        error: 'AI 服務未配置。請在 .env 中設置 ARK_API_KEY（火山引擎）或 DEEPSEEK_API_KEY 或 KIMI_API_KEY，並將 AI_PROVIDER 設為對應值' 
+        error: 'AI 服務未配置，請在後台「AI模型配置」中啟用至少一個模型' 
       }, { status: 503 });
     }
 
