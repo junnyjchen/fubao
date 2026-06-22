@@ -206,25 +206,11 @@ echo -e "${BLUE}━━━ Step 4/5: 部署配置 + 重启服务 ━━━${NC}"
 
 # --- 部署 Nginx 配置 ---
 echo -e "${YELLOW}📋 部署 Nginx 配置...${NC}"
-NGINX_CONF=""
-# 宝塔面板路径
-if [ -d "/www/server/panel/vhost/nginx" ]; then
-    NGINX_CONF="/www/server/panel/vhost/nginx/www.fubao.ltd.conf"
-# 手动安装路径
-elif [ -d "/etc/nginx/conf.d" ]; then
-    NGINX_CONF="/etc/nginx/conf.d/fubao.conf"
-fi
-if [ -n "$NGINX_CONF" ]; then
-    sudo cp "$BASE_DIR/php/nginx.conf" "$NGINX_CONF"
-    if sudo nginx -t 2>/dev/null; then
-        sudo nginx -s reload 2>/dev/null || true
-        echo -e "${GREEN}✅ Nginx 配置已更新并重载${NC}"
-    else
-        echo -e "${RED}❌ Nginx 配置语法错误，已部署但未重载${NC}"
-        echo "  请手动检查: sudo nginx -t"
-    fi
+if [ -f "$BASE_DIR/deploy-nginx.sh" ]; then
+    bash "$BASE_DIR/deploy-nginx.sh"
 else
-    echo -e "${YELLOW}⚠️  未检测到 Nginx 配置目录，请手动部署 php/nginx.conf${NC}"
+    echo -e "${YELLOW}⚠️  deploy-nginx.sh 不存在，手动部署 php/nginx.conf${NC}"
+    echo "  运行: bash $BASE_DIR/deploy-nginx.sh"
 fi
 
 # --- 确保上传目录存在且可写 ---
@@ -305,6 +291,19 @@ else
     echo -e "${RED}❌ Nginx 未运行${NC}"
 fi
 
+# --- 验证 API 响应 ---
+echo ""
+echo -e "${BLUE}━━━ 验证 API 响应 ━━━${NC}"
+API_CHECK=$(curl -s "http://localhost:$HOST_PORT/api/goods?limit=1" 2>/dev/null | grep -o '"success":true' | head -1)
+if [ -n "$API_CHECK" ]; then
+    echo -e "${GREEN}✅ API 响应格式正确 (success:true)${NC}"
+else
+    API_CHECK2=$(curl -s "http://localhost:$HOST_PORT/api/goods?limit=1" 2>/dev/null | head -c 100)
+    echo -e "${RED}❌ API 响应格式异常${NC}"
+    echo "  响应前100字符: $API_CHECK2"
+    echo "  可能原因: 旧代码未更新或 Nginx 仍转发到 PHP"
+fi
+
 echo ""
 echo "=============================================="
 echo -e "  🎉 部署完成！"
@@ -313,4 +312,5 @@ echo ""
 echo "  🌐 访问地址: https://www.fubao.ltd"
 echo "  📋 服务状态: sudo systemctl status $SERVICE_NAME"
 echo "  📋 服务日志: sudo journalctl -u $SERVICE_NAME -f"
-echo "  🔧 PHP 检测: bash update-fubao.sh --check-php"
+echo "  🔧 Nginx部署: bash deploy-nginx.sh"
+echo "  🔧 强制重建: bash update-fubao.sh --rebuild"
