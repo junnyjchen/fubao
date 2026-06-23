@@ -400,10 +400,12 @@ echo -e "${BLUE}━━━ 验证 API 响应 ━━━${NC}"
 
 NX_API=$(curl -s --max-time 5 "http://127.0.0.1:${HOST_PORT}/api/goods?limit=1" 2>/dev/null || echo "")
 if echo "$NX_API" | grep -q '"success":true'; then
-    echo -e "${GREEN}✅ Next.js API：响应格式正确 (success:true)${NC}"
-    echo -e "${GREEN}🎉 部署成功！所有 API 使用新格式${NC}"
+    echo -e "${GREEN}✅ Next.js API 直连：响应格式正确 (success:true)${NC}"
+elif echo "$NX_API" | grep -q '"success"'; then
+    echo -e "${YELLOW}⚠️  Next.js API：有 success 字段但值非 true${NC}"
+    echo "  响应: ${NX_API:0:120}"
 elif [ -n "$NX_API" ]; then
-    echo -e "${RED}❌ Next.js API：响应格式异常（可能是旧代码）${NC}"
+    echo -e "${RED}❌ Next.js API：无 success 字段（可能是旧代码或 Docker 占端口）${NC}"
     echo "  响应: ${NX_API:0:120}"
     echo ""
     echo "  可能原因："
@@ -414,6 +416,17 @@ else
     echo -e "${RED}❌ Next.js 无响应${NC}"
     echo "  检查服务: sudo systemctl status $SERVICE_NAME"
     echo "  查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
+fi
+
+# 验证通过 Nginx 的完整链路
+NGINX_API=$(curl -s --max-time 5 "http://127.0.0.1/api/goods?limit=1" 2>/dev/null || echo "")
+if echo "$NGINX_API" | grep -q '"success":true'; then
+    echo -e "${GREEN}✅ Nginx → Next.js 完整链路：响应格式正确${NC}"
+elif [ -n "$NGINX_API" ]; then
+    echo -e "${YELLOW}⚠️  Nginx 链路异常（Nginx → Next.js 可能未正确代理）${NC}"
+    echo "  响应: ${NGINX_API:0:120}"
+else
+    echo -e "${YELLOW}⚠️  Nginx 无响应（检查 Nginx 是否运行）${NC}"
 fi
 
 echo ""
@@ -427,7 +440,8 @@ echo "  📋 服务日志: sudo journalctl -u $SERVICE_NAME -f"
 echo "  🔧 诊断模式: bash update-fubao.sh --diagnose"
 echo "  🔧 强制重建: bash update-fubao.sh --rebuild"
 echo ""
-echo "  ⚠️  如果 API 仍然返回旧格式："
-echo "  1. 检查 Docker: docker ps | grep 5000"
+echo "  ⚠️  如果网站异常："
+echo "  1. 检查 Docker 是否占端口: docker ps | grep 5000"
 echo "  2. 停止 Docker: docker stop \$(docker ps -q --filter publish=5000)"
 echo "  3. 重启服务: sudo systemctl restart $SERVICE_NAME"
+echo "  4. 查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
