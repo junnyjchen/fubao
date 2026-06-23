@@ -85,18 +85,20 @@ export async function GET() {
       }));
 
     return NextResponse.json({
+      success: true,
       orderStats,
       goodsStats,
       userStats,
       merchantStats,
       certificateStats,
       todayStats,
-      recentOrders,
-      hotGoods,
+      recentOrders: recentOrders || [],
+      hotGoods: hotGoods || [],
     });
   } catch (error) {
     console.error('获取统计数据失败:', error);
     return NextResponse.json({
+      success: false,
       orderStats: { total: 0, pending: 0, paid: 0, shipped: 0, completed: 0, cancelled: 0, totalRevenue: 0 },
       goodsStats: { total: 0, lowStock: 0, totalSales: 0 },
       userStats: { total: 0 },

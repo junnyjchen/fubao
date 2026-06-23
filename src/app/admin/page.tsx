@@ -100,7 +100,12 @@ export default function AdminDashboard() {
       
       if (!res.ok) throw new Error(data.error);
       
-      setStats(data);
+      // 兼容两种格式：{ orderStats, ... } 或 { success: true, data: { orderStats, ... } }
+      const statsData = data.success && data.data ? data.data : data;
+      // 确保数组字段有默认值
+      statsData.recentOrders = Array.isArray(statsData.recentOrders) ? statsData.recentOrders : [];
+      statsData.hotGoods = Array.isArray(statsData.hotGoods) ? statsData.hotGoods : [];
+      setStats(statsData);
       setLastUpdate(new Date());
     } catch (error) {
       console.error('加载统计数据失败:', error);
