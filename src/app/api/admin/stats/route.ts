@@ -40,14 +40,20 @@ export async function GET() {
       pending: merchants.filter(m => Number(m.verified) === 0).length,
     };
 
-    // 证书统计
-    const certificates = await query('SELECT * FROM certificates') as any[];
-    const now = new Date();
-    const certificateStats = {
-      total: certificates.length,
-      valid: certificates.filter(c => !c.valid_until || new Date(c.valid_until) > now).length,
-      expired: certificates.filter(c => c.valid_until && new Date(c.valid_until) <= now).length,
-    };
+    // 证书统计（防御性处理，表可能不存在）
+    let certificateStats = { total: 0, valid: 0, expired: 0 };
+    try {
+      const certificates = await query('SELECT * FROM certificates') as any[];
+      const now = new Date();
+      certificateStats = {
+        total: certificates.length,
+        valid: certificates.filter(c => !c.valid_until || new Date(c.valid_until) > now).length,
+        expired: certificates.filter(c => c.valid_until && new Date(c.valid_until) <= now).length,
+      };
+    } catch (e: any) {
+      // certificates 表可能不存在，使用默认值
+      console.warn('[Stats] certificates 查询失败:', e.message);
+    }
 
     // 今日统计
     const today = new Date().toISOString().split('T')[0];

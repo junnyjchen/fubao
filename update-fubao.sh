@@ -238,6 +238,9 @@ if [ "$NEED_REBUILD" = true ]; then
             cp -r node_modules/sharp .next/standalone/node_modules/ 2>/dev/null || true
         fi
         echo -e "${GREEN}✅ Standalone 文件准备完成${NC}"
+        # 修复缓存目录权限（systemd 服务用户需要写权限）
+        mkdir -p .next/standalone/.next/cache
+        chmod -R 777 .next/standalone/.next/cache 2>/dev/null || true
     fi
     echo -e "${GREEN}✅ 构建完成${NC}"
 else
@@ -253,6 +256,25 @@ echo -e "${BLUE}━━━ Step 4/5: 部署配置 ━━━${NC}"
 # 确保上传目录存在
 mkdir -p "$BASE_DIR/public/uploads/"{goods,banners,news,avatars,baike,images,content}
 chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
+
+# 确保 MySQL 缺失表自动创建（IF NOT EXISTS 安全）
+if command -v mysql &>/dev/null; then
+    echo -e "${YELLOW}🗄️ 检查 MySQL 表结构...${NC}"
+    # 只创建 certificates 表（目前已知缺失的表）
+    mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_USER:-fubao}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE:-fubao}" -e "
+    CREATE TABLE IF NOT EXISTS certificates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        merchant_id INT NOT NULL,
+        cert_type VARCHAR(50) NOT NULL DEFAULT 'business',
+        cert_number VARCHAR(100),
+        cert_image VARCHAR(500),
+        status TINYINT DEFAULT 0 COMMENT '0:待审核,1:已通过,2:已拒绝',
+        verified_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    " 2>/dev/null && echo -e "${GREEN}✅ MySQL 表检查完成${NC}" || echo -e "${YELLOW}⚠️  MySQL 表同步跳过${NC}"
+fi
 
 # 确保 systemd 服务文件
 if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/fubao-nextjs.service" "/etc/systemd/system/$SERVICE_NAME.service" >/dev/null 2>&1; then

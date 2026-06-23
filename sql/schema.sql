@@ -561,6 +561,24 @@ CREATE TABLE IF NOT EXISTS `user_balance` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 证书表（商品认证证书）
+CREATE TABLE IF NOT EXISTS `certificates` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `goods_id` INT UNSIGNED NOT NULL DEFAULT 0,
+  `merchant_id` INT UNSIGNED NOT NULL DEFAULT 0,
+  `type` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '证书类型',
+  `certificate_no` VARCHAR(100) NOT NULL DEFAULT '' COMMENT '证书编号',
+  `issuer` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '颁发机构',
+  `status` VARCHAR(20) NOT NULL DEFAULT 'valid' COMMENT 'valid/revoked/expired',
+  `valid_until` DATETIME DEFAULT NULL COMMENT '有效期至',
+  `verification_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '验证次数',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_goods_id` (`goods_id`),
+  INDEX `idx_merchant_id` (`merchant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 商家资质证书表
 CREATE TABLE IF NOT EXISTS `merchant_certificates` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `merchant_id` INT UNSIGNED NOT NULL,

@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!token) {
-      return NextResponse.json({ error: '未登錄' }, { status: 401 });
+      return NextResponse.json({ success: false, error: '未登錄' }, { status: 401 });
     }
 
     // 验证 Token
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     try {
       payload = jwt.verify(token, JWT_SECRET + '-admin');
     } catch {
-      return NextResponse.json({ error: '登錄已過期' }, { status: 401 });
+      return NextResponse.json({ success: false, error: '登錄已過期' }, { status: 401 });
     }
 
     // 从 MySQL 获取管理员详细信息
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!admin || !admin.status) {
-      return NextResponse.json({ error: '賬號已被禁用' }, { status: 401 });
+      return NextResponse.json({ success: false, error: '賬號已被禁用' }, { status: 401 });
     }
 
     // 获取角色权限
@@ -70,7 +70,17 @@ export async function GET(request: NextRequest) {
       [admin.role_id]
     );
 
-    const permissions = role?.permissions ? JSON.parse(role.permissions) : payload.permissions || ['*'];
+    // 解析权限：兼容 JSON 数组、纯字符串 "*" 和 null
+    let permissions: string[] = payload.permissions || ['*'];
+    if (role?.permissions) {
+      try {
+        const parsed = JSON.parse(role.permissions);
+        permissions = Array.isArray(parsed) ? parsed : [String(parsed)];
+      } catch {
+        // permissions 字段不是有效 JSON（如 "*" 或逗号分隔字符串）
+        permissions = role.permissions === '*' ? ['*'] : role.permissions.split(',').map((s: string) => s.trim());
+      }
+    }
 
     return NextResponse.json({
       admin: {
