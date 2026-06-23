@@ -151,6 +151,10 @@ export function MobileNav() {
   useEffect(() => {
     if (shouldHide) return; // 如果隐藏则跳过
     
+    // 未登录时不请求需认证的接口，避免 401 错误
+    const token = typeof document !== 'undefined' ? document.cookie.includes('auth_token=') : false;
+    if (!token) return;
+    
     const fetchCounts = async () => {
       try {
         // 获取购物车数量
