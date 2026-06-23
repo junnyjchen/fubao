@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const total = await count('articles', whereClause, params);
 
     const data = await query(
-      `SELECT id, title, slug, summary, cover_image, category, author, tags, view_count, like_count, published_at, created_at FROM articles WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT id, title, slug, summary, cover_image, category, author, tags, view_count, like_count, COALESCE(published_at, created_at) as published_at, created_at FROM articles WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 

@@ -257,11 +257,11 @@ echo -e "${BLUE}━━━ Step 4/5: 部署配置 ━━━${NC}"
 mkdir -p "$BASE_DIR/public/uploads/"{goods,banners,news,avatars,baike,images,content}
 chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
 
-# 确保 MySQL 缺失表自动创建（IF NOT EXISTS 安全）
+# 确保 MySQL 缺失表和列自动修补
 if command -v mysql &>/dev/null; then
     echo -e "${YELLOW}🗄️ 检查 MySQL 表结构...${NC}"
-    # 只创建 certificates 表（目前已知缺失的表）
     mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_USER:-fubao}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE:-fubao}" -e "
+    -- 创建缺失的表
     CREATE TABLE IF NOT EXISTS certificates (
         id INT AUTO_INCREMENT PRIMARY KEY,
         merchant_id INT NOT NULL,
@@ -273,7 +273,47 @@ if command -v mysql &>/dev/null; then
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    " 2>/dev/null && echo -e "${GREEN}✅ MySQL 表检查完成${NC}" || echo -e "${YELLOW}⚠️  MySQL 表同步跳过${NC}"
+
+    CREATE TABLE IF NOT EXISTS articles (
+        id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(200) NOT NULL,
+        slug VARCHAR(200) NOT NULL DEFAULT '',
+        content LONGTEXT,
+        summary TEXT,
+        cover_image VARCHAR(500) NOT NULL DEFAULT '',
+        category VARCHAR(100) NOT NULL DEFAULT '',
+        author VARCHAR(100) NOT NULL DEFAULT '',
+        source VARCHAR(200) NOT NULL DEFAULT '',
+        tags JSON DEFAULT NULL,
+        view_count INT NOT NULL DEFAULT 0,
+        like_count INT NOT NULL DEFAULT 0,
+        status TINYINT NOT NULL DEFAULT 1,
+        published_at DATETIME DEFAULT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_status (status),
+        INDEX idx_slug (slug)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    -- 缺失列修补 (ADD COLUMN IF NOT EXISTS)
+    ALTER TABLE admins ADD COLUMN IF NOT EXISTS last_login_at DATETIME DEFAULT NULL;
+    ALTER TABLE news ADD COLUMN IF NOT EXISTS slug VARCHAR(200) NOT NULL DEFAULT '';
+    ALTER TABLE news ADD COLUMN IF NOT EXISTS category VARCHAR(100) NOT NULL DEFAULT '';
+    ALTER TABLE news ADD COLUMN IF NOT EXISTS tags JSON DEFAULT NULL;
+    ALTER TABLE news ADD COLUMN IF NOT EXISTS published_at DATETIME DEFAULT NULL;
+    ALTER TABLE banners ADD COLUMN IF NOT EXISTS position VARCHAR(50) NOT NULL DEFAULT 'home';
+    ALTER TABLE categories ADD COLUMN IF NOT EXISTS image VARCHAR(500) NOT NULL DEFAULT '';
+    ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
+
+    -- 为已有 news 记录补上 published_at（取 created_at）
+    UPDATE news SET published_at = created_at WHERE published_at IS NULL AND status = 1;
+    " 2>/dev/null && echo -e "${GREEN}✅ MySQL 表结构修补完成${NC}" || echo -e "${YELLOW}⚠️  MySQL 表结构修补跳过（可能版本不支持 IF NOT EXISTS，尝试 schema.sql）${NC}"
+
+    # 如果 ADD COLUMN IF NOT EXISTS 不被支持（MySQL < 8.0.29），则用 schema.sql 尾部修补
+    if [ $? -ne 0 ] && [ -f "$BASE_DIR/sql/schema.sql" ]; then
+        echo -e "${YELLOW}  尝试执行 schema.sql 修补...${NC}"
+        mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_USER:-fubao}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE:-fubao}" < "$BASE_DIR/sql/schema.sql" 2>/dev/null && echo -e "${GREEN}  ✅ schema.sql 执行完成${NC}" || echo -e "${YELLOW}  ⚠️  schema.sql 执行跳过${NC}"
+    fi
 fi
 
 # 确保 systemd 服务文件

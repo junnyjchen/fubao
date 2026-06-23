@@ -16,7 +16,7 @@ interface Category {
   image: string | null;
   parent_id: number | null;
   sort_order: number;
-  is_active: boolean;
+  is_active: boolean;  // 映射自 status 列
   children?: Category[];
 }
 
@@ -70,12 +70,12 @@ export async function GET(request: NextRequest) {
 
     if (parentId) {
       categories = await query<Category>(
-        'SELECT * FROM categories WHERE is_active = 1 AND parent_id = ? ORDER BY sort_order ASC',
+        'SELECT * FROM categories WHERE status = 1 AND parent_id = ? ORDER BY sort_order ASC',
         [parseInt(parentId)]
       );
     } else {
       categories = await query<Category>(
-        'SELECT * FROM categories WHERE is_active = 1 ORDER BY sort_order ASC'
+        'SELECT * FROM categories WHERE status = 1 ORDER BY sort_order ASC'
       );
     }
 

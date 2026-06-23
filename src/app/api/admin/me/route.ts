@@ -23,7 +23,7 @@ interface RoleRow {
   id: number;
   name: string;
   code: string;
-  permissions: string | null;
+  permissions: string | string[] | null;
   is_super: number;
 }
 
@@ -70,15 +70,25 @@ export async function GET(request: NextRequest) {
       [admin.role_id]
     );
 
-    // 解析权限：兼容 JSON 数组、纯字符串 "*" 和 null
+    // 解析权限：兼容 JSON 数组、纯字符串 "*"、逗号分隔字符串和 null
     let permissions: string[] = payload.permissions || ['*'];
     if (role?.permissions) {
-      try {
-        const parsed = JSON.parse(role.permissions);
-        permissions = Array.isArray(parsed) ? parsed : [String(parsed)];
-      } catch {
-        // permissions 字段不是有效 JSON（如 "*" 或逗号分隔字符串）
-        permissions = role.permissions === '*' ? ['*'] : role.permissions.split(',').map((s: string) => s.trim());
+      const p = role.permissions;
+      if (Array.isArray(p)) {
+        // MySQL JSON 列可能已自动解析为数组
+        permissions = p;
+      } else if (typeof p === 'string') {
+        if (p === '*') {
+          permissions = ['*'];
+        } else if (p.startsWith('[')) {
+          // JSON 数组字符串
+          try { permissions = JSON.parse(p); } catch { permissions = [p]; }
+        } else {
+          // 逗号分隔字符串
+          permissions = p.split(',').map((s: string) => s.trim());
+        }
+      } else {
+        permissions = [String(p)];
       }
     }
 

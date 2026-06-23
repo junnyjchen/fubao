@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS `admins` (
   `nickname` VARCHAR(100) NOT NULL DEFAULT '',
   `role_id` INT UNSIGNED NOT NULL DEFAULT 2,
   `status` TINYINT NOT NULL DEFAULT 1,
+  `last_login_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -52,6 +53,8 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `name` VARCHAR(100) NOT NULL,
   `slug` VARCHAR(100) NOT NULL UNIQUE,
   `icon` VARCHAR(50) NOT NULL DEFAULT '',
+  `image` VARCHAR(500) NOT NULL DEFAULT '',
+  `description` TEXT DEFAULT NULL,
   `parent_id` INT UNSIGNED DEFAULT NULL,
   `sort_order` INT NOT NULL DEFAULT 0,
   `status` TINYINT NOT NULL DEFAULT 1,
@@ -246,6 +249,7 @@ CREATE TABLE IF NOT EXISTS `banners` (
   `title` VARCHAR(200) NOT NULL DEFAULT '',
   `image` VARCHAR(500) NOT NULL DEFAULT '',
   `link` VARCHAR(500) NOT NULL DEFAULT '',
+  `position` VARCHAR(50) NOT NULL DEFAULT 'home',
   `sort_order` INT NOT NULL DEFAULT 0,
   `status` TINYINT NOT NULL DEFAULT 1,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -254,17 +258,22 @@ CREATE TABLE IF NOT EXISTS `banners` (
 CREATE TABLE IF NOT EXISTS `news` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `title` VARCHAR(200) NOT NULL,
+  `slug` VARCHAR(200) NOT NULL DEFAULT '',
   `content` LONGTEXT,
   `summary` TEXT,
   `cover_image` VARCHAR(500) NOT NULL DEFAULT '',
   `category_id` INT UNSIGNED DEFAULT NULL,
+  `category` VARCHAR(100) NOT NULL DEFAULT '',
   `author` VARCHAR(100) NOT NULL DEFAULT '',
   `source` VARCHAR(200) NOT NULL DEFAULT '',
+  `tags` JSON DEFAULT NULL,
   `view_count` INT NOT NULL DEFAULT 0,
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '1:發佈 0:草稿',
+  `published_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX `idx_status` (`status`)
+  INDEX `idx_status` (`status`),
+  INDEX `idx_slug` (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `news_categories` (
@@ -698,5 +707,46 @@ ALTER TABLE `merchants`
   ADD COLUMN IF NOT EXISTS `review_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '评价数',
   ADD COLUMN IF NOT EXISTS `total_sales` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '总销量',
   ADD COLUMN IF NOT EXISTS `level` VARCHAR(20) NOT NULL DEFAULT 'bronze' COMMENT '商家等级 bronze/silver/gold/diamond';
+
+-- ============================================================
+-- 缺失列修补 (2024-06-25)
+-- ============================================================
+
+-- articles 表（被 /api/articles 使用，但 schema 中缺失）
+CREATE TABLE IF NOT EXISTS `articles` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `title` VARCHAR(200) NOT NULL,
+  `slug` VARCHAR(200) NOT NULL DEFAULT '',
+  `content` LONGTEXT,
+  `summary` TEXT,
+  `cover_image` VARCHAR(500) NOT NULL DEFAULT '',
+  `category` VARCHAR(100) NOT NULL DEFAULT '',
+  `author` VARCHAR(100) NOT NULL DEFAULT '',
+  `source` VARCHAR(200) NOT NULL DEFAULT '',
+  `tags` JSON DEFAULT NULL,
+  `view_count` INT NOT NULL DEFAULT 0,
+  `like_count` INT NOT NULL DEFAULT 0,
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `published_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_status` (`status`),
+  INDEX `idx_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- admins 表：添加 last_login_at
+ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
+
+-- news 表：添加缺失列
+ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `slug` VARCHAR(200) NOT NULL DEFAULT '';
+ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `category` VARCHAR(100) NOT NULL DEFAULT '';
+ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `tags` JSON DEFAULT NULL;
+ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `published_at` DATETIME DEFAULT NULL;
+
+-- banners 表：添加 position
+ALTER TABLE `banners` ADD COLUMN IF NOT EXISTS `position` VARCHAR(50) NOT NULL DEFAULT 'home';
+
+-- 为已有 news 记录补上 published_at
+UPDATE `news` SET `published_at` = `created_at` WHERE `published_at` IS NULL AND `status` = 1;
 
 SET FOREIGN_KEY_CHECKS = 1;

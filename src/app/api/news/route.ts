@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const total = await count('news', conditions.length > 0 ? conditions.join(' AND ') : '1=1', params);
 
     const data = await query(
-      `SELECT * FROM news ${whereClause} ORDER BY published_at DESC, created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM news ${whereClause} ORDER BY COALESCE(published_at, created_at) DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 

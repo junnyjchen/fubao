@@ -34,7 +34,7 @@ export async function GET(
     // 获取相关文章
     const relatedArticles = article.category
       ? await query(
-          'SELECT id, title, slug, summary, cover_image, category, published_at FROM articles WHERE category = ? AND id != ? AND status = 1 LIMIT 4',
+          'SELECT id, title, slug, summary, cover_image, category, COALESCE(published_at, created_at) as published_at FROM articles WHERE category = ? AND id != ? AND status = 1 LIMIT 4',
           [article.category, article.id]
         )
       : [];

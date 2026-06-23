@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const position = searchParams.get('position');
 
-    const conditions: string[] = ['is_active = 1'];
+    const conditions: string[] = ['status = 1'];
     const params: unknown[] = [];
 
     if (position) {
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, image, link, sort_order, position, is_active } = body;
+    const { title, image, link, sort_order, position, is_active: isActive } = body;
 
     if (!title || !image) {
       return NextResponse.json({ error: '標題和圖片不能為空' }, { status: 400 });
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       link: link || null,
       sort_order: sort_order || 0,
       position: position || 'home',
-      is_active: is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      status: isActive !== undefined ? (isActive ? 1 : 0) : 1,
     });
 
     return NextResponse.json({ success: true, data: { id }, message: '輪播圖創建成功' });
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, title, image, link, sort_order, position, is_active } = body;
+    const { id, title, image, link, sort_order, position, is_active: isActive } = body;
 
     if (!id) {
       return NextResponse.json({ error: '缺少輪播圖ID' }, { status: 400 });
@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest) {
     if (link !== undefined) updateData.link = link;
     if (sort_order !== undefined) updateData.sort_order = sort_order;
     if (position !== undefined) updateData.position = position;
-    if (is_active !== undefined) updateData.is_active = is_active ? 1 : 0;
+    if (isActive !== undefined) updateData.status = isActive ? 1 : 0;
 
     await dbUpdate('banners', updateData, { id });
 
