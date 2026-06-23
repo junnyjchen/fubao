@@ -230,6 +230,9 @@ echo ""
 echo -e "${BLUE}━━━ Step 3/5: 构建项目 ━━━${NC}"
 
 if [ "$NEED_REBUILD" = true ]; then
+    echo -e "${YELLOW}🔨 清理旧构建缓存...${NC}"
+    rm -rf .next
+
     echo -e "${YELLOW}🔨 构建 Next.js (standalone)...${NC}"
     pnpm build
 
@@ -386,6 +389,23 @@ fi
 # 检查 Nginx
 if pgrep -x nginx &>/dev/null; then
     echo -e "${GREEN}✅ Nginx 运行中${NC}"
+fi
+
+# 检查并修补 Nginx 缓存配置（/_next/ 不应长缓存，只有 /_next/static/ 可以）
+NGINX_CONF=""
+for f in /www/server/panel/vhost/nginx/www.fubao.ltd.conf /etc/nginx/conf.d/www.fubao.ltd.conf /etc/nginx/sites-enabled/www.fubao.ltd; do
+    if [ -f "$f" ]; then NGINX_CONF="$f"; break; fi
+done
+
+if [ -n "$NGINX_CONF" ] && grep -q 'location.*_next' "$NGINX_CONF"; then
+    # 检查是否存在 /_next/ 整体长缓存问题
+    if grep -A3 'location.*_next/' "$NGINX_CONF" | grep -q 'expires 365d\|immutable' && ! grep -q '_next/static' "$NGINX_CONF"; then
+        echo -e "${YELLOW}⚠️  Nginx /_next/ 配置了长缓存，会导致部署后 'Failed to find Server Action' 错误${NC}"
+        echo -e "${YELLOW}  修复：将 /_next/ 的长缓存只应用于 /_next/static/${NC}"
+        echo -e "${YELLOW}  参考: php/nginx.conf 中的正确配置${NC}"
+    else
+        echo -e "${GREEN}✅ Nginx /_next/ 缓存配置正常${NC}"
+    fi
 fi
 
 # 验证 API 响应
