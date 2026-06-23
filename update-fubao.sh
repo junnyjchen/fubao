@@ -121,44 +121,67 @@ fi
 # ============================================================
 stop_docker_on_port() {
     local port=$1
-    local port_info=$(ss -tlnp 2>/dev/null | grep ":${port} " | head -1)
     
-    if echo "$port_info" | grep -q "docker-proxy"; then
-        echo -e "${YELLOW}🐳 检测到端口 ${port} 被 Docker 容器占用${NC}"
-        
-        # 查找占用端口的 Docker 容器
-        local container_id=$(docker ps --filter "publish=${port}" --format "{{.ID}}" 2>/dev/null | head -1)
-        
-        if [ -n "$container_id" ]; then
+    # 检查端口是否被 docker-proxy 占用
+    local port_info=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep LISTEN | head -1)
+    
+    if ! echo "$port_info" | grep -q "docker-proxy"; then
+        return 0  # 端口没有被 Docker 占用，无需处理
+    fi
+    
+    echo -e "${YELLOW}🐳 检测到端口 ${port} 被 Docker 容器占用${NC}"
+    
+    # 列出所有使用该端口的容器
+    local containers=$(docker ps --filter "publish=${port}" --format "{{.ID}}" 2>/dev/null)
+    
+    if [ -n "$containers" ]; then
+        for container_id in $containers; do
             local container_name=$(docker inspect --format "{{.Name}}" "$container_id" 2>/dev/null | sed 's/\///')
             local container_image=$(docker inspect --format "{{.Config.Image}}" "$container_id" 2>/dev/null)
+            local restart_policy=$(docker inspect --format "{{.HostConfig.RestartPolicy.Name}}" "$container_id" 2>/dev/null)
             
-            echo -e "${YELLOW}  容器: ${container_name} (${container_image})${NC}"
-            echo -e "${YELLOW}  正在停止容器...${NC}"
+            echo -e "${YELLOW}  容器: ${container_name} (${container_image}) restart=${restart_policy}${NC}"
             
-            docker stop "$container_id" 2>/dev/null || true
-            docker rm "$container_id" 2>/dev/null || true
+            # 先禁用自动重启策略，防止 stop 后自动重启
+            echo -e "${YELLOW}  禁用自动重启...${NC}"
+            docker update --restart=no "$container_id" 2>/dev/null || true
             
-            echo -e "${GREEN}  ✅ Docker 容器已停止并移除${NC}"
-        else
-            # 找不到容器名，用 PID 反杀
-            local pid=$(echo "$port_info" | grep -oP 'pid=\K\d+' | head -1)
-            if [ -n "$pid" ]; then
-                echo -e "${YELLOW}  用 PID $pid 停止 docker-proxy...${NC}"
-                sudo kill "$pid" 2>/dev/null || true
-                sleep 1
-                echo -e "${GREEN}  ✅ docker-proxy 已停止${NC}"
-            fi
+            # 停止容器
+            echo -e "${YELLOW}  停止容器...${NC}"
+            docker stop -t 10 "$container_id" 2>/dev/null || true
+            
+            # 强制移除容器（即使还在运行）
+            echo -e "${YELLOW}  移除容器...${NC}"
+            docker rm -f "$container_id" 2>/dev/null || true
+            
+            echo -e "${GREEN}  ✅ Docker 容器 ${container_name} 已停止并移除${NC}"
+        done
+    fi
+    
+    # 如果 docker ps 找不到容器但端口仍被 docker-proxy 占用
+    # 直接杀掉 docker-proxy 进程
+    sleep 1
+    port_info=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep LISTEN | head -1)
+    if echo "$port_info" | grep -q "docker-proxy"; then
+        local pid=$(echo "$port_info" | grep -oP 'pid=\K\d+' | head -1)
+        if [ -n "$pid" ]; then
+            echo -e "${YELLOW}  用 PID $pid 强制停止 docker-proxy...${NC}"
+            sudo kill -9 "$pid" 2>/dev/null || true
+            sleep 1
         fi
-        
-        # 确认端口已释放
-        sleep 2
-        if ss -tlnp 2>/dev/null | grep -q ":${port} " | grep -q "LISTEN"; then
-            echo -e "${RED}  ❌ 端口 ${port} 仍被占用！${NC}"
-            return 1
-        else
-            echo -e "${GREEN}  ✅ 端口 ${port} 已释放${NC}"
-        fi
+    fi
+    
+    # 最终确认端口已释放
+    sleep 2
+    if ss -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN.*docker-proxy"; then
+        echo -e "${RED}  ❌ 端口 ${port} 仍被 Docker 占用！${NC}"
+        echo -e "${RED}  请手动执行:${NC}"
+        echo -e "${RED}    docker stop \$(docker ps -q --filter publish=${port})${NC}"
+        echo -e "${RED}    docker rm -f \$(docker ps -aq --filter publish=${port})${NC}"
+        return 1
+    else
+        echo -e "${GREEN}  ✅ 端口 ${port} 已释放${NC}"
+    fi
     else
         echo -e "${GREEN}✅ 端口 ${port} 未被 Docker 占用${NC}"
     fi
