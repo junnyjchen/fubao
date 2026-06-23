@@ -179,12 +179,8 @@ stop_docker_on_port() {
         echo -e "${RED}    docker stop \$(docker ps -q --filter publish=${port})${NC}"
         echo -e "${RED}    docker rm -f \$(docker ps -aq --filter publish=${port})${NC}"
         return 1
-    else
-        echo -e "${GREEN}  ✅ 端口 ${port} 已释放${NC}"
     fi
-    else
-        echo -e "${GREEN}✅ 端口 ${port} 未被 Docker 占用${NC}"
-    fi
+    echo -e "${GREEN}✅ 端口 ${port} 已释放${NC}"
 }
 
 # ============================================================
