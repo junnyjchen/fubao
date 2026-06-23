@@ -33,6 +33,13 @@ NEED_REBUILD=false
 NEED_INSTALL=false
 DIAGNOSE_MODE=false
 
+# MySQL 配置（默认值，可被环境变量覆盖）
+MYSQL_HOST="${MYSQL_HOST:-localhost}"
+MYSQL_PORT="${MYSQL_PORT:-3306}"
+MYSQL_USER="${MYSQL_USER:-fubao}"
+MYSQL_PASSWORD="${MYSQL_PASSWORD:-CZDhXEb8M7t1jheP}"
+MYSQL_DATABASE="${MYSQL_DATABASE:-fubao}"
+
 for arg in "$@"; do
     case $arg in
         --rebuild) NEED_REBUILD=true ;;
@@ -260,7 +267,7 @@ chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
 # 确保 MySQL 缺失表和列自动修补
 if command -v mysql &>/dev/null; then
     echo -e "${YELLOW}🗄️ 检查 MySQL 表结构...${NC}"
-    mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_USER:-fubao}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE:-fubao}" -e "
+    mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "
     -- 创建缺失的表
     CREATE TABLE IF NOT EXISTS certificates (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -312,7 +319,7 @@ if command -v mysql &>/dev/null; then
     # 如果 ADD COLUMN IF NOT EXISTS 不被支持（MySQL < 8.0.29），则用 schema.sql 尾部修补
     if [ $? -ne 0 ] && [ -f "$BASE_DIR/sql/schema.sql" ]; then
         echo -e "${YELLOW}  尝试执行 schema.sql 修补...${NC}"
-        mysql -h"${MYSQL_HOST:-localhost}" -u"${MYSQL_USER:-fubao}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE:-fubao}" < "$BASE_DIR/sql/schema.sql" 2>/dev/null && echo -e "${GREEN}  ✅ schema.sql 执行完成${NC}" || echo -e "${YELLOW}  ⚠️  schema.sql 执行跳过${NC}"
+        mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" < "$BASE_DIR/sql/schema.sql" 2>/dev/null && echo -e "${GREEN}  ✅ schema.sql 执行完成${NC}" || echo -e "${YELLOW}  ⚠️  schema.sql 执行跳过${NC}"
     fi
 fi
 
