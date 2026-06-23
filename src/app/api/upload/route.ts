@@ -22,8 +22,12 @@ const ALLOWED_IMAGE_TYPES = [
 /** 最大文件大小 (5MB) */
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-/** 上传目录 */
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
+/** 上传目录 — 优先使用 COZE_WORKSPACE_PATH，兼容 standalone 模式 */
+const UPLOAD_DIR = path.join(
+  process.env.COZE_WORKSPACE_PATH || process.cwd(),
+  'public',
+  'uploads'
+);
 
 /**
  * 上传图片
@@ -89,8 +93,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error('上传文件失败:', error);
+    console.error('上传目录:', UPLOAD_DIR, '是否存在:', existsSync(UPLOAD_DIR));
     return NextResponse.json(
-      { error: '上傳失敗，請重試' },
+      { success: false, error: '上傳失敗，請重試', detail: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
