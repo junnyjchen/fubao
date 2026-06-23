@@ -82,7 +82,7 @@ export default function AdminBannersPage() {
     try {
       const res = await fetch('/api/admin/banners');
       const data = await res.json();
-      if (data.banners) {
+      if (Array.isArray(data.banners)) {
         setBanners(data.banners);
       }
     } catch (error) {

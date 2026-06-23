@@ -65,7 +65,7 @@ export default function FreePage() {
     try {
       setLoading(true);
       const response = await api.get('/free-goods');
-      if (response.data) {
+      if (Array.isArray(response.data)) {
         setGoods(response.data);
       }
     } catch (error) {

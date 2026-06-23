@@ -132,7 +132,7 @@ function CategoryPageContent({ slug }: { slug: string }) {
       );
       const data = await res.json();
       
-      if (data.data) {
+      if (Array.isArray(data.data)) {
         setGoods(data.data);
         setTotal(data.pagination?.total || data.total || 0);
         setTotalPages(data.pagination?.total_pages || 0);

@@ -55,7 +55,7 @@ export function NewsPage() {
         
         const res = await fetch(`/api/news?${params.toString()}`);
         const data = await res.json();
-        if (data.data) {
+        if (Array.isArray(data.data)) {
           setNews(data.data);
           setTotalItems(data.total || 0);
           setTotalPages(data.total_pages || Math.ceil((data.total || 0) / pageSize));

@@ -196,7 +196,7 @@ export function UserPage() {
       const ordersData = await ordersRes.json();
       const profileData = await profileRes.json();
 
-      if (ordersData.data) setOrders(ordersData.data);
+      if (Array.isArray(ordersData.data)) setOrders(ordersData.data);
       if (profileData.user) {
         setProfile({
           id: profileData.user.id,

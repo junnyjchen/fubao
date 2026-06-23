@@ -130,7 +130,7 @@ export default function AdminOrdersPage() {
       const res = await fetch(`/api/admin/orders?${params}`);
       const data = await res.json();
 
-      if (data.orders) {
+      if (Array.isArray(data.orders)) {
         setOrders(data.orders);
         setTotalPages(data.totalPages || 1);
       }

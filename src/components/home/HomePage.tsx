@@ -288,9 +288,9 @@ export function HomePage() {
           newsRes.json(),
         ]);
 
-        if (bannersData.data) setBanners(bannersData.data);
-        if (goodsData.data) setGoods(goodsData.data);
-        if (newsData.data) setNews(newsData.data);
+        if (Array.isArray(bannersData.data)) setBanners(bannersData.data);
+        if (Array.isArray(goodsData.data)) setGoods(goodsData.data);
+        if (Array.isArray(newsData.data)) setNews(newsData.data);
       } catch (error) {
         console.error('Failed to fetch data:', error);
       } finally {
