@@ -31,10 +31,16 @@ export async function GET(
       await dbUpdate('articles', { view_count: ((article.view_count as number) || 0) + 1 }, { id: article.id });
     }
 
-    // 获取相关文章
+    // 获取相关文章 - published_at 列可能不存在，使用 created_at 降级
+    let hasPublishedAt = false;
+    try {
+      const cols = await query("SHOW COLUMNS FROM articles LIKE 'published_at'");
+      hasPublishedAt = Array.isArray(cols) && cols.length > 0;
+    } catch { /* ignore */ }
+    const publishedSelect = hasPublishedAt ? 'COALESCE(published_at, created_at) as published_at' : 'created_at';
     const relatedArticles = article.category
       ? await query(
-          'SELECT id, title, slug, summary, cover_image, category, COALESCE(published_at, created_at) as published_at FROM articles WHERE category = ? AND id != ? AND status = 1 LIMIT 4',
+          `SELECT id, title, slug, summary, cover_image, category, ${publishedSelect} FROM articles WHERE category = ? AND id != ? AND status = 1 LIMIT 4`,
           [article.category, article.id]
         )
       : [];

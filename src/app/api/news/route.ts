@@ -33,8 +33,16 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const total = await count('news', conditions.length > 0 ? conditions.join(' AND ') : '1=1', params);
 
+    // published_at 列可能不存在（旧 schema），检测后决定排序字段
+    let hasPublishedAt = false;
+    try {
+      const cols = await query("SHOW COLUMNS FROM news LIKE 'published_at'");
+      hasPublishedAt = Array.isArray(cols) && cols.length > 0;
+    } catch { /* ignore */ }
+
+    const orderColumn = hasPublishedAt ? 'COALESCE(published_at, created_at)' : 'created_at';
     const data = await query(
-      `SELECT * FROM news ${whereClause} ORDER BY COALESCE(published_at, created_at) DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM news ${whereClause} ORDER BY ${orderColumn} DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 

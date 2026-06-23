@@ -18,16 +18,30 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = ['status = 1'];
     const params: unknown[] = [];
 
-    if (position) {
+    // position 列可能不存在（旧 schema），先查列是否存在
+    let hasPositionColumn = false;
+    try {
+      const columns = await query("SHOW COLUMNS FROM banners LIKE 'position'");
+      hasPositionColumn = Array.isArray(columns) && columns.length > 0;
+    } catch {
+      // 查询失败忽略
+    }
+
+    if (position && hasPositionColumn) {
       conditions.push('position = ?');
       params.push(position);
     }
 
     const whereClause = conditions.join(' AND ');
-    const data = await query(
+    let data = await query(
       `SELECT * FROM banners WHERE ${whereClause} ORDER BY sort_order ASC`,
       params
     );
+
+    // 确保 data 是数组
+    if (!Array.isArray(data)) {
+      data = [];
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error) {
@@ -48,14 +62,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '標題和圖片不能為空' }, { status: 400 });
     }
 
-    const id = await dbInsert('banners', {
+    const insertData: Record<string, unknown> = {
       title,
       image,
       link: link || null,
       sort_order: sort_order || 0,
-      position: position || 'home',
       status: isActive !== undefined ? (isActive ? 1 : 0) : 1,
-    });
+    };
+    // position 列可能不存在（旧 schema），安全添加
+    if (position) {
+      insertData.position = position;
+    }
+
+    const id = await dbInsert('banners', insertData);
 
     return NextResponse.json({ success: true, data: { id }, message: '輪播圖創建成功' });
   } catch (error) {
@@ -81,8 +100,9 @@ export async function PUT(request: NextRequest) {
     if (image !== undefined) updateData.image = image;
     if (link !== undefined) updateData.link = link;
     if (sort_order !== undefined) updateData.sort_order = sort_order;
-    if (position !== undefined) updateData.position = position;
     if (isActive !== undefined) updateData.status = isActive ? 1 : 0;
+    // position 列可能不存在（旧 schema），只有非空时才写入
+    if (position) updateData.position = position;
 
     await dbUpdate('banners', updateData, { id });
 
