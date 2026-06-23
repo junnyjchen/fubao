@@ -6,14 +6,31 @@
 |------|-----|
 | 名称 | 符寶網 - 全球玄門文化科普交易平台 |
 | 前端 | Next.js 16 (App Router) + React 19 |
-| 后端(生产) | **PHP 8.x + ThinkPHP** (`php/` 目录) |
-| 后端(开发) | Next.js API Routes (`src/app/api/` 目录) |
+| 后端 | Next.js API Routes (`src/app/api/` 目录) |
+| PHP 后端 | ThinkPHP (`php/` 目录) — 备用/兼容 |
 | UI | shadcn/ui + Tailwind CSS 4 |
 | 语言 | TypeScript 5 / PHP 8 |
 | 包管理 | 前端 **pnpm** (强制) / 后端 composer |
 | 数据库 | MySQL 优先 + Mock DB 自动降级 |
-| AI 集成 | 豆包/DeepSeek/Kimi (流式输出) |
+| AI 集成 | DeepSeek/豆包/Kimi (流式输出，默认 DeepSeek) |
 | 邮件 | QQ邮箱SMTP (nodemailer / PHPMailer) |
+| 部署 | systemd + Nginx (无 Docker) |
+
+---
+
+## 生产架构
+
+```
+用户 → Nginx (443/80) → Next.js standalone (端口 5000)
+                           ├── /api/* → Next.js API Routes (Node.js)
+                           ├── /_next/* → Next.js 静态资源
+                           └── /* → Next.js SSR 页面
+```
+
+- **不再使用 Docker**，改用 systemd 直接管理 Node.js 进程
+- Nginx 所有请求代理到 Next.js (端口 5000)
+- Next.js API Routes 处理所有 `/api/*` 请求
+- PHP/ThinkPHP 作为备用后端，仅通过 `php/public/index.php` 中的代理逻辑降级使用
 
 ---
 
@@ -21,7 +38,7 @@
 
 ```
 /workspace/projects/
-├── src/                        # Next.js 前端 + 开发用 API
+├── src/                        # Next.js 前端 + API
 │   ├── app/                    # 页面 (Next.js App Router)
 │   │   ├── page.tsx           # 首页
 │   │   ├── ai-assistant/      # AI 助手页面
@@ -36,46 +53,41 @@
 │   │   ├── admin/             # 管理后台
 │   │   ├── login/             # 用户登录
 │   │   ├── register/          # 用户注册
-│   │   └── api/               # API Routes（开发用后端）
+│   │   └── api/               # API Routes
 │   ├── components/            # 组件
 │   │   ├── ui/               # shadcn/ui 基础组件
 │   │   ├── ai/               # AI 组件
 │   │   ├── admin/            # 管理后台组件
 │   │   ├── shop/             # 商城组件
-│   │   ├── cart/             # 购物车组件
-│   │   ├── order/            # 订单组件
-│   │   ├── free-gifts/       # 免费送组件
-│   │   ├── home/             # 首页组件
-│   │   ├── merchant/         # 商家组件
-│   │   ├── news/             # 新闻组件
 │   │   └── ...
 │   └── lib/                   # 工具库
 │       ├── db.ts             # Mock DB + MySQL 双模式数据库
 │       ├── mysql.ts          # MySQL 连接池
+│       ├── api-response.ts   # 统一 API 响应格式
+│       ├── api-client.ts     # 前端请求封装
 │       ├── email/service.ts  # 邮件服务 (QQ邮箱SMTP)
 │       ├── auth/             # 认证相关
-│       ├── ai/               # AI 相关
+│       ├── ai/               # AI 相关 (llm-client, store)
 │       └── hooks/            # 自定义 Hooks
-├── php/                        # PHP 后端（生产环境）
+├── php/                        # PHP 后端（备用）
 │   ├── app/
-│   │   ├── controller/        # 控制器（与前端 API 一一对应）
-│   │   ├── common/            # 公共模块（Jwt/Response/Validator/Cache）
-│   │   ├── middleware/         # 中间件（AdminAuth）
-│   │   └── think/             # ThinkPHP 核心扩展
-│   ├── config/
-│   │   ├── database.php       # 数据库配置（环境变量驱动）
-│   │   └── app.php            # 应用配置
-│   ├── route/
-│   │   └── router.php         # 路由映射
+│   │   ├── controller/        # 控制器
+│   │   ├── common/            # 公共模块
+│   │   └── middleware/         # 中间件
 │   ├── public/
-│   │   └── index.php          # 入口文件
-│   └── nginx.conf             # Nginx 配置
+│   │   └── index.php          # 入口（含 Next.js 代理逻辑）
+│   └── nginx.conf             # Nginx 配置参考
 ├── sql/                       # MySQL 建表和种子数据
-│   ├── schema.sql            # 15张表DDL
+│   ├── schema.sql            # DDL
 │   ├── seed.sql              # 种子数据
 │   └── deploy-mysql.sh       # 一键部署脚本
 ├── public/                    # 静态资源
-└── update-fubao.sh           # 服务器一键更新脚本
+│   ├── images/products/       # 商品图片
+│   ├── images/banners/        # Banner 图片
+│   └── uploads/              # 用户上传文件
+├── fubao-nextjs.service       # systemd 服务配置
+├── update-fubao.sh            # 服务器一键部署脚本
+└── index.php                  # 根目录 PHP 入口（宝塔环境用）
 ```
 
 ---
@@ -99,6 +111,89 @@ pnpm ts-check
 
 ---
 
+## 服务器部署
+
+```bash
+# 首次安装
+bash update-fubao.sh --install
+
+# 增量更新（拉取代码 → 构建 → 重启）
+bash update-fubao.sh
+
+# 强制完整构建
+bash update-fubao.sh --rebuild
+
+# 诊断当前状态
+bash update-fubao.sh --diagnose
+```
+
+### 服务管理
+
+```bash
+# 查看服务状态
+sudo systemctl status fubao-nextjs
+
+# 查看实时日志
+sudo journalctl -u fubao-nextjs -f
+
+# 重启服务
+sudo systemctl restart fubao-nextjs
+
+# 查看最近50行日志
+sudo journalctl -u fubao-nextjs -n 50
+```
+
+---
+
+## API 响应格式（统一规范）
+
+所有 API 成功响应必须包含 `success: true`：
+
+```typescript
+// 成功（无数据）
+{ success: true, message: "操作成功" }
+
+// 成功（有数据）
+{ success: true, data: [...] }
+
+// 分页
+{ success: true, data: [...], total: 100, page: 1, pageSize: 20 }
+
+// 失败
+{ success: false, error: "错误描述" }
+```
+
+使用 `src/lib/api-response.ts` 工具函数：
+
+```typescript
+import { apiSuccess, apiSuccessWithData, apiPaginated, apiError } from '@/lib/api-response';
+
+// 成功
+return apiSuccess('操作成功');
+
+// 带数据
+return apiSuccessWithData(data);
+
+// 分页
+return apiPaginated(data, total, page, pageSize);
+
+// 失败
+return apiError('错误描述', 400);
+```
+
+前端使用 `src/lib/api-client.ts`：
+
+```typescript
+import { isApiSuccess } from '@/lib/api-client';
+
+const data = await res.json();
+if (isApiSuccess(data)) {
+  // data.data, data.total 等
+}
+```
+
+---
+
 ## 核心功能清单
 
 ### 1. 用户系统
@@ -108,7 +203,12 @@ pnpm ts-check
 | `/register` | 用户注册 |
 | `/user` | 用户中心（订单/收藏/钱包/积分/地址/通知/优惠券） |
 | API `/api/auth/*` | 认证API（登录/注册/个人信息） |
-| API `/api/notifications` | 用户通知（查询/标记已读/删除） |
+| API `/api/notifications` | 用户通知 |
+| API `/api/favorites` | 收藏管理 |
+| API `/api/user/browse-history` | 浏览历史 |
+| API `/api/user/signin` | 用户签到 |
+| API `/api/points` | 积分查询 |
+| API `/api/coupons` | 优惠券查询 |
 
 ### 2. 商品商城
 | 路径 | 说明 |
@@ -119,6 +219,7 @@ pnpm ts-check
 | API `/api/goods` | 商品CRUD + 多语言(locale) |
 | API `/api/goods/i18n` | 商品翻译管理 |
 | API `/api/categories` | 分类管理 |
+| API `/api/reviews` | 评价管理 |
 
 ### 3. 购物车与订单
 | 路径 | 说明 |
@@ -130,6 +231,8 @@ pnpm ts-check
 | API `/api/cart` | 购物车API |
 | API `/api/orders` | 订单API（创建/查询/详情） |
 | API `/api/addresses` | 收货地址API |
+| API `/api/upload` | 文件上传 |
+| API `/api/invoice` | 发票管理 |
 
 ### 4. AI 智能助手
 | 路径 | 说明 |
@@ -138,6 +241,7 @@ pnpm ts-check
 | `/knowledge` | 知识库页面 |
 | API `/api/ai/chat` | AI 聊天 (SSE 流式) |
 | API `/api/ai/models` | 可用模型列表 |
+| API `/api/ai/translate` | AI 翻译 |
 | API `/api/ai/knowledge/search` | 知识库检索 |
 | API `/api/admin/ai-training/*` | AI 训练管理 |
 | API `/api/admin/ai-content/*` | AI 内容生成 |
@@ -154,10 +258,9 @@ pnpm ts-check
 | 路径 | 说明 |
 |------|------|
 | `/merchant/login` | 商家登录 |
-| `/merchant/dashboard` | 商家后台（商品/订单/统计） |
+| `/merchant/dashboard` | 商家后台 |
 | `/merchant/apply` | 商家入驻申请 |
-| API `/api/merchant/*` | 商家API（登录/商品/订单/入驻） |
-| API `/api/merchants` | 商家列表/详情 |
+| API `/api/merchant/*` | 商家API |
 
 ### 7. 新闻资讯
 | 路径 | 说明 |
@@ -176,7 +279,7 @@ pnpm ts-check
 ### 9. 管理后台
 | 路径 | 说明 |
 |------|------|
-| `/admin/login` | 管理员登录 |
+| `/admin/login` | 管理员登录（admin / admin123） |
 | `/admin` | 仪表盘 |
 | `/admin/goods` | 商品管理 |
 | `/admin/goods-i18n` | 商品翻译管理 |
@@ -187,11 +290,19 @@ pnpm ts-check
 | `/admin/categories` | 分类管理 |
 | `/admin/banners` | 轮播图管理 |
 | `/admin/settings` | 系统设置（含邮件测试） |
-| `/admin/database` | 数据库管理（状态/初始化/测试） |
+| `/admin/database` | 数据库管理 |
 | `/admin/ai-training` | AI 训练 |
 | `/admin/ai-content` | AI 内容生成 |
 | `/admin/ai-knowledge` | 知识库管理 |
 | `/admin/ai-models` | AI 模型配置 |
+| API `/api/admin/stats` | 统计数据 |
+| API `/api/admin/analytics` | 分析数据 |
+| API `/api/admin/announcement` | 公告管理 |
+| API `/api/admin/certificate` | 证书管理 |
+| API `/api/admin/coupon` | 优惠券管理 |
+| API `/api/admin/withdrawal` | 提现管理 |
+| API `/api/admin/permissions` | 权限管理 |
+| API `/api/admin/roles` | 角色管理 |
 
 ### 10. 邮件服务
 | 功能 | 说明 |
@@ -232,8 +343,8 @@ await update('goods', { price: 200 }, { id: 1 });
 // 删除
 await remove('goods', { id: 1 });
 
-// 计数
-const total = await count('goods', { status: 1 });
+// 计数（第二个参数为 SQL WHERE 子句字符串）
+const total = await count('goods', 'status = 1');
 ```
 
 ### 认证
@@ -270,6 +381,16 @@ export function Component() {
 - 工具函数: `camelCase` → `useUserData.ts`
 - 页面文件: `kebab-case` → `user-profile/page.tsx`
 
+### API 响应防御性检查
+
+```tsx
+// 始终为 .map() 调用提供默认空数组
+{(data.items || []).map(item => ...)}
+
+// 检查 API 响应格式
+if (isApiSuccess(data)) { ... }
+```
+
 ---
 
 ## Mock 数据模式
@@ -282,6 +403,7 @@ import { mockUsers } from '@/lib/auth/mockStore';
 // 预置测试用户
 // 邮箱: test@example.com / demo@example.com  密码: admin123
 // 管理后台: admin / editor  密码: admin123
+// 无数据库时也允许 admin / admin123 登录
 ```
 
 ---
@@ -306,8 +428,11 @@ DB_NAME=fubao
 # API 模式
 NEXT_PUBLIC_API_MODE=local
 
-# AI 模型
-AI_PROVIDER=volcengine
+# AI 模型（默认 DeepSeek，火山引擎不支持境外访问）
+AI_PROVIDER=deepseek
+
+# 生产环境标识
+COZE_PROJECT_ENV=PROD
 
 # 邮件 SMTP (QQ邮箱)
 # 配置存储在 settings 表中，无需环境变量
@@ -315,6 +440,4 @@ AI_PROVIDER=volcengine
 
 ---
 
-> **开发技术标准详见 [DEVELOPMENT_STANDARDS.md](./DEVELOPMENT_STANDARDS.md)**，所有新增、修改代码必须遵循该文档。
->
-> 最后更新: 2025-01-15
+> 最后更新: 2026-06-24

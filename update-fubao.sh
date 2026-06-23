@@ -5,6 +5,7 @@
 # 架构：Nginx → Next.js (standalone, 端口 5000)
 #   Nginx 已配置所有请求代理到 Next.js (端口 5000)
 #   Next.js API Routes 处理所有 /api/* 请求
+#   PHP/ThinkPHP 作为备用后端
 #
 # 使用方法：
 #   bash update-fubao.sh              # 增量更新
@@ -58,137 +59,100 @@ echo -e "${BLUE}📂 项目目录: $BASE_DIR${NC}"
 # ============================================================
 if [ "$DIAGNOSE_MODE" = true ]; then
     echo ""
-    echo -e "${BLUE}━━━ 诊断模式 ━━━${NC}"
-    
+    echo -e "${BLUE}=============================================="
+    echo -e "  符寶網 - 环境诊断"
+    echo -e "==============================================${NC}"
+
+    # 1. 服务状态
     echo ""
-    echo "1. 服务状态："
+    echo "━━━ 1. 服务状态 ━━━"
     echo "  Next.js (systemd): $(sudo systemctl is-active $SERVICE_NAME 2>/dev/null || echo '未安装')"
     echo "  Nginx: $(sudo systemctl is-active nginx 2>/dev/null || echo '未运行')"
-    
+    echo "  PHP-FPM: $(sudo systemctl is-active php-fpm 2>/dev/null || sudo systemctl is-active 'php*fpm' 2>/dev/null || echo '未运行')"
+
+    # 2. 端口检测
     echo ""
-    echo "2. 端口检测："
+    echo "━━━ 2. 端口检测 ━━━"
     PORT_INFO=$(ss -tlnp 2>/dev/null | grep ":${HOST_PORT} " | head -1)
-    echo "  端口 ${HOST_PORT}: ${PORT_INFO:-未监听}"
-    
-    # 检查是否被 Docker 占用
-    if echo "$PORT_INFO" | grep -q "docker-proxy"; then
-        echo -e "  ${RED}⚠️  端口 ${HOST_PORT} 被 Docker 占用！systemd 服务无法启动${NC}"
-        DOCKER_CONTAINER=$(docker ps --filter "publish=${HOST_PORT}" --format "{{.ID}} {{.Names}} {{.Image}}" 2>/dev/null | head -1)
-        if [ -n "$DOCKER_CONTAINER" ]; then
-            echo "  Docker 容器: $DOCKER_CONTAINER"
+    if [ -n "$PORT_INFO" ]; then
+        echo "  端口 ${HOST_PORT}: ${PORT_INFO}"
+        if echo "$PORT_INFO" | grep -q "node"; then
+            echo -e "  ${GREEN}✅ Next.js (node) 正在监听${NC}"
+        else
+            echo -e "  ${YELLOW}⚠️  非 node 进程在监听${NC}"
         fi
-    fi
-    
-    echo ""
-    echo "3. Next.js 响应测试："
-    NX_RESP=$(curl -s --max-time 5 "http://127.0.0.1:${HOST_PORT}/api/goods?limit=1" 2>/dev/null | head -c 150 || echo "无响应")
-    if echo "$NX_RESP" | grep -q '"success":true'; then
-        echo -e "  ${GREEN}✅ API 响应格式正确 (success:true)${NC}"
     else
-        echo -e "  ${RED}❌ API 响应格式异常（可能跑的是旧代码）${NC}"
-        echo "  响应: ${NX_RESP:0:120}"
+        echo -e "  ${RED}❌ 端口 ${HOST_PORT} 未监听${NC}"
     fi
-    
+
+    # 3. Node.js / pnpm
     echo ""
-    echo "4. Nginx 配置："
+    echo "━━━ 3. 运行环境 ━━━"
+    echo "  Node.js: $(node -v 2>/dev/null || echo '未安装')"
+    echo "  pnpm: $(pnpm -v 2>/dev/null || echo '未安装')"
+    echo "  PHP: $(php -v 2>/dev/null | head -1 || echo '未安装')"
+
+    # 4. API 响应测试
+    echo ""
+    echo "━━━ 4. API 响应测试 ━━━"
+    NX_RESP=$(curl -s --max-time 5 "http://127.0.0.1:${HOST_PORT}/api/goods?limit=1" 2>/dev/null | head -c 200 || echo "无响应")
+    if echo "$NX_RESP" | grep -q '"success":true'; then
+        echo -e "  ${GREEN}✅ Next.js API 正常 (success:true)${NC}"
+    elif [ -n "$NX_RESP" ]; then
+        echo -e "  ${RED}❌ API 响应异常${NC}"
+        echo "  响应: ${NX_RESP:0:150}"
+    else
+        echo -e "  ${RED}❌ Next.js 无响应${NC}"
+    fi
+
+    # 5. Standalone 构建
+    echo ""
+    echo "━━━ 5. 构建状态 ━━━"
+    if [ -f ".next/standalone/server.js" ]; then
+        BUILD_TIME=$(stat -c %Y ".next/standalone/server.js" 2>/dev/null || echo "0")
+        BUILD_DATE=$(date -d "@$BUILD_TIME" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "unknown")
+        echo -e "  ${GREEN}✅ Standalone 已构建 (${BUILD_DATE})${NC}"
+    else
+        echo -e "  ${RED}❌ Standalone 未构建（需执行 --rebuild）${NC}"
+    fi
+
+    # 6. Nginx 配置
+    echo ""
+    echo "━━━ 6. Nginx 配置 ━━━"
     for conf in \
         "/www/server/panel/vhost/nginx/www.fubao.ltd.conf" \
         "/www/server/nginx/conf/vhost/www.fubao.ltd.conf" \
         "/etc/nginx/conf.d/www.fubao.ltd.conf"; do
         if [ -f "$conf" ]; then
             echo "  配置文件: $conf"
-            echo "  location / 处理:"
-            grep -A 3 "location / " "$conf" 2>/dev/null | head -5
+            if grep -q "proxy_pass.*127.0.0.1:5000" "$conf"; then
+                echo -e "  ${GREEN}✅ 已配置代理到 Next.js (5000)${NC}"
+            else
+                echo -e "  ${YELLOW}⚠️  未检测到 Next.js 代理配置${NC}"
+            fi
             break
         fi
     done
-    
+
+    # 7. 上传目录
     echo ""
-    echo "5. Standalone 构建状态："
-    if [ -f ".next/standalone/server.js" ]; then
-        BUILD_TIME=$(stat -c %Y ".next/standalone/server.js" 2>/dev/null || echo "unknown")
-        BUILD_DATE=$(date -d "@$BUILD_TIME" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "unknown")
-        echo -e "  ${GREEN}✅ Standalone 存在 (构建于 $BUILD_DATE)${NC}"
+    echo "━━━ 7. 上传目录 ━━━"
+    if [ -d "public/uploads" ]; then
+        UPLOAD_PERM=$(stat -c %a "public/uploads" 2>/dev/null || echo "unknown")
+        echo -e "  ${GREEN}✅ public/uploads 存在 (权限: ${UPLOAD_PERM})${NC}"
     else
-        echo -e "  ${RED}❌ Standalone 不存在（需要构建）${NC}"
+        echo -e "  ${RED}❌ public/uploads 不存在${NC}"
     fi
-    
+
     exit 0
 fi
 
 # ============================================================
-# 函数：停止占用端口的 Docker 容器
-# ============================================================
-stop_docker_on_port() {
-    local port=$1
-    
-    # 检查端口是否被 docker-proxy 占用
-    local port_info=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep LISTEN | head -1)
-    
-    if ! echo "$port_info" | grep -q "docker-proxy"; then
-        return 0  # 端口没有被 Docker 占用，无需处理
-    fi
-    
-    echo -e "${YELLOW}🐳 检测到端口 ${port} 被 Docker 容器占用${NC}"
-    
-    # 列出所有使用该端口的容器
-    local containers=$(docker ps --filter "publish=${port}" --format "{{.ID}}" 2>/dev/null)
-    
-    if [ -n "$containers" ]; then
-        for container_id in $containers; do
-            local container_name=$(docker inspect --format "{{.Name}}" "$container_id" 2>/dev/null | sed 's/\///')
-            local container_image=$(docker inspect --format "{{.Config.Image}}" "$container_id" 2>/dev/null)
-            local restart_policy=$(docker inspect --format "{{.HostConfig.RestartPolicy.Name}}" "$container_id" 2>/dev/null)
-            
-            echo -e "${YELLOW}  容器: ${container_name} (${container_image}) restart=${restart_policy}${NC}"
-            
-            # 先禁用自动重启策略，防止 stop 后自动重启
-            echo -e "${YELLOW}  禁用自动重启...${NC}"
-            docker update --restart=no "$container_id" 2>/dev/null || true
-            
-            # 停止容器
-            echo -e "${YELLOW}  停止容器...${NC}"
-            docker stop -t 10 "$container_id" 2>/dev/null || true
-            
-            # 强制移除容器（即使还在运行）
-            echo -e "${YELLOW}  移除容器...${NC}"
-            docker rm -f "$container_id" 2>/dev/null || true
-            
-            echo -e "${GREEN}  ✅ Docker 容器 ${container_name} 已停止并移除${NC}"
-        done
-    fi
-    
-    # 如果 docker ps 找不到容器但端口仍被 docker-proxy 占用
-    # 直接杀掉 docker-proxy 进程
-    sleep 1
-    port_info=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep LISTEN | head -1)
-    if echo "$port_info" | grep -q "docker-proxy"; then
-        local pid=$(echo "$port_info" | grep -oP 'pid=\K\d+' | head -1)
-        if [ -n "$pid" ]; then
-            echo -e "${YELLOW}  用 PID $pid 强制停止 docker-proxy...${NC}"
-            sudo kill -9 "$pid" 2>/dev/null || true
-            sleep 1
-        fi
-    fi
-    
-    # 最终确认端口已释放
-    sleep 2
-    if ss -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN.*docker-proxy"; then
-        echo -e "${RED}  ❌ 端口 ${port} 仍被 Docker 占用！${NC}"
-        echo -e "${RED}  请手动执行:${NC}"
-        echo -e "${RED}    docker stop \$(docker ps -q --filter publish=${port})${NC}"
-        echo -e "${RED}    docker rm -f \$(docker ps -aq --filter publish=${port})${NC}"
-        return 1
-    fi
-    echo -e "${GREEN}✅ 端口 ${port} 已释放${NC}"
-}
-
-# ============================================================
-# Step 0: 首次安装
+# 首次安装
 # ============================================================
 if [ "$NEED_INSTALL" = true ]; then
     echo ""
-    echo -e "${BLUE}━━━ Step 0: 首次安装 ━━━${NC}"
+    echo -e "${BLUE}━━━ 首次安装 ━━━${NC}"
 
     # 安装 Node.js
     if ! command -v node &>/dev/null || [ "$(node -v | cut -d. -f1 | tr -d 'v')" -lt 18 ]; then
@@ -210,11 +174,8 @@ if [ "$NEED_INSTALL" = true ]; then
     # 创建目录
     mkdir -p "$BASE_DIR/public/uploads/"{goods,banners,news,avatars,baike,images,content}
     mkdir -p "$BASE_DIR/php/runtime/"{cache,log}
-    sudo chown -R www:www "$BASE_DIR/public/uploads" "$BASE_DIR/php/runtime"
-    sudo chmod -R 755 "$BASE_DIR/public/uploads" "$BASE_DIR/php/runtime"
-
-    # 停止可能存在的 Docker 容器
-    stop_docker_on_port $HOST_PORT
+    sudo chown -R www:www "$BASE_DIR/public/uploads" "$BASE_DIR/php/runtime" 2>/dev/null || true
+    sudo chmod -R 755 "$BASE_DIR/public/uploads" "$BASE_DIR/php/runtime" 2>/dev/null || true
 
     # 注册 systemd 服务
     sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
@@ -226,24 +187,17 @@ if [ "$NEED_INSTALL" = true ]; then
 fi
 
 # ============================================================
-# Step 1: 停止 Docker 容器（关键步骤！）
+# Step 1: Git 拉取
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 1/7: 检查端口占用 ━━━${NC}"
-stop_docker_on_port $HOST_PORT
-
-# ============================================================
-# Step 2: Git 拉取
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 2/7: 拉取代码 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 1/5: 拉取代码 ━━━${NC}"
 
 if [ -d ".git" ]; then
     git config --global --add safe.directory "$BASE_DIR" 2>/dev/null
     BEFORE_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
     git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || true
     AFTER_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-    
+
     if [ "$BEFORE_HASH" != "$AFTER_HASH" ]; then
         echo -e "${GREEN}✅ 代码已更新 (${BEFORE_HASH:0:7} → ${AFTER_HASH:0:7})${NC}"
         NEED_REBUILD=true
@@ -255,23 +209,22 @@ else
 fi
 
 # ============================================================
-# Step 3: 安装依赖
+# Step 2: 安装依赖
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 3/7: 安装依赖 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 2/5: 安装依赖 ━━━${NC}"
 pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 echo -e "${GREEN}✅ 依赖安装完成${NC}"
 
 # ============================================================
-# Step 4: 构建 Next.js
+# Step 3: 构建 Next.js
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 4/7: 构建项目 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 3/5: 构建项目 ━━━${NC}"
 
 if [ "$NEED_REBUILD" = true ]; then
     echo -e "${YELLOW}🔨 构建 Next.js (standalone)...${NC}"
     pnpm build
-    date +%s > .build-hash
 
     # 准备 Standalone 文件
     if [ -d ".next/standalone" ]; then
@@ -292,16 +245,16 @@ else
 fi
 
 # ============================================================
-# Step 5: 部署配置
+# Step 4: 部署配置 & 重启服务
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 5/7: 部署配置 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 4/5: 部署配置 ━━━${NC}"
 
-# --- 确保上传目录存在 ---
+# 确保上传目录存在
 mkdir -p "$BASE_DIR/public/uploads/"{goods,banners,news,avatars,baike,images,content}
 chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
 
-# --- 确保 systemd 服务文件 ---
+# 确保 systemd 服务文件
 if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/fubao-nextjs.service" "/etc/systemd/system/$SERVICE_NAME.service" >/dev/null 2>&1; then
     echo -e "${YELLOW}📋 更新 systemd 服务...${NC}"
     sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
@@ -309,41 +262,30 @@ if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/
     sudo systemctl enable "$SERVICE_NAME"
 fi
 
-# ============================================================
-# Step 6: 重启服务
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 6/7: 重启服务 ━━━${NC}"
-
-# --- 再次确认端口未被 Docker 占用 ---
-stop_docker_on_port $HOST_PORT
-
-# --- 重启 Next.js (systemd) ---
+# 重启 Next.js (systemd)
 echo -e "${YELLOW}🔄 重启 $SERVICE_NAME...${NC}"
 sudo systemctl restart "$SERVICE_NAME" 2>/dev/null || {
     echo -e "${RED}❌ systemd 服务启动失败${NC}"
     echo "  查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
     echo ""
-    echo -e "${YELLOW}尝试手动启动...${NC}"
-    # 尝试直接用 node 启动 standalone
+    echo -e "${YELLOW}尝试直接启动...${NC}"
     if [ -f ".next/standalone/server.js" ]; then
-        echo -e "${YELLOW}  用 nohup 直接启动 Next.js...${NC}"
         PORT=5000 NODE_ENV=production nohup node .next/standalone/server.js > /tmp/fubao-nextjs.log 2>&1 &
         sleep 3
         if curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:5000/" 2>/dev/null | grep -q "200"; then
-            echo -e "${GREEN}  ✅ 手动启动成功${NC}"
+            echo -e "${GREEN}  ✅ 直接启动成功${NC}"
         else
-            echo -e "${RED}  ❌ 手动启动也失败了${NC}"
-            cat /tmp/fubao-nextjs.log 2>/dev/null | tail -20
+            echo -e "${RED}  ❌ 直接启动也失败${NC}"
+            tail -20 /tmp/fubao-nextjs.log 2>/dev/null
         fi
     fi
 }
 
 # ============================================================
-# Step 7: 验证
+# Step 5: 验证
 # ============================================================
 echo ""
-echo -e "${BLUE}━━━ Step 7/7: 验证服务 ━━━${NC}"
+echo -e "${BLUE}━━━ Step 5/5: 验证服务 ━━━${NC}"
 
 # 等待 Next.js 启动
 echo -e "${YELLOW}⏳ 等待 Next.js 启动...${NC}"
@@ -357,24 +299,11 @@ for i in $(seq 1 30); do
 done
 echo ""
 
-# 检查谁在监听端口 5000
-PORT_PROCESS=$(ss -tlnp 2>/dev/null | grep ":${HOST_PORT} " | head -1)
-if echo "$PORT_PROCESS" | grep -q "docker-proxy"; then
-    echo -e "${RED}❌ 端口 ${HOST_PORT} 仍被 Docker 占用！systemd 服务无法启动${NC}"
-    echo "  请手动停止 Docker 容器: docker stop \$(docker ps -q --filter publish=${HOST_PORT})"
-elif echo "$PORT_PROCESS" | grep -q "node"; then
-    echo -e "${GREEN}✅ Next.js 正在运行 (node 进程, 端口 ${HOST_PORT})${NC}"
-elif [ -n "$PORT_PROCESS" ]; then
-    echo -e "${YELLOW}⚠️  端口 ${HOST_PORT} 被其他进程占用: ${PORT_PROCESS}${NC}"
-else
-    echo -e "${RED}❌ 端口 ${HOST_PORT} 没有进程监听${NC}"
-fi
-
 # 检查 systemd
 if sudo systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
     echo -e "${GREEN}✅ systemd 服务运行中${NC}"
 else
-    echo -e "${YELLOW}⚠️  systemd 服务未运行（可能在用 nohup 手动启动）${NC}"
+    echo -e "${YELLOW}⚠️  systemd 服务未运行${NC}"
 fi
 
 # 检查 Next.js SSR
@@ -390,39 +319,20 @@ if pgrep -x nginx &>/dev/null; then
     echo -e "${GREEN}✅ Nginx 运行中${NC}"
 fi
 
-# --- 验证 API 响应 ---
+# 验证 API 响应
 echo ""
 echo -e "${BLUE}━━━ 验证 API 响应 ━━━${NC}"
 
 NX_API=$(curl -s --max-time 5 "http://127.0.0.1:${HOST_PORT}/api/goods?limit=1" 2>/dev/null || echo "")
 if echo "$NX_API" | grep -q '"success":true'; then
-    echo -e "${GREEN}✅ Next.js API 直连：响应格式正确 (success:true)${NC}"
-elif echo "$NX_API" | grep -q '"success"'; then
-    echo -e "${YELLOW}⚠️  Next.js API：有 success 字段但值非 true${NC}"
-    echo "  响应: ${NX_API:0:120}"
+    echo -e "${GREEN}✅ Next.js API：响应格式正确 (success:true)${NC}"
 elif [ -n "$NX_API" ]; then
-    echo -e "${RED}❌ Next.js API：无 success 字段（可能是旧代码或 Docker 占端口）${NC}"
+    echo -e "${RED}❌ Next.js API：响应格式异常（可能跑的是旧代码）${NC}"
     echo "  响应: ${NX_API:0:120}"
-    echo ""
-    echo "  可能原因："
-    echo "  1. Docker 容器仍在运行旧代码 → 执行: docker stop \$(docker ps -q)"
-    echo "  2. standalone 构建产物过期 → 执行: bash update-fubao.sh --rebuild"
-    echo "  3. systemd 服务启动失败 → 执行: sudo journalctl -u $SERVICE_NAME -n 50"
+    echo "  修复: bash update-fubao.sh --rebuild"
 else
     echo -e "${RED}❌ Next.js 无响应${NC}"
-    echo "  检查服务: sudo systemctl status $SERVICE_NAME"
     echo "  查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
-fi
-
-# 验证通过 Nginx 的完整链路
-NGINX_API=$(curl -s --max-time 5 "http://127.0.0.1/api/goods?limit=1" 2>/dev/null || echo "")
-if echo "$NGINX_API" | grep -q '"success":true'; then
-    echo -e "${GREEN}✅ Nginx → Next.js 完整链路：响应格式正确${NC}"
-elif [ -n "$NGINX_API" ]; then
-    echo -e "${YELLOW}⚠️  Nginx 链路异常（Nginx → Next.js 可能未正确代理）${NC}"
-    echo "  响应: ${NGINX_API:0:120}"
-else
-    echo -e "${YELLOW}⚠️  Nginx 无响应（检查 Nginx 是否运行）${NC}"
 fi
 
 echo ""
@@ -437,7 +347,6 @@ echo "  🔧 诊断模式: bash update-fubao.sh --diagnose"
 echo "  🔧 强制重建: bash update-fubao.sh --rebuild"
 echo ""
 echo "  ⚠️  如果网站异常："
-echo "  1. 检查 Docker 是否占端口: docker ps | grep 5000"
-echo "  2. 停止 Docker: docker stop \$(docker ps -q --filter publish=5000)"
-echo "  3. 重启服务: sudo systemctl restart $SERVICE_NAME"
-echo "  4. 查看日志: sudo journalctl -u $SERVICE_NAME -n 50"
+echo "  1. 查看服务日志: sudo journalctl -u $SERVICE_NAME -n 50"
+echo "  2. 运行诊断: bash update-fubao.sh --diagnose"
+echo "  3. 强制重建: bash update-fubao.sh --rebuild"
