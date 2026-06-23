@@ -233,18 +233,83 @@ fi
 echo ""
 echo -e "${BLUE}━━━ Step 4/6: 部署配置 ━━━${NC}"
 
-# --- 核心：确保 PHP index.php 包含 Next.js 代理逻辑 ---
-echo -e "${YELLOW}📋 检查 PHP 反向代理...${NC}"
+# --- 核心：确保所有入口 index.php 都包含 Next.js 代理逻辑 ---
+echo -e "${YELLOW}📋 检查 Next.js 反向代理入口...${NC}"
+
+# 入口1: 项目根目录 index.php（宝塔 Nginx root 指向项目根时使用）
+ROOT_INDEX="$BASE_DIR/index.php"
+if [ -f "$ROOT_INDEX" ]; then
+    if grep -q "nextjs" "$ROOT_INDEX" 2>/dev/null; then
+        echo -e "${GREEN}✅ 根目录 index.php 已包含 Next.js 代理逻辑${NC}"
+    else
+        echo -e "${YELLOW}⚠️  根目录 index.php 未包含代理逻辑${NC}"
+    fi
+else
+    echo -e "${RED}❌ 根目录 index.php 不存在（代理将不生效！）${NC}"
+fi
+
+# 入口2: php/public/index.php（宝塔 Nginx root 指向 php/public 时使用）
 PHP_INDEX="$BASE_DIR/php/public/index.php"
 if [ -f "$PHP_INDEX" ]; then
     if grep -q "nextjs" "$PHP_INDEX" 2>/dev/null; then
-        echo -e "${GREEN}✅ PHP index.php 已包含 Next.js 代理逻辑${NC}"
+        echo -e "${GREEN}✅ php/public/index.php 已包含 Next.js 代理逻辑${NC}"
     else
-        echo -e "${YELLOW}⚠️  PHP index.php 未包含代理逻辑，请确认代码已更新${NC}"
-        echo "  git pull 后应该已更新此文件"
+        echo -e "${YELLOW}⚠️  php/public/index.php 未包含代理逻辑${NC}"
     fi
 else
-    echo -e "${RED}❌ PHP index.php 不存在${NC}"
+    echo -e "${YELLOW}⚠️  php/public/index.php 不存在${NC}"
+fi
+
+# --- 检查 PHP cURL 扩展 ---
+echo -e "${YELLOW}📋 检查 PHP cURL 扩展...${NC}"
+PHP_BIN=$(which php 2>/dev/null || echo "")
+if [ -z "$PHP_BIN" ]; then
+    for pv in 74 80 81 82 83 84; do
+        if [ -x "/www/server/php/${pv:0:1}.${pv:1}/bin/php" ]; then
+            PHP_BIN="/www/server/php/${pv:0:1}.${pv:1}/bin/php"
+            break
+        fi
+    done
+fi
+if [ -n "$PHP_BIN" ]; then
+    if $PHP_BIN -m 2>/dev/null | grep -qi curl; then
+        echo -e "${GREEN}✅ PHP cURL 扩展已安装 ($PHP_BIN)${NC}"
+    else
+        echo -e "${RED}❌ PHP cURL 扩展未安装！代理功能需要此扩展${NC}"
+        echo "  安装命令: sudo apt install php-curl 或在宝塔面板中安装"
+    fi
+else
+    echo -e "${YELLOW}⚠️  未找到 PHP 可执行文件，无法检查 cURL${NC}"
+fi
+
+# --- 检查宝塔 Nginx 的 root 指向 ---
+echo -e "${YELLOW}📋 检查 Nginx root 目录...${NC}"
+BAOTA_CONF=""
+for conf in \
+    "/www/server/panel/vhost/nginx/www.fubao.ltd.conf" \
+    "/www/server/nginx/conf/vhost/www.fubao.ltd.conf"; do
+    if [ -f "$conf" ]; then
+        BAOTA_CONF="$conf"
+        break
+    fi
+done
+if [ -n "$BAOTA_CONF" ]; then
+    NGINX_ROOT=$(grep -E "^\s*root\s" "$BAOTA_CONF" 2>/dev/null | head -1 | sed 's/.*root\s*//' | sed 's/;//' | tr -d ' ')
+    echo "  Nginx root: ${NGINX_ROOT:-未找到}"
+    if [ -n "$NGINX_ROOT" ]; then
+        ENTRY_FILE="$NGINX_ROOT/index.php"
+        if [ -f "$ENTRY_FILE" ]; then
+            if grep -q "nextjs" "$ENTRY_FILE" 2>/dev/null; then
+                echo -e "${GREEN}✅ Nginx root 下的 index.php 已包含代理逻辑${NC}"
+            else
+                echo -e "${RED}❌ Nginx root 下的 index.php 未包含代理逻辑！${NC}"
+                echo "  需要将项目根目录的 index.php 复制到 $NGINX_ROOT/"
+            fi
+        else
+            echo -e "${YELLOW}⚠️  Nginx root 下没有 index.php${NC}"
+            echo "  需要将项目根目录的 index.php 复制到 $NGINX_ROOT/"
+        fi
+    fi
 fi
 
 # --- 确保上传目录存在 ---
