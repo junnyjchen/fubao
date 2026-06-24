@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const params: unknown[] = [userId];
 
     if (unreadOnly) {
-      sql += ' AND `read` = ?';
+      sql += ' AND is_read = ?';
       params.push(false);
     }
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // 获取未读数量
     const unreadResult = await query(
-      'SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND `read` = ?',
+      'SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND is_read = ?',
       [userId, false]
     );
     const unreadCount = (unreadResult as any[])?.[0]?.cnt || 0;
@@ -63,15 +63,15 @@ export async function PUT(request: NextRequest) {
     if (all) {
       // 标记该用户所有通知为已读 - 先查询再逐个更新
       const unreadList = await query(
-        'SELECT id FROM notifications WHERE user_id = ? AND `read` = ?',
+        'SELECT id FROM notifications WHERE user_id = ? AND is_read = ?',
         [userId, false]
       );
       for (const n of unreadList as any[]) {
-        await update('notifications', { read: true }, { id: n.id, user_id: userId });
+        await update('notifications', { is_read: true }, { id: n.id, user_id: userId });
       }
     } else if (notificationId) {
       // 标记单个通知为已读
-      await update('notifications', { read: true }, { id: notificationId, user_id: userId });
+      await update('notifications', { is_read: true }, { id: notificationId, user_id: userId });
     } else {
       return NextResponse.json({ error: '缺少參數' }, { status: 400 });
     }

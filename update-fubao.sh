@@ -2,9 +2,7 @@
 # ============================================================
 # 符寶網 - 服务器一键更新部署脚本
 #
-# 架构：Nginx → Next.js (pnpm start, 端口 5000)
-#   不再使用 standalone，直接 pnpm build && pnpm start
-#   避免 standalone 的缓存、复制、action ID 不匹配等问题
+# 架构：Nginx → Next.js standalone (node server.js, 端口 5000)
 #
 # 使用方法：
 #   bash update-fubao.sh              # 增量更新
@@ -18,328 +16,361 @@
 
 set -e
 
-# ===== 颜色 =====
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-# ===== 配置 =====
+# ━━━ 配置 ━━━
+APP_DIR="/www/wwwroot/fubao"
 SERVICE_NAME="fubao-nextjs"
-HOST_PORT=5000
-BASE_DIR=""
-NEED_REBUILD=false
-NEED_INSTALL=false
-DIAGNOSE_MODE=false
-MIGRATE_ONLY=false
+SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+NODE_PORT=5000
 
-# MySQL 配置
-MYSQL_HOST="${MYSQL_HOST:-localhost}"
+MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
 MYSQL_PORT="${MYSQL_PORT:-3306}"
 MYSQL_USER="${MYSQL_USER:-fubao}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-CZDhXEb8M7t1jheP}"
 MYSQL_DATABASE="${MYSQL_DATABASE:-fubao}"
 
-for arg in "$@"; do
-    case $arg in
-        --rebuild) NEED_REBUILD=true ;;
-        --install) NEED_INSTALL=true ;;
-        --diagnose) DIAGNOSE_MODE=true ;;
-        --migrate) MIGRATE_ONLY=true ;;
-    esac
-done
+STANDALONE_DIR="${APP_DIR}/.next/standalone"
 
-# ===== 自动检测项目目录 =====
-if [ -d "/www/wwwroot/fubao" ]; then
-    BASE_DIR="/www/wwwroot/fubao"
-elif [ -d "$(dirname "$0")/src" ]; then
-    BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
-else
-    echo -e "${RED}❌ 无法找到项目目录${NC}"
-    exit 1
-fi
+# ━━━ 颜色 ━━━
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-cd "$BASE_DIR"
-echo -e "${BLUE}📂 项目目录: $BASE_DIR${NC}"
+log()  { echo -e "${GREEN}[✓]${NC} $1"; }
+warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+err()  { echo -e "${RED}[✗]${NC} $1"; }
+step() { echo -e "\n${CYAN}━━━ $1 ━━━${NC}"; }
 
-# ============================================================
-# 数据库迁移函数
-# ============================================================
-run_migrate() {
+# ━━━ 数据库迁移 ━━━
+run_migrations() {
+    step "Step: 数据库迁移"
     if ! command -v mysql &>/dev/null; then
-        echo -e "${YELLOW}⚠️  mysql 命令不存在，跳过迁移${NC}"
+        warn "mysql 客户端未找到，跳过迁移"
         return
     fi
 
-    # 测试 MySQL 连接
-    if ! mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "SELECT 1" &>/dev/null; then
-        echo -e "${YELLOW}⚠️  MySQL 连接失败，跳过迁移${NC}"
+    local MIGRATION_FILE="${APP_DIR}/sql/migrate.sql"
+    if [ ! -f "$MIGRATION_FILE" ]; then
+        warn "迁移文件不存在: $MIGRATION_FILE"
         return
     fi
 
-    echo -e "${YELLOW}🗄️ 执行数据库迁移...${NC}"
-
-    if [ -f "$BASE_DIR/sql/migrate.sql" ]; then
-        mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" < "$BASE_DIR/sql/migrate.sql" 2>/dev/null
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✅ 数据库迁移完成${NC}"
+    if mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1" &>/dev/null; then
+        log "MySQL 连接成功，执行迁移..."
+        if mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" < "$MIGRATION_FILE" 2>/dev/null; then
+            log "数据库迁移完成"
         else
-            echo -e "${YELLOW}⚠️  migrate.sql 部分语句失败，尝试逐条执行...${NC}"
-            # 逐条执行，忽略已存在的错误
-            while IFS= read -r line; do
-                line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-                [ -z "$line" ] && continue
-                [[ "$line" == \#* ]] && continue
-                mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "$line" 2>/dev/null || true
-            done < "$BASE_DIR/sql/migrate.sql"
-            echo -e "${GREEN}✅ 数据库迁移完成（逐条模式）${NC}"
+            warn "部分迁移语句可能已执行（列已存在等），可忽略"
         fi
     else
-        echo -e "${YELLOW}⚠️  sql/migrate.sql 不存在${NC}"
+        warn "MySQL 不可用，跳过迁移"
     fi
 }
 
-# ============================================================
-# 仅迁移模式
-# ============================================================
-if [ "$MIGRATE_ONLY" = true ]; then
-    run_migrate
-    exit 0
-fi
+# ━━━ standalone 部署准备 ━━━
+prepare_standalone() {
+    step "Step: 准备 standalone 部署"
 
-# ============================================================
-# 诊断模式
-# ============================================================
-if [ "$DIAGNOSE_MODE" = true ]; then
-    echo ""
-    echo -e "${BLUE}=============================================="
-    echo -e "  符寶網 - 环境诊断"
-    echo -e "==============================================${NC}"
+    if [ ! -d "$STANDALONE_DIR" ]; then
+        err "standalone 目录不存在: $STANDALONE_DIR"
+        err "请先执行: pnpm build"
+        exit 1
+    fi
 
-    echo ""
-    echo "━━━ 1. 服务状态 ━━━"
-    echo "  Next.js (systemd): $(sudo systemctl is-active $SERVICE_NAME 2>/dev/null || echo '未安装')"
-    echo "  Nginx: $(sudo systemctl is-active nginx 2>/dev/null || echo '未运行')"
+    # 复制必要文件到 standalone 目录
+    log "复制 public 目录..."
+    rm -rf "${STANDALONE_DIR}/public"
+    cp -r "${APP_DIR}/public" "${STANDALONE_DIR}/public"
 
-    echo ""
-    echo "━━━ 2. 端口检测 ━━━"
-    PORT_INFO=$(ss -tlnp 2>/dev/null | grep ":${HOST_PORT} " | head -1)
-    if [ -n "$PORT_INFO" ]; then
-        echo "  端口 ${HOST_PORT}: ${PORT_INFO}"
-        if echo "$PORT_INFO" | grep -q "node"; then
-            echo -e "  ${GREEN}✅ Next.js (node) 正在监听${NC}"
-        else
-            echo -e "  ${YELLOW}⚠️  非 node 进程在监听${NC}"
+    log "复制 .next/static..."
+    rm -rf "${STANDALONE_DIR}/.next/static"
+    cp -r "${APP_DIR}/.next/static" "${STANDALONE_DIR}/.next/static"
+
+    # 复制 .env 文件（如果存在）
+    if [ -f "${APP_DIR}/.env" ]; then
+        cp -f "${APP_DIR}/.env" "${STANDALONE_DIR}/.env"
+        log "复制 .env 文件"
+    fi
+    if [ -f "${APP_DIR}/.env.local" ]; then
+        cp -f "${APP_DIR}/.env.local" "${STANDALONE_DIR}/.env.local"
+        log "复制 .env.local 文件"
+    fi
+    if [ -f "${APP_DIR}/.env.production" ]; then
+        cp -f "${APP_DIR}/.env.production" "${STANDALONE_DIR}/.env.production"
+        log "复制 .env.production 文件"
+    fi
+
+    # 复制 sql 目录（Mock DB 可能用到）
+    if [ -d "${APP_DIR}/sql" ]; then
+        rm -rf "${STANDALONE_DIR}/sql"
+        cp -r "${APP_DIR}/sql" "${STANDALONE_DIR}/sql"
+    fi
+
+    # 修复缓存目录权限
+    mkdir -p "${STANDALONE_DIR}/.next/cache"
+    chown -R www-data:www-data "${STANDALONE_DIR}/.next/cache" 2>/dev/null || true
+
+    log "standalone 部署准备完成"
+}
+
+# ━━━ 安装 systemd 服务 ━━━
+install_service() {
+    step "Step: 安装 systemd 服务"
+
+    local SOURCE_SERVICE="${APP_DIR}/fubao-nextjs.service"
+    if [ ! -f "$SOURCE_SERVICE" ]; then
+        err "服务文件不存在: $SOURCE_SERVICE"
+        exit 1
+    fi
+
+    cp -f "$SOURCE_SERVICE" "$SERVICE_FILE"
+    systemctl daemon-reload
+    log "systemd 服务文件已更新"
+}
+
+# ━━━ 停止 Docker 容器（如果占用端口）━━━
+stop_docker_on_port() {
+    local port=$1
+    local pids
+    pids=$(ss -lptn "sport = :${port}" 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u)
+    for pid in $pids; do
+        if grep -q "docker" "/proc/$pid/cmdline" 2>/dev/null; then
+            warn "发现 Docker 容器占用端口 ${port} (PID: ${pid})"
+            # 获取容器 ID
+            local container_id
+            container_id=$(docker ps -q --filter "publish=${port}" 2>/dev/null | head -1)
+            if [ -n "$container_id" ]; then
+                docker update --restart=no "$container_id" 2>/dev/null || true
+                docker stop "$container_id" 2>/dev/null || true
+                log "Docker 容器 ${container_id} 已停止"
+            fi
         fi
-    else
-        echo -e "  ${RED}❌ 端口 ${HOST_PORT} 未监听${NC}"
-    fi
+    done
+}
 
-    echo ""
-    echo "━━━ 3. 运行环境 ━━━"
-    echo "  Node.js: $(node -v 2>/dev/null || echo '未安装')"
-    echo "  pnpm: $(pnpm -v 2>/dev/null || echo '未安装')"
+# ━━━ 构建项目 ━━━
+build_project() {
+    step "Step: 构建项目"
 
-    echo ""
-    echo "━━━ 4. 构建状态 ━━━"
-    if [ -d ".next/BUILD_ID" ] || [ -f ".next/BUILD_ID" ]; then
-        BUILD_TIME=$(stat -c %Y ".next/BUILD_ID" 2>/dev/null || echo "0")
-        BUILD_DATE=$(date -d "@$BUILD_TIME" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "unknown")
-        echo -e "  ${GREEN}✅ 已构建 (${BUILD_DATE})${NC}"
-    else
-        echo -e "  ${RED}❌ 未构建（需执行 --rebuild）${NC}"
-    fi
-
-    echo ""
-    echo "━━━ 5. API 测试 ━━━"
-    NX_RESP=$(curl -s --max-time 5 "http://127.0.0.1:${HOST_PORT}/api/goods?limit=1" 2>/dev/null | head -c 200 || echo "无响应")
-    if echo "$NX_RESP" | grep -q '"success":true'; then
-        echo -e "  ${GREEN}✅ Next.js API 正常${NC}"
-    elif [ -n "$NX_RESP" ]; then
-        echo -e "  ${RED}❌ API 响应异常${NC}"
-        echo "  响应: ${NX_RESP:0:150}"
-    else
-        echo -e "  ${RED}❌ Next.js 无响应${NC}"
-    fi
-
-    echo ""
-    echo "━━━ 6. MySQL 连接 ━━━"
-    if mysql -h"${MYSQL_HOST}" -P"${MYSQL_PORT}" -u"${MYSQL_USER}" -p"${MYSQL_PASSWORD}" "${MYSQL_DATABASE}" -e "SELECT 1" &>/dev/null; then
-        echo -e "  ${GREEN}✅ MySQL 连接正常${NC}"
-    else
-        echo -e "  ${RED}❌ MySQL 连接失败（将使用 Mock DB）${NC}"
-    fi
-
-    exit 0
-fi
-
-# ============================================================
-# 首次安装
-# ============================================================
-if [ "$NEED_INSTALL" = true ]; then
-    echo ""
-    echo -e "${BLUE}━━━ 首次安装 ━━━${NC}"
-
-    # 安装 Node.js
-    if ! command -v node &>/dev/null || [ "$(node -v | cut -d. -f1 | tr -d 'v')" -lt 18 ]; then
-        echo -e "${YELLOW}📦 安装 Node.js 20...${NC}"
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-        sudo apt-get install -y nodejs
-    fi
-    echo -e "${GREEN}✅ Node.js $(node -v)${NC}"
-
-    # 安装 pnpm
-    if ! command -v pnpm &>/dev/null; then
-        npm install -g pnpm
-    fi
-    echo -e "${GREEN}✅ pnpm $(pnpm -v)${NC}"
+    cd "$APP_DIR"
 
     # 安装依赖
-    pnpm install
+    log "安装依赖..."
+    pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
-    # 创建目录
-    mkdir -p "$BASE_DIR/public/uploads/"{goods,banners,news,avatars,baike,images,content}
-    chmod -R 755 "$BASE_DIR/public/uploads" 2>/dev/null || true
-
-    # 数据库迁移
-    run_migrate
-
-    # 注册 systemd 服务
-    sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable "$SERVICE_NAME"
-
-    echo -e "${GREEN}🎉 首次安装完成！执行 bash update-fubao.sh --rebuild 构建${NC}"
-    exit 0
-fi
-
-# ============================================================
-# Step 1: Git 拉取
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 1/5: 拉取代码 ━━━${NC}"
-
-if [ -d ".git" ]; then
-    git config --global --add safe.directory "$BASE_DIR" 2>/dev/null
-    BEFORE_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-    git pull origin main 2>/dev/null || git pull origin master 2>/dev/null || true
-    AFTER_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")
-
-    if [ "$BEFORE_HASH" != "$AFTER_HASH" ]; then
-        echo -e "${GREEN}✅ 代码已更新 (${BEFORE_HASH:0:7} → ${AFTER_HASH:0:7})${NC}"
-        NEED_REBUILD=true
-    else
-        echo -e "${GREEN}✅ 代码已是最新${NC}"
+    # 清理旧构建（避免残留的 action ID）
+    if [ "$FORCE_REBUILD" = "1" ]; then
+        log "清理旧构建缓存..."
+        rm -rf .next
     fi
-else
-    echo -e "${YELLOW}⚠️  非 Git 仓库${NC}"
-fi
 
-# ============================================================
-# Step 2: 安装依赖
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 2/5: 安装依赖 ━━━${NC}"
-pnpm install --frozen-lockfile 2>/dev/null || pnpm install
-echo -e "${GREEN}✅ 依赖安装完成${NC}"
-
-# ============================================================
-# Step 3: 构建 Next.js
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 3/5: 构建项目 ━━━${NC}"
-
-if [ "$NEED_REBUILD" = true ]; then
-    echo -e "${YELLOW}🔨 清理旧构建...${NC}"
-    rm -rf .next
-
-    echo -e "${YELLOW}🔨 构建 Next.js...${NC}"
+    # 构建
+    log "执行 pnpm build..."
     pnpm build
 
-    echo -e "${GREEN}✅ 构建完成${NC}"
-else
-    echo -e "${GREEN}✅ 跳过构建（使用 --rebuild 强制构建）${NC}"
-fi
+    # 准备 standalone
+    prepare_standalone
 
-# ============================================================
-# Step 4: 数据库迁移 + 部署配置 + 重启
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 4/5: 部署配置 ━━━${NC}"
-
-# 数据库迁移
-run_migrate
-
-# 确保上传目录存在
-mkdir -p "$BASE_DIR/public/uploads/"{goods,banners,news,avatars,baike,images,content}
-chmod -R 777 "$BASE_DIR/public/uploads" 2>/dev/null || true
-
-# 确保 systemd 服务文件
-if [ ! -f "/etc/systemd/system/$SERVICE_NAME.service" ] || ! diff -q "$BASE_DIR/fubao-nextjs.service" "/etc/systemd/system/$SERVICE_NAME.service" >/dev/null 2>&1; then
-    echo -e "${YELLOW}📋 更新 systemd 服务...${NC}"
-    sudo cp "$BASE_DIR/fubao-nextjs.service" /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable "$SERVICE_NAME"
-fi
-
-# 重启 Next.js
-echo -e "${YELLOW}🔄 重启 $SERVICE_NAME...${NC}"
-sudo systemctl restart "$SERVICE_NAME" 2>/dev/null || {
-    echo -e "${RED}❌ systemd 重启失败，尝试直接启动...${NC}"
-    PORT=$HOST_PORT NODE_ENV=production nohup pnpm start > /tmp/fubao-nextjs.log 2>&1 &
-    sleep 3
+    log "构建完成"
 }
 
-# ============================================================
-# Step 5: 验证
-# ============================================================
-echo ""
-echo -e "${BLUE}━━━ Step 5/5: 验证服务 ━━━${NC}"
+# ━━━ 部署（重启服务）━━━
+deploy() {
+    step "Step: 部署"
 
-# 等待 Next.js 启动
-echo -e "${YELLOW}⏳ 等待 Next.js 启动...${NC}"
-for i in $(seq 1 30); do
-    HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 "http://127.0.0.1:$HOST_PORT/" 2>/dev/null || echo "000")
-    if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "301" ]; then
-        break
+    # 停止可能占用端口的 Docker 容器
+    stop_docker_on_port $NODE_PORT
+
+    # 确保 standalone 准备就绪
+    prepare_standalone
+
+    # 安装/更新 systemd 服务
+    install_service
+
+    # 重启服务
+    log "重启 ${SERVICE_NAME}..."
+    systemctl restart "$SERVICE_NAME"
+
+    # 等待启动
+    sleep 3
+
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log "服务启动成功"
+    else
+        err "服务启动失败"
+        journalctl -u "$SERVICE_NAME" -n 20 --no-pager
+        exit 1
     fi
-    sleep 1
-    echo -n "."
-done
-echo ""
 
-# 检查 systemd
-if sudo systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
-    echo -e "${GREEN}✅ systemd 服务运行中${NC}"
-else
-    echo -e "${YELLOW}⚠️  systemd 服务未运行${NC}"
-fi
+    # 验证
+    verify
+}
 
-# 检查 Next.js
-HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$HOST_PORT/" 2>/dev/null || echo "000")
-if [ "$HTTP_CODE" = "200" ]; then
-    echo -e "${GREEN}✅ Next.js 正常 (HTTP $HTTP_CODE)${NC}"
-else
-    echo -e "${RED}❌ Next.js 异常 (HTTP $HTTP_CODE)${NC}"
-fi
+# ━━━ 验证 ━━━
+verify() {
+    step "Step: 验证"
 
-# 验证 API
-NX_API=$(curl -s --max-time 5 "http://127.0.0.1:${HOST_PORT}/api/goods?limit=1" 2>/dev/null || echo "")
-if echo "$NX_API" | grep -q '"success":true'; then
-    echo -e "${GREEN}✅ API 响应正常${NC}"
-else
-    echo -e "${RED}❌ API 响应异常${NC}"
-    echo "  响应: ${NX_API:0:120}"
-fi
+    # 检查服务状态
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        log "服务运行中 (PID: $(systemctl show -p MainPID "$SERVICE_NAME" --value))"
+    else
+        err "服务未运行"
+        return 1
+    fi
 
-echo ""
-echo "=============================================="
-echo -e "  🎉 部署完成！"
-echo "=============================================="
-echo ""
-echo "  🌐 访问: https://www.fubao.ltd"
-echo "  📋 日志: sudo journalctl -u $SERVICE_NAME -n 50"
-echo "  🔧 诊断: bash update-fubao.sh --diagnose"
-echo "  🔧 重建: bash update-fubao.sh --rebuild"
-echo "  🗄️ 迁移: bash update-fubao.sh --migrate"
+    # 检查端口
+    if curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${NODE_PORT}/" | grep -qE '200|302'; then
+        log "Next.js 响应正常 (端口 ${NODE_PORT})"
+    else
+        warn "Next.js 响应异常"
+    fi
+
+    # 检查 Nginx
+    if curl -s -o /dev/null -w '%{http_code}' --max-time 5 -k "https://www.fubao.ltd/" | grep -qE '200|302'; then
+        log "Nginx → Next.js 链路正常 (HTTPS)"
+    else
+        warn "Nginx → Next.js 链路异常"
+    fi
+
+    echo ""
+    log "部署完成！访问 https://www.fubao.ltd"
+}
+
+# ━━━ 诊断 ━━━
+diagnose() {
+    step "诊断信息"
+
+    echo "=== 服务状态 ==="
+    systemctl status "$SERVICE_NAME" --no-pager 2>/dev/null || echo "服务未安装"
+    echo ""
+
+    echo "=== 端口监听 ==="
+    ss -tlnp | grep ":${NODE_PORT}" || echo "端口 ${NODE_PORT} 未监听"
+    echo ""
+
+    echo "=== 最近日志 ==="
+    journalctl -u "$SERVICE_NAME" -n 20 --no-pager
+    echo ""
+
+    echo "=== Nginx 配置 ==="
+    if [ -f "/www/server/panel/vhost/nginx/www.fubao.ltd.conf" ]; then
+        echo "Nginx 配置文件存在"
+        nginx -t 2>&1 || true
+    else
+        warn "Nginx 配置文件不存在"
+    fi
+    echo ""
+
+    echo "=== MySQL 连接 ==="
+    if mysql -h"$MYSQL_HOST" -P"$MYSQL_PORT" -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT 1 AS ok" 2>/dev/null; then
+        log "MySQL 连接正常"
+    else
+        warn "MySQL 不可用（将使用 Mock DB）"
+    fi
+    echo ""
+
+    echo "=== 构建状态 ==="
+    if [ -d "$STANDALONE_DIR" ]; then
+        log "standalone 目录存在"
+        if [ -f "${STANDALONE_DIR}/server.js" ]; then
+            log "server.js 存在"
+        else
+            err "server.js 不存在"
+        fi
+    else
+        err "standalone 目录不存在，需要 --rebuild"
+    fi
+}
+
+# ━━━ 主流程 ━━━
+FORCE_REBUILD=0
+
+case "${1:-}" in
+    --rebuild)
+        FORCE_REBUILD=1
+        cd "$APP_DIR"
+        step "Step 1/5: 拉取代码"
+        git pull origin main || true
+
+        step "Step 2/5: 构建"
+        build_project
+
+        step "Step 3/5: 数据库迁移"
+        run_migrations
+
+        step "Step 4/5: 部署"
+        deploy
+        ;;
+
+    --install)
+        cd "$APP_DIR"
+        step "Step 1/6: 安装 Node.js"
+        if ! command -v node &>/dev/null; then
+            curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+            apt-get install -y nodejs
+        fi
+        log "Node.js $(node -v)"
+
+        if ! command -v pnpm &>/dev/null; then
+            npm install -g pnpm
+        fi
+        log "pnpm $(pnpm -v)"
+
+        step "Step 2/6: 拉取代码"
+        if [ ! -d "$APP_DIR/.git" ]; then
+            git clone https://github.com/junnyjchen/fubao.git "$APP_DIR"
+        else
+            git pull origin main || true
+        fi
+
+        step "Step 3/6: 构建"
+        FORCE_REBUILD=1
+        build_project
+
+        step "Step 4/6: 数据库迁移"
+        run_migrations
+
+        step "Step 5/6: 部署"
+        deploy
+
+        step "Step 6/6: 安装提示"
+        echo ""
+        echo "  请确保 Nginx 配置正确，参考: ${APP_DIR}/php/nginx.conf"
+        echo "  管理后台: https://www.fubao.ltd/admin (admin / admin123)"
+        ;;
+
+    --migrate)
+        run_migrations
+        ;;
+
+    --diagnose)
+        diagnose
+        ;;
+
+    *)
+        # 增量更新
+        cd "$APP_DIR"
+        step "Step 1/4: 拉取代码"
+        git pull origin main || true
+
+        step "Step 2/4: 数据库迁移"
+        run_migrations
+
+        # 检查是否需要重新构建
+        CURRENT_HASH=$(git rev-parse HEAD)
+        BUILT_HASH=$(cat "${STANDALONE_DIR}/.build-hash" 2>/dev/null || echo "")
+
+        if [ "$CURRENT_HASH" != "$BUILT_HASH" ] || [ ! -d "$STANDALONE_DIR" ]; then
+            step "Step 3/4: 代码有变更，重新构建"
+            build_project
+            echo "$CURRENT_HASH" > "${STANDALONE_DIR}/.build-hash"
+        else
+            step "Step 3/4: 代码无变更，跳过构建"
+            prepare_standalone
+        fi
+
+        step "Step 4/4: 部署"
+        deploy
+        ;;
+esac

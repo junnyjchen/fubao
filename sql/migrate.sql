@@ -64,5 +64,10 @@ CREATE TABLE IF NOT EXISTS `certificates` (
   INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ===== notifications 表确保 read 列用反引号 =====
--- (无需修改，代码已用反引号)
+-- ===== notifications 表 =====
+-- 代码用 `read` 但表里可能是 `is_read`，添加 `read` 列别名兼容
+-- 如果表里只有 is_read，添加 read 列
+ALTER TABLE `notifications` ADD COLUMN IF NOT EXISTS `read` TINYINT DEFAULT 0;
+
+-- ===== 回填 read 列 =====
+UPDATE `notifications` SET `read` = `is_read` WHERE `read` = 0 AND `is_read` = 1;

@@ -6,7 +6,7 @@ After=network.target mysql.service
 Type=simple
 User=root
 Group=root
-WorkingDirectory=/www/wwwroot/fubao
+WorkingDirectory=/www/wwwroot/fubao/.next/standalone
 Environment=NODE_ENV=production
 Environment=COZE_PROJECT_ENV=PROD
 Environment=HOSTNAME=0.0.0.0
@@ -22,7 +22,7 @@ Environment=NEXT_PUBLIC_API_MODE=local
 # Environment=ARK_API_KEY=your-ark-api-key
 # Environment=AI_PROVIDER=deepseek
 # Environment=DEEPSEEK_API_KEY=your-deepseek-api-key
-ExecStart=/bin/bash -c 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin:$PATH"; which pnpm >/dev/null 2>&1 || npm install -g pnpm 2>/dev/null; exec pnpm start'
+ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=3
 StandardOutput=journal
