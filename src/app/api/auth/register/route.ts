@@ -74,18 +74,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 插入用户
-    const userId = await dbInsert('users', {
-      email,
-      phone: phone || null,
-      nickname: displayName,
-      password: hashedPassword,
-      role: 'user',
-      language: 'zh-TW',
-      status: 1,
-      invite_code: generateInviteCode(),
-      invited_by: invitedBy,
-    });
+    // 插入用户（nickname/invite_code 列可能不存在，降级处理）
+    let userId: number;
+    try {
+      userId = await dbInsert('users', {
+        email,
+        phone: phone || '',
+        name: displayName,
+        nickname: displayName,
+        password: hashedPassword,
+        role: 'user',
+        language: 'zh-TW',
+        status: 1,
+        invite_code: generateInviteCode(),
+      });
+    } catch {
+      // 降级：不包含可能缺失的列
+      userId = await dbInsert('users', {
+        email,
+        phone: phone || '',
+        name: displayName,
+        password: hashedPassword,
+        role: 'user',
+        language: 'zh-TW',
+        status: 1,
+      });
+    }
 
     // 生成 JWT
     const token = generateToken({

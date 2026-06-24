@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const total = await count('users', conditions.length > 0 ? conditions.join(' AND ') : '1=1', params);
 
     const data = await query(
-      `SELECT id, email, phone, nickname, role, points, status, language, created_at, updated_at FROM users ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT id, email, phone, COALESCE(NULLIF(nickname,''), name) AS nickname, role, points, status, language, created_at, updated_at FROM users ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 

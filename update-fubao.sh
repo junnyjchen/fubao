@@ -314,6 +314,8 @@ if command -v mysql &>/dev/null; then
     ALTER TABLE banners ADD COLUMN IF NOT EXISTS position VARCHAR(50) NOT NULL DEFAULT 'home';
     ALTER TABLE categories ADD COLUMN IF NOT EXISTS image VARCHAR(500) NOT NULL DEFAULT '';
     ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT DEFAULT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname VARCHAR(100) NOT NULL DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS invite_code VARCHAR(50) NOT NULL DEFAULT '';
 
     -- 为已有 news 记录补上 published_at（取 created_at）
     UPDATE news SET published_at = created_at WHERE published_at IS NULL AND status = 1;

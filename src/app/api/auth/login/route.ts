@@ -46,18 +46,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '請輸入郵箱或手機號碼' }, { status: 400 });
     }
 
-    // 从 MySQL 查找用户
+    // 从 MySQL 查找用户（nickname/invite_code 列可能不存在，需降级处理）
     let user: UserRow | null = null;
+    const userSelectFull = 'id, email, phone, COALESCE(NULLIF(nickname,\'\'), name) AS nickname, password, status, avatar, language, role, points, COALESCE(invite_code,\'\') AS invite_code';
+    const userSelectFallback = 'id, email, phone, name AS nickname, password, status, avatar, language, role, points, \'\' AS invite_code';
     if (email) {
-      user = await queryOne<UserRow>(
-        'SELECT id, email, phone, nickname, password, status, avatar, language, role, points, invite_code FROM users WHERE email = ? AND status = 1',
-        [email]
-      );
+      try {
+        user = await queryOne<UserRow>(`SELECT ${userSelectFull} FROM users WHERE email = ? AND status = 1`, [email]);
+      } catch {
+        user = await queryOne<UserRow>(`SELECT ${userSelectFallback} FROM users WHERE email = ? AND status = 1`, [email]);
+      }
     } else if (phone) {
-      user = await queryOne<UserRow>(
-        'SELECT id, email, phone, nickname, password, status, avatar, language, role, points, invite_code FROM users WHERE phone = ? AND status = 1',
-        [phone]
-      );
+      try {
+        user = await queryOne<UserRow>(`SELECT ${userSelectFull} FROM users WHERE phone = ? AND status = 1`, [phone]);
+      } catch {
+        user = await queryOne<UserRow>(`SELECT ${userSelectFallback} FROM users WHERE phone = ? AND status = 1`, [phone]);
+      }
     }
 
     if (!user) {
