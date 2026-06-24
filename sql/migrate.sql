@@ -65,9 +65,7 @@ CREATE TABLE IF NOT EXISTS `certificates` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ===== notifications 表 =====
--- 代码用 `read` 但表里可能是 `is_read`，添加 `read` 列别名兼容
--- 如果表里只有 is_read，添加 read 列
-ALTER TABLE `notifications` ADD COLUMN IF NOT EXISTS `read` TINYINT DEFAULT 0;
-
--- ===== 回填 read 列 =====
-UPDATE `notifications` SET `read` = `is_read` WHERE `read` = 0 AND `is_read` = 1;
+-- 代码已统一使用 is_read 列（与 MySQL 表结构一致）
+-- 如果表里只有 read 列（旧结构），添加 is_read 并回填
+ALTER TABLE `notifications` ADD COLUMN IF NOT EXISTS `is_read` TINYINT DEFAULT 0;
+UPDATE `notifications` SET `is_read` = `read` WHERE `is_read` = 0 AND `read` = 1;

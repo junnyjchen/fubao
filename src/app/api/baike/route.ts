@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: articles,
-      categories: categories.map((c: Record<string, unknown>) => c.category),
+      categories: Array.isArray(categories) ? categories.map((c: Record<string, unknown>) => c.category) : [],
       total,
       page,
       limit,
