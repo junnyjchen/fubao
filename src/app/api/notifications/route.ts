@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
   try {
     const userId = await getAuthUserId(request);
     if (!userId) {
-      return NextResponse.json({ error: '請先登入' }, { status: 401 });
+      // 未登录返回空数据，避免首页 401 报错
+      return NextResponse.json({ success: true, data: [], unreadCount: 0 });
     }
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread') === 'true';
