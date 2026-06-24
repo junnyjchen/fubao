@@ -187,8 +187,14 @@ export async function POST(request: NextRequest) {
 
     const orderNo = generateOrderNo();
 
-    // 创建订单
-    const orderId = await dbInsert('orders', {
+    // 检查 orders 表是否有 address_snapshot 列
+    let hasAddressSnapshot = false;
+    try {
+      const cols = await query("SHOW COLUMNS FROM orders LIKE 'address_snapshot'");
+      hasAddressSnapshot = Array.isArray(cols) && cols.length > 0;
+    } catch { /* ignore */ }
+
+    const orderData: Record<string, any> = {
       order_no: orderNo,
       user_id: userId,
       total_amount: totalAmount.toFixed(2),
@@ -196,9 +202,14 @@ export async function POST(request: NextRequest) {
       shipping_fee: shippingFee.toFixed(2),
       discount_amount: '0.00',
       status: 'pending',
-      address_snapshot: JSON.stringify(address),
       remark: remark || null,
-    });
+    };
+    if (hasAddressSnapshot) {
+      orderData.address_snapshot = JSON.stringify(address);
+    }
+
+    // 创建订单
+    const orderId = await dbInsert('orders', orderData);
 
     // 创建订单项
     for (const oi of orderItems) {
@@ -304,7 +315,15 @@ export async function PUT(request: NextRequest) {
       if (address_id) {
         const addr = await queryOne('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [address_id, userId]) as any;
         if (!addr) return errorResponse('地址不存在', 404);
-        updates.address_snapshot = JSON.stringify(addr);
+        // 检查是否有 address_snapshot 列
+        let hasAddrCol = false;
+        try {
+          const cols = await query("SHOW COLUMNS FROM orders LIKE 'address_snapshot'");
+          hasAddrCol = Array.isArray(cols) && cols.length > 0;
+        } catch { /* ignore */ }
+        if (hasAddrCol) {
+          updates.address_snapshot = JSON.stringify(addr);
+        }
       }
       if (payment_method) updates.payment_method = payment_method;
       if (remark !== undefined) updates.remark = remark || null;

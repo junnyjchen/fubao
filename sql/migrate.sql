@@ -139,6 +139,39 @@ INSERT IGNORE INTO `admin_roles` (`id`, `name`, `code`, `permissions`, `is_super
 -- 确保 admins 有 role_id
 UPDATE `admins` SET `role_id` = 1 WHERE `role_id` IS NULL OR `role_id` = 0;
 
+-- ===== orders 表 =====
+CALL safe_add_column('orders', 'address_snapshot', 'TEXT DEFAULT NULL');
+CALL safe_add_column('orders', 'payment_method', 'VARCHAR(50) DEFAULT NULL');
+CALL safe_add_column('orders', 'payment_no', 'VARCHAR(100) DEFAULT NULL');
+CALL safe_add_column('orders', 'paid_at', 'DATETIME DEFAULT NULL');
+CALL safe_add_column('orders', 'shipped_at', 'DATETIME DEFAULT NULL');
+CALL safe_add_column('orders', 'received_at', 'DATETIME DEFAULT NULL');
+CALL safe_add_column('orders', 'cancel_reason', 'VARCHAR(500) DEFAULT NULL');
+CALL safe_add_column('orders', 'note', 'TEXT DEFAULT NULL');
+CALL safe_add_column('orders', 'invoice_title', 'VARCHAR(200) DEFAULT NULL');
+
+-- ===== order_items 表 =====
+CALL safe_add_column('order_items', 'goods_image', 'VARCHAR(500) DEFAULT NULL');
+CALL safe_add_column('order_items', 'goods_price', 'DECIMAL(10,2) DEFAULT NULL');
+
+-- ===== goods 表 =====
+CALL safe_add_column('goods', 'images', 'TEXT DEFAULT NULL');
+CALL safe_add_column('goods', 'detail', 'LONGTEXT DEFAULT NULL');
+CALL safe_add_column('goods', 'specs', 'TEXT DEFAULT NULL');
+CALL safe_add_column('goods', 'is_featured', 'TINYINT DEFAULT 0');
+CALL safe_add_column('goods', 'sales', 'INT DEFAULT 0');
+CALL safe_add_column('goods', 'locale', 'VARCHAR(10) DEFAULT ''zh''');
+CALL safe_add_column('goods', 'parent_id', 'INT DEFAULT NULL');
+
+-- ===== settings 表（如不存在则创建）=====
+CREATE TABLE IF NOT EXISTS `settings` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `key` VARCHAR(100) NOT NULL UNIQUE,
+  `value` TEXT DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ===== 清理 =====
 DROP PROCEDURE IF EXISTS safe_add_column;
 
