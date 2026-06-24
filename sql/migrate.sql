@@ -2,29 +2,54 @@
 -- 用途：补全生产环境缺失的列和表
 -- 执行：mysql -u fubao -p fubao < migrate.sql
 
+-- ===== 创建辅助存储过程：安全添加列（列已存在时跳过）=====
+DROP PROCEDURE IF EXISTS safe_add_column;
+DELIMITER //
+CREATE PROCEDURE safe_add_column(
+    IN tbl_name VARCHAR(64),
+    IN col_name VARCHAR(64),
+    IN col_def VARCHAR(500)
+)
+BEGIN
+    DECLARE col_count INT DEFAULT 0;
+    SELECT COUNT(*) INTO col_count
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = tbl_name
+      AND COLUMN_NAME = col_name;
+    IF col_count = 0 THEN
+        SET @ddl = CONCAT('ALTER TABLE `', tbl_name, '` ADD COLUMN `', col_name, '` ', col_def);
+        PREPARE stmt FROM @ddl;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END //
+DELIMITER ;
+
 -- ===== admins 表 =====
-ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
+CALL safe_add_column('admins', 'last_login_at', 'DATETIME DEFAULT NULL');
+CALL safe_add_column('admins', 'role_id', 'INT DEFAULT 1');
 
 -- ===== users 表 =====
-ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `nickname` VARCHAR(100) DEFAULT NULL AFTER `name`;
-ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `invite_code` VARCHAR(50) DEFAULT NULL AFTER `nickname`;
+CALL safe_add_column('users', 'nickname', 'VARCHAR(100) DEFAULT NULL AFTER `name`');
+CALL safe_add_column('users', 'invite_code', 'VARCHAR(50) DEFAULT NULL AFTER `nickname`');
 
 -- ===== banners 表 =====
-ALTER TABLE `banners` ADD COLUMN IF NOT EXISTS `position` VARCHAR(50) DEFAULT NULL;
-ALTER TABLE `banners` ADD COLUMN IF NOT EXISTS `link` VARCHAR(500) DEFAULT NULL;
+CALL safe_add_column('banners', 'position', 'VARCHAR(50) DEFAULT NULL');
+CALL safe_add_column('banners', 'link', 'VARCHAR(500) DEFAULT NULL');
 
 -- ===== news 表 =====
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `slug` VARCHAR(200) DEFAULT NULL;
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `category` VARCHAR(100) DEFAULT NULL;
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `tags` VARCHAR(500) DEFAULT NULL;
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `published_at` DATETIME DEFAULT NULL;
+CALL safe_add_column('news', 'slug', 'VARCHAR(200) DEFAULT NULL');
+CALL safe_add_column('news', 'category', 'VARCHAR(100) DEFAULT NULL');
+CALL safe_add_column('news', 'tags', 'VARCHAR(500) DEFAULT NULL');
+CALL safe_add_column('news', 'published_at', 'DATETIME DEFAULT NULL');
 
 -- 回填 published_at
 UPDATE `news` SET `published_at` = `created_at` WHERE `published_at` IS NULL AND `created_at` IS NOT NULL;
 
 -- ===== categories 表 =====
-ALTER TABLE `categories` ADD COLUMN IF NOT EXISTS `image` VARCHAR(500) DEFAULT NULL;
-ALTER TABLE `categories` ADD COLUMN IF NOT EXISTS `description` TEXT DEFAULT NULL;
+CALL safe_add_column('categories', 'image', 'VARCHAR(500) DEFAULT NULL');
+CALL safe_add_column('categories', 'description', 'TEXT DEFAULT NULL');
 
 -- ===== articles 表（如不存在则创建）=====
 CREATE TABLE IF NOT EXISTS `articles` (
@@ -65,18 +90,22 @@ CREATE TABLE IF NOT EXISTS `certificates` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ===== notifications 表 =====
--- 代码已统一使用 is_read 列（与 MySQL 表结构一致）
--- 如果表里只有 read 列（旧结构），添加 is_read 并回填
-ALTER TABLE `notifications` ADD COLUMN IF NOT EXISTS `is_read` TINYINT DEFAULT 0;
-UPDATE `notifications` SET `is_read` = `read` WHERE `is_read` = 0 AND `read` = 1;
+CALL safe_add_column('notifications', 'is_read', 'TINYINT DEFAULT 0');
+-- 如果旧表有 read 列，回填数据
+UPDATE `notifications` SET `is_read` = 1 WHERE `is_read` = 0 AND EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications' AND COLUMN_NAME = 'read'
+);
 
 -- ===== favorites 表 =====
-ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_type` VARCHAR(50) DEFAULT 'goods' AFTER `user_id`;
-ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_id` INT DEFAULT NULL AFTER `target_type`;
+CALL safe_add_column('favorites', 'target_type', 'VARCHAR(50) DEFAULT ''goods'' AFTER `user_id`');
+CALL safe_add_column('favorites', 'target_id', 'INT DEFAULT NULL AFTER `target_type`');
 
 -- 回填 target_id（如果原表只有 goods_id）
-UPDATE `favorites` SET `target_id` = `goods_id` WHERE `target_id` IS NULL AND `goods_id` IS NOT NULL;
-UPDATE `favorites` SET `target_type` = 'goods' WHERE `target_type` = 'goods' AND `target_id` IS NOT NULL;
+UPDATE `favorites` SET `target_id` = `goods_id` WHERE `target_id` IS NULL AND EXISTS (
+    SELECT 1 FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'favorites' AND COLUMN_NAME = 'goods_id'
+);
 
 -- ===== browse_history 表（如不存在则创建）=====
 CREATE TABLE IF NOT EXISTS `browse_history` (
@@ -103,10 +132,14 @@ CREATE TABLE IF NOT EXISTS `admin_roles` (
   UNIQUE KEY `uk_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ===== 插入默认超级管理员角色（如不存在）=====
+-- 插入默认超级管理员角色
 INSERT IGNORE INTO `admin_roles` (`id`, `name`, `code`, `permissions`, `is_super`) VALUES
 (1, '超級管理員', 'super_admin', '["*"]', 1);
 
--- ===== 确保 admins 表有 role_id 列 =====
-ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `role_id` INT DEFAULT 1;
+-- 确保 admins 有 role_id
 UPDATE `admins` SET `role_id` = 1 WHERE `role_id` IS NULL OR `role_id` = 0;
+
+-- ===== 清理 =====
+DROP PROCEDURE IF EXISTS safe_add_column;
+
+SELECT '迁移完成！' AS result;
