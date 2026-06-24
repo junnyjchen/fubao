@@ -384,9 +384,12 @@ CREATE TABLE IF NOT EXISTS `user_coupons` (
 CREATE TABLE IF NOT EXISTS `favorites` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `user_id` INT UNSIGNED NOT NULL,
-  `goods_id` INT UNSIGNED NOT NULL,
+  `target_type` VARCHAR(50) NOT NULL DEFAULT 'goods' COMMENT 'goods/article/baike',
+  `target_id` INT UNSIGNED NOT NULL DEFAULT 0,
+  `goods_id` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '兼容旧字段',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_user_goods` (`user_id`, `goods_id`)
+  UNIQUE KEY `uk_user_target` (`user_id`, `target_type`, `target_id`),
+  INDEX `idx_user_goods` (`user_id`, `goods_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `points_log` (
@@ -750,5 +753,23 @@ ALTER TABLE `banners` ADD COLUMN IF NOT EXISTS `position` VARCHAR(50) NOT NULL D
 
 -- 为已有 news 记录补上 published_at
 UPDATE `news` SET `published_at` = `created_at` WHERE `published_at` IS NULL AND `status` = 1;
+
+-- browse_history 表
+CREATE TABLE IF NOT EXISTS `browse_history` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT UNSIGNED NOT NULL,
+  `goods_id` INT UNSIGNED NOT NULL,
+  `goods_name` VARCHAR(200) NOT NULL DEFAULT '',
+  `goods_image` VARCHAR(500) NOT NULL DEFAULT '',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_goods_id` (`goods_id`),
+  UNIQUE KEY `uk_user_goods` (`user_id`, `goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- favorites 表：添加 target_type 和 target_id
+ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_type` VARCHAR(50) NOT NULL DEFAULT 'goods' AFTER `user_id`;
+ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_id` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `target_type`;
+UPDATE `favorites` SET `target_id` = `goods_id`, `target_type` = 'goods' WHERE `target_id` = 0 AND `goods_id` > 0;
 
 SET FOREIGN_KEY_CHECKS = 1;

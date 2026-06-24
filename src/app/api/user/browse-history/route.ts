@@ -7,12 +7,31 @@ import { NextResponse } from 'next/server';
 import { query, insert, remove } from '@/lib/db';
 import { getAuthUserId } from '@/lib/auth/apiAuth';
 
+/** 动态检测 browse_history 表是否存在 */
+let _tableExists: boolean | null = null;
+async function tableExists(): Promise<boolean> {
+  if (_tableExists !== null) return _tableExists;
+  try {
+    const { isMySQLEnabled } = await import('@/lib/mysql');
+    if (!isMySQLEnabled()) { _tableExists = true; return true; }
+    const result = await query('SHOW TABLES LIKE ?', ['browse_history']);
+    _tableExists = Array.isArray(result) && result.length > 0;
+  } catch {
+    _tableExists = false;
+  }
+  return _tableExists;
+}
+
 /** 获取浏览历史 */
 export async function GET(request: Request) {
   try {
     const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ success: false, error: '請先登錄' }, { status: 401 });
+    }
+
+    if (!await tableExists()) {
+      return NextResponse.json({ success: true, data: [] });
     }
 
     const { searchParams } = new URL(request.url);
@@ -39,6 +58,10 @@ export async function POST(request: Request) {
     const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ success: false, error: '請先登錄' }, { status: 401 });
+    }
+
+    if (!await tableExists()) {
+      return NextResponse.json({ success: true, message: '瀏覽歷史功能暫不可用' });
     }
 
     const body = await request.json();
@@ -85,6 +108,10 @@ export async function DELETE(request: Request) {
     const userId = await getAuthUserId(request);
     if (!userId) {
       return NextResponse.json({ success: false, error: '請先登錄' }, { status: 401 });
+    }
+
+    if (!await tableExists()) {
+      return NextResponse.json({ success: true, message: '瀏覽歷史功能暫不可用' });
     }
 
     const { searchParams } = new URL(request.url);

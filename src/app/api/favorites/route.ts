@@ -7,6 +7,21 @@ import { NextResponse } from 'next/server';
 import { query, insert, remove, count } from '@/lib/db';
 import { getAuthUserId } from '@/lib/auth/apiAuth';
 
+/** 动态检测 favorites 表是否有 target_type 列 */
+let _hasTargetType: boolean | null = null;
+async function hasTargetTypeColumn(): Promise<boolean> {
+  if (_hasTargetType !== null) return _hasTargetType;
+  try {
+    const { isMySQLEnabled } = await import('@/lib/mysql');
+    if (!isMySQLEnabled()) { _hasTargetType = true; return true; }
+    const cols = await query('SHOW COLUMNS FROM favorites LIKE ?', ['target_type']);
+    _hasTargetType = Array.isArray(cols) && cols.length > 0;
+  } catch {
+    _hasTargetType = false;
+  }
+  return _hasTargetType;
+}
+
 /** 获取收藏列表 */
 export async function GET(request: Request) {
   try {
@@ -22,7 +37,7 @@ export async function GET(request: Request) {
     let sql = 'SELECT * FROM favorites WHERE user_id = ?';
     const params: (string | number)[] = [userId];
 
-    if (targetType) {
+    if (targetType && await hasTargetTypeColumn()) {
       sql += ' AND target_type = ?';
       params.push(targetType);
     }
@@ -61,21 +76,33 @@ export async function POST(request: Request) {
     }
 
     // 检查是否已收藏
-    const existing = await query(
-      'SELECT id FROM favorites WHERE user_id = ? AND target_type = ? AND target_id = ?',
-      [userId, targetType, Number(targetId)]
-    );
+    const hasTypeCol = await hasTargetTypeColumn();
+    let existing;
+    if (hasTypeCol) {
+      existing = await query(
+        'SELECT id FROM favorites WHERE user_id = ? AND target_type = ? AND target_id = ?',
+        [userId, targetType, Number(targetId)]
+      );
+    } else {
+      existing = await query(
+        'SELECT id FROM favorites WHERE user_id = ? AND target_id = ?',
+        [userId, Number(targetId)]
+      );
+    }
 
     if (Array.isArray(existing) && existing.length > 0) {
       return NextResponse.json({ success: true, message: '已收藏', data: existing[0] });
     }
 
-    const result = await insert('favorites', {
+    const insertData: Record<string, unknown> = {
       user_id: userId,
-      target_type: targetType,
       target_id: Number(targetId),
       created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    });
+    };
+    if (hasTypeCol) {
+      insertData.target_type = targetType;
+    }
+    const result = await insert('favorites', insertData);
 
     return NextResponse.json({
       success: true,
@@ -106,7 +133,7 @@ export async function DELETE(request: Request) {
 
     await remove('favorites', {
       user_id: userId,
-      target_type: targetType,
+      ...(await hasTargetTypeColumn() ? { target_type: targetType } : {}),
       target_id: Number(targetId),
     });
 

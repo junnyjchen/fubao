@@ -69,3 +69,44 @@ CREATE TABLE IF NOT EXISTS `certificates` (
 -- 如果表里只有 read 列（旧结构），添加 is_read 并回填
 ALTER TABLE `notifications` ADD COLUMN IF NOT EXISTS `is_read` TINYINT DEFAULT 0;
 UPDATE `notifications` SET `is_read` = `read` WHERE `is_read` = 0 AND `read` = 1;
+
+-- ===== favorites 表 =====
+ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_type` VARCHAR(50) DEFAULT 'goods' AFTER `user_id`;
+ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_id` INT DEFAULT NULL AFTER `target_type`;
+
+-- 回填 target_id（如果原表只有 goods_id）
+UPDATE `favorites` SET `target_id` = `goods_id` WHERE `target_id` IS NULL AND `goods_id` IS NOT NULL;
+UPDATE `favorites` SET `target_type` = 'goods' WHERE `target_type` = 'goods' AND `target_id` IS NOT NULL;
+
+-- ===== browse_history 表（如不存在则创建）=====
+CREATE TABLE IF NOT EXISTS `browse_history` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `goods_id` INT NOT NULL,
+  `goods_name` VARCHAR(200) DEFAULT NULL,
+  `goods_image` VARCHAR(500) DEFAULT NULL,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_user_id` (`user_id`),
+  INDEX `idx_goods_id` (`goods_id`),
+  UNIQUE KEY `uk_user_goods` (`user_id`, `goods_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ===== admin_roles 表（如不存在则创建）=====
+CREATE TABLE IF NOT EXISTS `admin_roles` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `code` VARCHAR(50) NOT NULL,
+  `permissions` TEXT DEFAULT NULL,
+  `is_super` TINYINT DEFAULT 0,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uk_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ===== 插入默认超级管理员角色（如不存在）=====
+INSERT IGNORE INTO `admin_roles` (`id`, `name`, `code`, `permissions`, `is_super`) VALUES
+(1, '超級管理員', 'super_admin', '["*"]', 1);
+
+-- ===== 确保 admins 表有 role_id 列 =====
+ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `role_id` INT DEFAULT 1;
+UPDATE `admins` SET `role_id` = 1 WHERE `role_id` IS NULL OR `role_id` = 0;
