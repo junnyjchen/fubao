@@ -107,7 +107,7 @@ function CategoryPageContent({ slug }: { slug: string }) {
         // 获取子分类
         const subRes = await fetch(`/api/categories?parentId=${catData.data.id}`);
         const subData = await subRes.json();
-        setSubCategories(subData.data || []);
+        setSubCategories(Array.isArray(subData.data) ? subData.data : []);
         
         // 加载商品
         await loadGoodsInternal(catData.data.id, null);

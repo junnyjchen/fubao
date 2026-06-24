@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       [pageSize, offset]
     );
 
-    const totalResult = await queryOne<{ cnt: number }>('SELECT COUNT(*) as cnt FROM free_gifts WHERE status = 1');
+    const totalResult = await queryOne('SELECT COUNT(*) as cnt FROM free_gifts WHERE status = 1');
     const total = Number(totalResult?.cnt || 0);
 
     return listResponse(data, { total, page, pageSize });

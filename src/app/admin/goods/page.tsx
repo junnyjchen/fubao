@@ -98,7 +98,7 @@ export default function GoodsManagePage() {
       const res = await fetch(`/api/admin/goods?${params}`);
       const data = await res.json();
 
-      setGoods(data.data || []);
+      setGoods(Array.isArray(data.data) ? data.data : []);
       setTotal(data.total || 0);
     } catch (error) {
       console.error('加载商品失败:', error);

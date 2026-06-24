@@ -157,7 +157,7 @@ export default function AINewsPage() {
       const res = await fetch('/api/ai-news/configs');
       const data = await res.json();
       if (data.success) {
-        setAIConfigs(data.data || []);
+        setAIConfigs(Array.isArray(data.data) ? data.data : []);
       }
     } catch (error) {
       console.error('加载AI配置失败:', error);
@@ -172,7 +172,7 @@ export default function AINewsPage() {
       const res = await fetch('/api/ai-news/sources');
       const data = await res.json();
       if (data.success) {
-        setNewsSources(data.data || []);
+        setNewsSources(Array.isArray(data.data) ? data.data : []);
       }
     } catch (error) {
       console.error('加载新闻源失败:', error);
@@ -187,7 +187,7 @@ export default function AINewsPage() {
       const res = await fetch('/api/ai-news/tasks');
       const data = await res.json();
       if (data.success) {
-        setTasks(data.data || []);
+        setTasks(Array.isArray(data.data) ? data.data : []);
       }
     } catch (error) {
       console.error('加载任务失败:', error);
@@ -209,11 +209,11 @@ export default function AINewsPage() {
       const res = await fetch(`/api/ai-news/articles?${params.toString()}`);
       const data = await res.json();
       if (data.success) {
-        setArticles(data.data || []);
+        setArticles(Array.isArray(data.data) ? data.data : []);
         setArticleTotal(data.pagination?.total || 0);
         
         // 计算统计
-        const allData = data.data || [];
+        const allData = Array.isArray(data.data) ? data.data : [];
         setArticleStats({
           total: data.pagination?.total || 0,
           pending: allData.filter((a: AIGeneratedArticle) => a.status === 'pending').length,

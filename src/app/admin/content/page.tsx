@@ -185,7 +185,7 @@ export default function ContentManagementPage() {
       const res = await fetch(`/api/articles?${params}`);
       const data = await res.json();
 
-      setArticles(data.data || []);
+      setArticles(Array.isArray(data.data) ? data.data : []);
       setArticlePagination(prev => ({
         ...prev,
         total: data.total || 0,
@@ -214,7 +214,7 @@ export default function ContentManagementPage() {
       const res = await fetch(`/api/news?${params}`);
       const data = await res.json();
 
-      setNews(data.data || []);
+      setNews(Array.isArray(data.data) ? data.data : []);
       setNewsPagination(prev => ({
         ...prev,
         total: data.total || 0,

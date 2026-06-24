@@ -222,7 +222,7 @@ export default function AddressesPage() {
     try {
       const res = await fetch('/api/addresses');
       const data = await res.json();
-      setAddresses(data.data || []);
+      setAddresses(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载地址失败:', error);
       toast.error(addr.messages.loadFailed);

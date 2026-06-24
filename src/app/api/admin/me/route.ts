@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 从 MySQL 获取管理员详细信息
-    const admin = await queryOne<AdminRow>(
+    const admin = await queryOne(
       'SELECT id, username, nickname, role_id, status FROM admins WHERE id = ?',
       [payload.adminId]
     );
@@ -65,13 +65,14 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取角色权限
-    const role = await queryOne<RoleRow>(
+    const role = await queryOne(
       'SELECT id, name, code, permissions, is_super FROM admin_roles WHERE id = ?',
       [admin.role_id]
     );
 
     // 解析权限：兼容 JSON 数组、纯字符串 "*"、逗号分隔字符串和 null
-    let permissions: string[] = payload.permissions || ['*'];
+    // 确保 permissions 始终是数组
+    let permissions: string[] = Array.isArray(payload.permissions) ? payload.permissions : ['*'];
     if (role?.permissions) {
       const p = role.permissions;
       if (Array.isArray(p)) {
@@ -82,7 +83,10 @@ export async function GET(request: NextRequest) {
           permissions = ['*'];
         } else if (p.startsWith('[')) {
           // JSON 数组字符串
-          try { permissions = JSON.parse(p); } catch { permissions = [p]; }
+          try {
+            const parsed = JSON.parse(p);
+            permissions = Array.isArray(parsed) ? parsed : ['*'];
+          } catch { permissions = [p]; }
         } else {
           // 逗号分隔字符串
           permissions = p.split(',').map((s: string) => s.trim());

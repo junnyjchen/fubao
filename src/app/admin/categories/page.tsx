@@ -82,7 +82,7 @@ export default function CategoriesManagePage() {
     try {
       const res = await fetch('/api/categories');
       const data = await res.json();
-      setCategories(data.data || []);
+      setCategories(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载分类失败:', error);
     } finally {

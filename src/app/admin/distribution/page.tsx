@@ -143,7 +143,7 @@ export default function AdminDistributionPage() {
       }
 
       const pendingResult = await pendingRes.json();
-      if (pendingResult.success) setPendingApps(pendingResult.data || []);
+      if (pendingResult.success) setPendingApps(Array.isArray(pendingResult.data) ? pendingResult.data : []);
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {

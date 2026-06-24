@@ -112,7 +112,7 @@ export default function UserRefundsPage() {
       const status = activeTab === 'all' ? '' : `&status=${activeTab}`;
       const res = await fetch(`/api/user/refunds?limit=50${status}`);
       const data = await res.json();
-      setRefunds(data.data || []);
+      setRefunds(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载售后列表失败:', error);
       toast.error('加載失敗');

@@ -128,7 +128,7 @@ export default function AdminAnnouncementsPage() {
     try {
       const res = await fetch('/api/admin/announcements');
       const data = await res.json();
-      setAnnouncements(data.data || []);
+      setAnnouncements(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载公告失败:', error);
       toast.error('加載失敗');

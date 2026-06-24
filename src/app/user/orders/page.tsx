@@ -122,7 +122,7 @@ export default function OrdersPage() {
       const res = await fetch(`/api/orders?${params}`);
       const data = await res.json();
 
-      setOrders(data.data || []);
+      setOrders(Array.isArray(data.data) ? data.data : []);
       setTotalItems(data.total || 0);
       setTotalPages(data.total_pages || 0);
     } catch (error) {

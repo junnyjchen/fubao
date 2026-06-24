@@ -55,7 +55,7 @@ export default function AdminBaikePage() {
       if (keyword) params.set('keyword', keyword);
       const res = await fetch(`/api/articles?${params}`);
       const data = await res.json();
-      setArticles(data.data || []);
+      setArticles(Array.isArray(data.data) ? data.data : []);
     } catch {
       setArticles([]);
     } finally {

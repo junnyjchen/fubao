@@ -139,7 +139,7 @@ export default function NewsManagePage() {
       const res = await fetch(`/api/news?${params}`);
       const data = await res.json();
 
-      setNews(data.data || []);
+      setNews(Array.isArray(data.data) ? data.data : []);
       setTotal(data.total || 0);
     } catch (error) {
       console.error('加载新闻失败:', error);

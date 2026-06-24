@@ -30,8 +30,6 @@ import {
 import {
   TrendingUp,
   Users,
-  ShoppingCart,
-  Package,
   Loader2,
 } from 'lucide-react';
 
@@ -60,6 +58,12 @@ const formatCurrency = (value: number) => `HK$${value.toFixed(0)}`;
 // 格式化数字
 const formatNumber = (value: number) => value.toLocaleString();
 
+// 确保 API 返回的是数组
+function ensureArray<T>(data: unknown): T[] {
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
 export function DashboardCharts() {
   const [salesTrend, setSalesTrend] = useState<SalesTrendItem[]>([]);
   const [userGrowth, setUserGrowth] = useState<UserGrowthItem[]>([]);
@@ -84,9 +88,9 @@ export function DashboardCharts() {
       const usersData = await usersRes.json();
       const categoryData = await categoryRes.json();
 
-      setSalesTrend(salesData.data || []);
-      setUserGrowth(usersData.data || []);
-      setCategorySales(categoryData.data || []);
+      setSalesTrend(ensureArray<SalesTrendItem>(salesData?.data));
+      setUserGrowth(ensureArray<UserGrowthItem>(usersData?.data));
+      setCategorySales(ensureArray<CategorySalesItem>(categoryData?.data));
     } catch (error) {
       console.error('获取图表数据失败:', error);
     } finally {
@@ -199,45 +203,46 @@ export function DashboardCharts() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <BarChart data={userGrowth}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip formatter={(value: number) => formatNumber(value)} />
-                <Bar dataKey="newUsers" fill="#82ca9d" name="新用戶" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="newUsers" fill="#82ca9d" name="新增用戶" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* 分类销售 */}
+        {/* 分类销售占比 */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5 text-primary" />
+              <TrendingUp className="w-5 h-5 text-primary" />
               分類銷售佔比
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={categorySales}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }: { name: string; percent: number }) => 
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
-                  fill="#8884d8"
                   dataKey="sales"
                   nameKey="name"
                 >
-                  {categorySales.map((_, index) => (
+                  {categorySales.map((_entry: CategorySalesItem, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatNumber(value)} />
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>

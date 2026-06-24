@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     root: process.cwd(),
   },
   images: {
+    unoptimized: true, // 禁用图片优化，防止处理损坏/不存在图片时进程崩溃 (free(): unaligned chunk)
     remotePatterns: [
       {
         protocol: 'https',

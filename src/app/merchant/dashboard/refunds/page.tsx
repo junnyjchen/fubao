@@ -97,7 +97,7 @@ export default function MerchantRefundsPage() {
       const status = activeTab === 'all' ? '' : `&status=${activeTab}`;
       const res = await fetch(`/api/merchant/refunds?limit=100${status}`);
       const data = await res.json();
-      setRefunds(data.data || []);
+      setRefunds(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载售后失败:', error);
       toast.error('加載失敗');

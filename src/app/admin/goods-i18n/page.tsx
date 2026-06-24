@@ -100,7 +100,7 @@ export default function GoodsI18nPage() {
     try {
       const res = await fetch('/api/goods?pageSize=100');
       const data = await res.json();
-      setGoods(data.data || []);
+      setGoods(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       toast.error('加載商品失敗');
     } finally {

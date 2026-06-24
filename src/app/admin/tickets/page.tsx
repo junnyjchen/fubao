@@ -140,7 +140,7 @@ export default function AdminTicketsPage() {
 
       const res = await fetch(`/api/admin/tickets?${params}`);
       const data = await res.json();
-      setTickets(data.data || []);
+      setTickets(Array.isArray(data.data) ? data.data : []);
       setTotalItems(data.total || 0);
       setTotalPages(data.total_pages || 0);
     } catch (error) {

@@ -167,9 +167,9 @@ export default function CertificatesPage() {
         merchantRes.json(),
       ]);
 
-      setCertificates(certData.data || []);
-      setGoods(goodsData.data || []);
-      setMerchants(merchantData.data || []);
+      setCertificates(Array.isArray(certData.data) ? certData.data : []);
+      setGoods(Array.isArray(goodsData.data) ? goodsData.data : []);
+      setMerchants(Array.isArray(merchantData.data) ? merchantData.data : []);
     } catch (error) {
       console.error('加載數據失敗:', error);
       toast.error('加載失敗');

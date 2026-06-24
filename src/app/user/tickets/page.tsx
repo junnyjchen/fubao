@@ -124,7 +124,7 @@ export default function TicketsPage() {
     try {
       const res = await fetch(`/api/user/tickets?status=${statusFilter}`);
       const data = await res.json();
-      setTickets(data.data || []);
+      setTickets(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载工单失败:', error);
       toast.error('加載失敗');

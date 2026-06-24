@@ -69,12 +69,12 @@ export async function GET(request: NextRequest) {
     let categories: Category[];
 
     if (parentId) {
-      categories = await query<Category>(
+      categories = await query(
         'SELECT * FROM categories WHERE status = 1 AND parent_id = ? ORDER BY sort_order ASC',
         [parseInt(parentId)]
       );
     } else {
-      categories = await query<Category>(
+      categories = await query(
         'SELECT * FROM categories WHERE status = 1 ORDER BY sort_order ASC'
       );
     }

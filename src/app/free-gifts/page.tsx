@@ -131,7 +131,7 @@ function FreeGiftsContent() {
       const res = await fetch('/api/free-gifts');
       const data = await res.json();
       if (data.success || data.data) {
-        const giftsData = (data.data || []).map((g: FreeGift, idx: number) => ({
+        const giftsData = (Array.isArray(data.data) ? data.data : []).map((g: FreeGift, idx: number) => ({
           ...g,
           is_new_user_only: idx === 0,
           category: ['符箓', '飾品', '香薰', '掛件'][idx % 4],

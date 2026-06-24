@@ -52,15 +52,15 @@ export async function POST(request: NextRequest) {
     const userSelectFallback = 'id, email, phone, name AS nickname, password, status, avatar, language, role, points, \'\' AS invite_code';
     if (email) {
       try {
-        user = await queryOne<UserRow>(`SELECT ${userSelectFull} FROM users WHERE email = ? AND status = 1`, [email]);
+        user = await queryOne(`SELECT ${userSelectFull} FROM users WHERE email = ? AND status = 1`, [email]);
       } catch {
-        user = await queryOne<UserRow>(`SELECT ${userSelectFallback} FROM users WHERE email = ? AND status = 1`, [email]);
+        user = await queryOne(`SELECT ${userSelectFallback} FROM users WHERE email = ? AND status = 1`, [email]);
       }
     } else if (phone) {
       try {
-        user = await queryOne<UserRow>(`SELECT ${userSelectFull} FROM users WHERE phone = ? AND status = 1`, [phone]);
+        user = await queryOne(`SELECT ${userSelectFull} FROM users WHERE phone = ? AND status = 1`, [phone]);
       } catch {
-        user = await queryOne<UserRow>(`SELECT ${userSelectFallback} FROM users WHERE phone = ? AND status = 1`, [phone]);
+        user = await queryOne(`SELECT ${userSelectFallback} FROM users WHERE phone = ? AND status = 1`, [phone]);
       }
     }
 

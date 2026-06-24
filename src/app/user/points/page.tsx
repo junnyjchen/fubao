@@ -87,7 +87,7 @@ export default function UserPointsPage() {
       setLevelInfo(pointsData.levelInfo);
       setNextLevel(pointsData.nextLevel);
       setRecords(pointsData.records || []);
-      setAllLevels(levelsData.data || []);
+      setAllLevels(Array.isArray(levelsData.data) ? levelsData.data : []);
     } catch (error) {
       console.error('加载数据失败:', error);
     } finally {

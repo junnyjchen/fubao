@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     // 查找邀请人
     let invitedBy: number | null = null;
     if (invite_code) {
-      const inviter = await queryOne<{ id: number }>('SELECT id FROM users WHERE invite_code = ?', [invite_code]);
+      const inviter = await queryOne('SELECT id FROM users WHERE invite_code = ?', [invite_code]);
       if (inviter) {
         invitedBy = inviter.id;
       }
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     // 插入用户（nickname/invite_code 列可能不存在，降级处理）
     let userId: number;
     try {
-      userId = await dbInsert('users', {
+      userId = Number(await dbInsert('users', {
         email,
         phone: phone || '',
         name: displayName,
@@ -87,18 +87,16 @@ export async function POST(request: NextRequest) {
         language: 'zh-TW',
         status: 1,
         invite_code: generateInviteCode(),
-      });
+      }));
     } catch {
       // 降级：不包含可能缺失的列
-      userId = await dbInsert('users', {
-        email,
-        phone: phone || '',
+      userId = Number(await dbInsert('users', {
         name: displayName,
         password: hashedPassword,
         role: 'user',
         language: 'zh-TW',
         status: 1,
-      });
+      }));
     }
 
     // 生成 JWT

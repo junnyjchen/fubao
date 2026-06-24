@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 从 MySQL 查询管理员
-    const admin = await queryOne<AdminRow>(
+    const admin = await queryOne(
       'SELECT id, username, password, nickname, role_id, status FROM admins WHERE username = ? AND status = 1',
       [username]
     );
@@ -129,12 +129,20 @@ export async function POST(request: NextRequest) {
     let roleCode = 'super_admin';
     let roleName = '超級管理員';
     try {
-      const role = await queryOne<RoleRow>(
+      const role = await queryOne(
         'SELECT id, name, code, permissions, is_super FROM admin_roles WHERE id = ?',
         [admin.role_id]
       );
       if (role) {
-        permissions = role.permissions ? JSON.parse(role.permissions) : ['*'];
+        // 安全解析 permissions — 确保始终是数组
+        if (role.permissions) {
+          try {
+            const parsed = JSON.parse(role.permissions);
+            permissions = Array.isArray(parsed) ? parsed : ['*'];
+          } catch {
+            permissions = ['*'];
+          }
+        }
         roleCode = role.code || 'unknown';
         roleName = role.name || '未知角色';
       }

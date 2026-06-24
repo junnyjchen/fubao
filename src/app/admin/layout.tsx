@@ -166,7 +166,12 @@ export default function AdminRootLayout({
         const data = await res.json();
         
         if (data.admin) {
-          setAdminInfo(data.admin);
+          // 确保 permissions 是数组
+          const admin = {
+            ...data.admin,
+            permissions: Array.isArray(data.admin.permissions) ? data.admin.permissions : [],
+          };
+          setAdminInfo(admin);
           // 保存 token
           if (data.token) {
             localStorage.setItem('admin_token', data.token);

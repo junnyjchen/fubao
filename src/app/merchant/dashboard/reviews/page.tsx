@@ -74,7 +74,7 @@ export default function MerchantReviewsPage() {
     try {
       const res = await fetch('/api/merchant/reviews');
       const data = await res.json();
-      setReviews(data.data || []);
+      setReviews(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载评价失败:', error);
       toast.error('加載失敗');

@@ -102,8 +102,8 @@ export default function InvoicesPage() {
       const invoicesData = await invoicesRes.json();
       const ordersData = await ordersRes.json();
       
-      setInvoices(invoicesData.data || []);
-      setOrders(ordersData.data || []);
+      setInvoices(Array.isArray(invoicesData.data) ? invoicesData.data : []);
+      setOrders(Array.isArray(ordersData.data) ? ordersData.data : []);
     } catch (error) {
       console.error('获取数据失败:', error);
     } finally {

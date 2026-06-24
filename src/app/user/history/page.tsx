@@ -179,7 +179,7 @@ export default function BrowseHistoryPage() {
     try {
       const res = await fetch('/api/user/browse-history?limit=50');
       const data = await res.json();
-      setHistory(data.data || []);
+      setHistory(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载浏览历史失败:', error);
       toast.error(t.common.loadFailed);

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       [...params, pageSize, offset]
     );
 
-    const countResult = await queryOne<{ cnt: number }>(`SELECT COUNT(*) as cnt FROM merchant_applications ${whereClause}`, params);
+    const countResult = await queryOne(`SELECT COUNT(*) as cnt FROM merchant_applications ${whereClause}`, params);
     const total = Number(countResult?.cnt || 0);
 
     return NextResponse.json({

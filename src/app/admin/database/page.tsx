@@ -99,7 +99,7 @@ export default function DatabaseManagementPage() {
       const res = await fetch(`/api/banners?${params}`);
       const data = await res.json();
 
-      setBanners(data.data || []);
+      setBanners(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加載輪播圖失敗:', error);
     } finally {

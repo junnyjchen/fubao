@@ -49,7 +49,7 @@ export default function BaikePage() {
       params.set('limit', '20');
       const res = await fetch(`/api/articles?${params}`);
       const data = await res.json();
-      setArticles(data.data || []);
+      setArticles(Array.isArray(data.data) ? data.data : []);
     } catch {
       setArticles([]);
     } finally {

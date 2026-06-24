@@ -90,7 +90,7 @@ export default function DiscountPage() {
       
       const res = await fetch(`/api/goods?${params.toString()}`);
       const data = await res.json();
-      setGoods(data.data || []);
+      setGoods(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
       console.error('加载商品失败:', error);
       setGoods(getMockGoods());

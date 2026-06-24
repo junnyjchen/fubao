@@ -85,7 +85,7 @@ export default function UsersManagePage() {
       const res = await fetch(`/api/admin/users?${params}`);
       const data = await res.json();
 
-      setUsers(data.data || []);
+      setUsers(Array.isArray(data.data) ? data.data : []);
       setTotal(data.total || 0);
     } catch (error) {
       console.error('加载用户失败:', error);

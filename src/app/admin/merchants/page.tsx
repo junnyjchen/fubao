@@ -136,7 +136,7 @@ export default function MerchantsManagePage() {
       const res = await fetch(`/api/admin/merchants?${params}`);
       const data = await res.json();
 
-      setMerchants(data.data || []);
+      setMerchants(Array.isArray(data.data) ? data.data : []);
       setTotal(data.total || 0);
     } catch (error) {
       console.error('加载商户失败:', error);

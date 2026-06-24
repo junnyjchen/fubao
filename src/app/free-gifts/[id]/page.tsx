@@ -151,7 +151,7 @@ function FreeGiftDetailContent({ params }: PageProps) {
     try {
       const res = await fetch('/api/free-gifts');
       const data = await res.json();
-      const giftData = (data.data || []).find((g: FreeGift) => g.id === parseInt(id));
+      const giftData = (Array.isArray(data.data) ? data.data : []).find((g: FreeGift) => g.id === parseInt(id));
       if (giftData) {
         setGift({
           ...giftData,
