@@ -101,10 +101,21 @@ prepare_standalone() {
         log "复制 .env.production 文件"
     fi
 
-    # 复制 sql 目录（Mock DB 可能用到）
+    # 复制 sql 目录
     if [ -d "${APP_DIR}/sql" ]; then
         rm -rf "${STANDALONE_DIR}/sql"
         cp -r "${APP_DIR}/sql" "${STANDALONE_DIR}/sql"
+    fi
+
+    # 复制 data 目录（AI 配置、知识库等）
+    # 注意：首次部署时复制，后续部署保留 standalone 中的 data（用户在后台的修改存在这里）
+    if [ -d "${APP_DIR}/data" ]; then
+        if [ ! -d "${STANDALONE_DIR}/data" ]; then
+            cp -r "${APP_DIR}/data" "${STANDALONE_DIR}/data"
+            log "首次部署，复制 data 目录"
+        else
+            log "保留现有 data 目录（含用户后台配置），跳过覆盖"
+        fi
     fi
 
     # 修复缓存目录权限

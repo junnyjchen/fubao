@@ -109,24 +109,30 @@ function getEnvProviderConfig(): ProviderConfig {
  * 每次调用都重新读取，确保后台修改立即生效
  */
 function resolveProviderConfig(): ProviderConfig {
+  const envConfig = getEnvProviderConfig();
+
   try {
     const active = getActiveModel();
-    if (active && active.apiKey) {
-      return {
-        name: active.provider,
-        baseUrl: active.baseUrl,
-        apiKey: active.apiKey,
-        defaultModel: active.model,
-        models: [active.model],
-        temperature: active.temperature ?? 0.7,
-        maxTokens: active.maxTokens ?? 4096,
-      };
+    if (active) {
+      // 优先使用后台配置的 apiKey，否则 fallback 到环境变量
+      const apiKey = active.apiKey || envConfig.apiKey;
+      if (apiKey) {
+        return {
+          name: active.provider,
+          baseUrl: active.baseUrl,
+          apiKey,
+          defaultModel: active.model,
+          models: [active.model],
+          temperature: active.temperature ?? 0.7,
+          maxTokens: active.maxTokens ?? 4096,
+        };
+      }
     }
   } catch {
     // 后台配置读取失败，fallback 到 .env
   }
 
-  return getEnvProviderConfig();
+  return envConfig;
 }
 
 // ============================================================

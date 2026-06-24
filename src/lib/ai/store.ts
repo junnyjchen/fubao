@@ -147,7 +147,11 @@ export const getModelConfigs = loadModels;
 
 export function getActiveModel(): AIModelConfig | null {
   const models = loadModels();
-  const active = models.filter(m => m.isActive && m.apiKey).sort((a, b) => a.priority - b.priority);
+  // 优先返回有 apiKey 的活跃模型
+  const withKey = models.filter(m => m.isActive && m.apiKey).sort((a, b) => a.priority - b.priority);
+  if (withKey.length > 0) return withKey[0];
+  // 回退：返回任意活跃模型（apiKey 可能由环境变量提供）
+  const active = models.filter(m => m.isActive).sort((a, b) => a.priority - b.priority);
   return active[0] || null;
 }
 
