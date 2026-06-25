@@ -87,6 +87,13 @@ prepare_standalone() {
     rm -rf "${STANDALONE_DIR}/.next/static"
     cp -r "${APP_DIR}/.next/static" "${STANDALONE_DIR}/.next/static"
 
+    log "复制 .next/server/pages (500.html 等错误页面)..."
+    if [ -d "${APP_DIR}/.next/server/pages" ]; then
+        mkdir -p "${STANDALONE_DIR}/.next/server"
+        rm -rf "${STANDALONE_DIR}/.next/server/pages"
+        cp -r "${APP_DIR}/.next/server/pages" "${STANDALONE_DIR}/.next/server/pages"
+    fi
+
     # 复制 .env 文件（如果存在）
     if [ -f "${APP_DIR}/.env" ]; then
         cp -f "${APP_DIR}/.env" "${STANDALONE_DIR}/.env"

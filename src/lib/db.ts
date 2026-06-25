@@ -7,12 +7,9 @@
 
 import { getPool as getMysqlPool, isMySQLEnabled, mysqlQuery, mysqlExecute, mysqlQueryOne } from './mysql';
 
-// MySQL 配置标志：环境变量是否配置了MySQL
-const MYSQL_FLAG = isMySQLEnabled();
-
-/** 检查当前是否应该使用MySQL */
+/** 检查当前是否应该使用MySQL（每次动态检查，避免模块加载时缓存） */
 function shouldUseMysql(): boolean {
-  return MYSQL_FLAG;
+  return isMySQLEnabled();
 }
 
 // ========== 数据库操作（MySQL 唯一模式） ==========
@@ -176,14 +173,14 @@ export async function count(
  * 获取数据库类型标识
  */
 export function getDbType(): 'mysql' | 'none' {
-  return MYSQL_FLAG ? 'mysql' : 'none';
+  return shouldUseMysql() ? 'mysql' : 'none';
 }
 
 /**
  * 检查 MySQL 连接状态
  */
 export async function checkConnection(): Promise<{ ok: boolean; message: string }> {
-  if (!MYSQL_FLAG) {
+  if (!shouldUseMysql()) {
     return { ok: false, message: 'MySQL 环境变量未配置' };
   }
   try {
