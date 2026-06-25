@@ -94,10 +94,9 @@ prepare_standalone() {
         cp -r "${APP_DIR}/.next/server/pages" "${STANDALONE_DIR}/.next/server/pages"
     fi
 
-    # 确保 .env 文件存在（.gitignore 忽略，可能丢失）
-    if [ ! -f "${APP_DIR}/.env" ]; then
-        log "创建 .env 文件..."
-        cat > "${APP_DIR}/.env" << ENVEOF
+    # 确保 .env 文件存在且内容正确（.gitignore 忽略，可能丢失或被覆盖）
+    log "写入 .env 文件..."
+    cat > "${APP_DIR}/.env" << ENVEOF
 # MySQL 数据库配置
 MYSQL_HOST=${MYSQL_HOST}
 MYSQL_PORT=${MYSQL_PORT}
@@ -111,9 +110,8 @@ AI_PROVIDER=deepseek
 # API 模式
 NEXT_PUBLIC_API_MODE=local
 ENVEOF
-    fi
 
-    # 复制 .env 文件
+    # 复制 .env 文件到 standalone
     cp -f "${APP_DIR}/.env" "${STANDALONE_DIR}/.env"
     log "复制 .env 文件"
     if [ -f "${APP_DIR}/.env.local" ]; then
