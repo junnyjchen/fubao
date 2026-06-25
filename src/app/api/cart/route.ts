@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       `SELECT ci.id, ci.goods_id, ci.quantity, ci.selected,
               g.name as goods_name, g.price, g.original_price, g.main_image, g.stock, g.status,
               m.id as merchant_id, m.name as merchant_name, m.logo as merchant_logo, m.verified as merchant_verified
-       FROM cart_items ci
+       FROM cart ci
        LEFT JOIN goods g ON ci.goods_id = g.id
        LEFT JOIN merchants m ON g.merchant_id = m.id
        WHERE ci.user_id = ?
@@ -117,14 +117,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否已在购物车
-    const existing = await queryOne('SELECT id, quantity FROM cart_items WHERE user_id = ? AND goods_id = ?', [userId, goods_id]);
+    const existing = await queryOne('SELECT id, quantity FROM cart WHERE user_id = ? AND goods_id = ?', [userId, goods_id]);
 
     if (existing) {
       // 更新数量
-      await dbUpdate('cart_items', { quantity: (existing as any).quantity + quantity }, { id: (existing as any).id });
+      await dbUpdate('cart', { quantity: (existing as any).quantity + quantity }, { id: (existing as any).id });
     } else {
       // 新增
-      await dbInsert('cart_items', { user_id: userId, goods_id, quantity, selected: 1 });
+      await dbInsert('cart', { user_id: userId, goods_id, quantity, selected: 1 });
     }
 
     return messageResponse('已添加到購物車');
@@ -154,7 +154,7 @@ export async function PUT(request: NextRequest) {
     if (quantity !== undefined) updateData.quantity = quantity;
     if (selected !== undefined) updateData.selected = selected ? 1 : 0;
 
-    await dbUpdate('cart_items', updateData, { id, user_id: userId });
+    await dbUpdate('cart', updateData, { id, user_id: userId });
 
     return messageResponse('更新成功');
   } catch (error) {
@@ -177,10 +177,10 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get('id');
 
     if (id) {
-      await dbRemove('cart_items', { id: parseInt(id), user_id: userId });
+      await dbRemove('cart', { id: parseInt(id), user_id: userId });
     } else {
       // 清空购物车
-      await dbRemove('cart_items', { user_id: userId });
+      await dbRemove('cart', { user_id: userId });
     }
 
     return messageResponse('刪除成功');

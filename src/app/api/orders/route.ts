@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     } else if (cart_item_ids && Array.isArray(cart_item_ids) && cart_item_ids.length > 0) {
       // 模式2: 从购物车获取
       for (const cid of cart_item_ids) {
-        const cartItem = await queryOne('SELECT * FROM cart_items WHERE id = ? AND user_id = ?', [cid, userId]) as any;
+        const cartItem = await queryOne('SELECT * FROM cart WHERE id = ? AND user_id = ?', [cid, userId]) as any;
         if (cartItem) {
           orderItemsInput.push({ goods_id: cartItem.goods_id, quantity: cartItem.quantity });
         }
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       shipping_fee: shippingFee.toFixed(2),
       discount_amount: '0.00',
       status: 'pending',
-      remark: remark || null,
+      note: remark || null,
     };
     if (hasAddressSnapshot) {
       orderData.address_snapshot = JSON.stringify(address);
@@ -220,7 +220,6 @@ export async function POST(request: NextRequest) {
         goods_image: oi.goods_image,
         price: oi.price,
         quantity: oi.quantity,
-        total: oi.total,
       });
 
       // 减库存、增销量
@@ -231,7 +230,7 @@ export async function POST(request: NextRequest) {
     if (cart_item_ids && Array.isArray(cart_item_ids)) {
       for (const cid of cart_item_ids) {
         try {
-          await dbRemove('cart_items', { id: cid, user_id: userId });
+          await dbRemove('cart', { id: cid, user_id: userId });
         } catch {
           // 忽略
         }
@@ -240,7 +239,7 @@ export async function POST(request: NextRequest) {
       // 按商品ID清除购物车
       for (const item of orderItemsInput) {
         try {
-          await dbRemove('cart_items', { user_id: userId, goods_id: item.goods_id });
+          await dbRemove('cart', { user_id: userId, goods_id: item.goods_id });
         } catch {
           // 忽略
         }
@@ -326,7 +325,7 @@ export async function PUT(request: NextRequest) {
         }
       }
       if (payment_method) updates.payment_method = payment_method;
-      if (remark !== undefined) updates.remark = remark || null;
+      if (remark !== undefined) updates.note = remark || null;
       if (coupon_id) updates.coupon_id = coupon_id;
       await dbUpdate('orders', effectiveOrderId, updates);
       return messageResponse('訂單已更新');
