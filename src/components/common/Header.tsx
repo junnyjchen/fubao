@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useI18n, languages } from '@/lib/i18n';
 import { useAuth } from '@/lib/auth/context';
+import { useSiteSettings } from '@/lib/site-settings';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { NotificationBell } from '@/components/notification/NotificationBell';
 import { 
@@ -44,6 +45,7 @@ export function Header() {
   const router = useRouter();
   const { lang, setLang, t } = useI18n();
   const { user, loading, logout } = useAuth();
+  const { settings } = useSiteSettings();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -82,11 +84,15 @@ export function Header() {
           <div className="flex h-16 items-center justify-between gap-4">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-lg">
-                符
-              </div>
+              {settings.site_logo ? (
+                <img src={settings.site_logo} alt={settings.site_name} className="w-10 h-10 rounded-lg object-cover" />
+              ) : (
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-lg">
+                  {(settings.site_name || '符').charAt(0)}
+                </div>
+              )}
               <span className="text-xl font-semibold tracking-tight hidden sm:block">
-                符寶網
+                {settings.site_name || '符寶網'}
               </span>
             </Link>
 

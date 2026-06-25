@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useI18n } from '@/lib/i18n';
+import { useSiteSettings } from '@/lib/site-settings';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ import {
 
 export function Footer() {
   const { t } = useI18n();
+  const { settings } = useSiteSettings();
 
   const footerLinks = {
     platform: [
@@ -60,7 +62,7 @@ export function Footer() {
               <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-lg">
                 符
               </div>
-              <span className="text-xl font-semibold tracking-tight">符寶網</span>
+              <span className="text-xl font-semibold tracking-tight">{settings.siteName || '符寶網'}</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
               {t.footer.slogan}
@@ -136,15 +138,15 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>support@fubao.ltd</span>
+                <span>{settings.contactEmail || 'support@fubao.ltd'}</span>
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>+852 3900 8888</span>
+                <span>{settings.contactPhone || '+852 3900 8888'}</span>
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>香港九龍XXX大廈XX樓</span>
+                <span>{settings.contactAddress || '香港九龍XXX大廈XX樓'}</span>
               </li>
             </ul>
           </div>
