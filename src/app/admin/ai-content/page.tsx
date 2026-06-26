@@ -71,6 +71,8 @@ interface GeneratedContent {
   category?: string;
   tags?: string[];
   coverImage?: string;
+  price?: number;
+  original_price?: number;
 }
 
 /** 生成的图片 */
@@ -545,15 +547,18 @@ export default function AIContentPage() {
       // API returns { success, data: { type, topic, generated, raw } }
       // Frontend expects content with title, content, summary, etc.
       const generated = data.data?.generated || data.content || {};
+      // 先展开 generated，再用显式赋值覆盖，确保 keywords/metaDescription 不为 undefined
       const content = {
+        ...generated,
         title: generated.title || `${keyword.trim()} - AI生成內容`,
         content: generated.content || generated.text || '',
         summary: generated.summary || generated.description || '',
         category: generated.category || category || '',
-        tags: generated.tags || [keyword.trim()],
+        keywords: generated.keywords || generated.tags || [keyword.trim()],
+        tags: generated.tags || generated.keywords || [keyword.trim()],
+        metaDescription: generated.metaDescription || generated.summary || generated.description || '',
         price: generated.price,
         original_price: generated.original_price,
-        ...generated,
       };
 
       setGeneratedContent(content);
