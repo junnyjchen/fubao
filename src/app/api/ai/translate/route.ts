@@ -52,7 +52,6 @@ ${context ? `6. 翻译上下文：这是${context}的内容` : ''}`;
     ];
 
     const result = await client.invoke(messages, {
-      model: 'doubao-seed-2-0-lite-260215',
       temperature: 0.3,
     });
 

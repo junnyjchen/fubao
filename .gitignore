@@ -106,3 +106,4 @@ Desktop.ini
 # Preview files
 .preview
 .codegraph
+data/ai/models.json

@@ -19,7 +19,6 @@ async function generateWithLLM(prompt: string): Promise<string> {
   ];
 
   const result = await client.invoke(messages, {
-    model: 'doubao-seed-2-0-lite-260215',
     temperature: 0.8,
   });
 
