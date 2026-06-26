@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, Suspense, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense, memo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { useI18n } from '@/lib/i18n';
+import { useSiteSettings } from '@/lib/site-settings';
 import {
   MapPin,
   Plus,
@@ -77,10 +78,12 @@ interface Coupon {
 // 商品项组件
 const CartItemRow = memo(function CartItemRow({ 
   item,
-  t 
+  t,
+  currency
 }: { 
   item: CartItem;
   t: any;
+  currency: string;
 }) {
   const goodsList = t.checkoutPage.goodsList;
   
@@ -106,7 +109,7 @@ const CartItemRow = memo(function CartItemRow({
         <p className="font-medium line-clamp-2">{item.goods.name}</p>
         <p className="text-xs text-muted-foreground mt-1">{item.merchant_name}</p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-primary font-semibold">HK${item.goods.price.toFixed(2)}</span>
+          <span className="text-primary font-semibold">{currency}{item.goods.price.toFixed(2)}</span>
           <span className="text-sm text-muted-foreground">x{item.quantity}</span>
         </div>
       </div>
@@ -118,8 +121,11 @@ function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, isRTL } = useI18n();
+  const { settings } = useSiteSettings();
+  const currency = settings.currency || '{currency}';
   
-  const cartItemIds = searchParams.get('cartItemIds')?.split(',').map(Number) || [];
+  const cartItemIdsStr = searchParams.get('cartItemIds') || '';
+  const cartItemIds = useMemo(() => cartItemIdsStr ? cartItemIdsStr.split(',').map(Number) : [], [cartItemIdsStr]);
   const orderId = searchParams.get('order_id');
   const couponId = searchParams.get('couponId');
 
@@ -144,9 +150,7 @@ function CheckoutPageContent() {
     return headers;
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [cartItemIds, orderId]);
+  const loadedRef = useRef(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -196,6 +200,9 @@ function CheckoutPageContent() {
           }
           if (order.payment_method) setPaymentMethod(order.payment_method);
           if (order.remark) setRemark(order.remark);
+        } else {
+          // 订单不存在，设置空购物车让页面显示空状态
+          setCartItems([]);
         }
       }
       // 模式2: 购物车下单 (cartItemIds)
@@ -223,7 +230,14 @@ function CheckoutPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [cartItemIds]);
+  }, [cartItemIds, orderId, getAuthHeaders]);
+
+  useEffect(() => {
+    if (!loadedRef.current) {
+      loadedRef.current = true;
+      loadData();
+    }
+  }, [loadData]);
 
   // 计算金额
   const goodsAmount = cartItems.reduce((sum, item) => sum + item.goods.price * item.quantity, 0);
@@ -433,7 +447,7 @@ function CheckoutPageContent() {
               </CardHeader>
               <CardContent className="p-0 divide-y">
                 {cartItems.map((item) => (
-                  <CartItemRow key={item.id} item={item} t={t} />
+                  <CartItemRow key={item.id} item={item} t={t} currency={currency} />
                 ))}
               </CardContent>
             </Card>
@@ -447,7 +461,7 @@ function CheckoutPageContent() {
                     <span>{checkout.coupon.title}</span>
                   </div>
                   {selectedCoupon ? (
-                    <span className="text-primary">-HK${discountAmount.toFixed(2)}</span>
+                    <span className="text-primary">-{currency}{discountAmount.toFixed(2)}</span>
                   ) : (
                     <div className={`flex items-center gap-1 text-muted-foreground group-hover:text-primary transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}>
                       <span>{goodsAmount >= 100 ? checkout.coupon.available : checkout.coupon.select}</span>
@@ -504,7 +518,7 @@ function CheckoutPageContent() {
                       </div>
                       <div className={isRTL ? 'text-end' : ''}>
                         <p className="font-medium">{checkout.payment.balance}</p>
-                        <p className="text-xs text-muted-foreground">{checkout.payment.balanceDesc}：HK$0.00</p>
+                        <p className="text-xs text-muted-foreground">{checkout.payment.balanceDesc}：{currency}0.00</p>
                       </div>
                     </label>
                     <label
@@ -574,12 +588,12 @@ function CheckoutPageContent() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{summary.goodsAmount} ({totalQuantity}{summary.items})</span>
-                    <span>HK${goodsAmount.toFixed(2)}</span>
+                    <span>{currency}{goodsAmount.toFixed(2)}</span>
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>{summary.discount}</span>
-                      <span>-HK${discountAmount.toFixed(2)}</span>
+                      <span>-{currency}{discountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -587,7 +601,7 @@ function CheckoutPageContent() {
                     {shippingFee === 0 ? (
                       <span className="text-green-600">{summary.freeShipping}</span>
                     ) : (
-                      <span>HK${shippingFee.toFixed(2)}</span>
+                      <span>{currency}{shippingFee.toFixed(2)}</span>
                     )}
                   </div>
                   {shippingFee > 0 && <p className="text-xs text-muted-foreground">{summary.freeShippingThreshold}</p>}
@@ -597,7 +611,7 @@ function CheckoutPageContent() {
 
                 <div className="flex justify-between text-lg font-semibold">
                   <span>{summary.total}</span>
-                  <span className="text-primary">HK${totalAmount.toFixed(2)}</span>
+                  <span className="text-primary">{currency}{totalAmount.toFixed(2)}</span>
                 </div>
 
                 <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitting || !selectedAddressId}>

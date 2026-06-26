@@ -11,6 +11,7 @@ interface SiteSettings {
   contact_email: string;
   contact_phone: string;
   contact_address: string;
+  currency: string;
   smtp_host: string;
   smtp_port: string;
   smtp_user: string;
@@ -28,6 +29,7 @@ const defaultSettings: SiteSettings = {
   contact_email: '',
   contact_phone: '',
   contact_address: '',
+  currency: 'HK$',
   smtp_host: '',
   smtp_port: '',
   smtp_user: '',

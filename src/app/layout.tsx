@@ -7,7 +7,7 @@ import { FloatingAIButton } from '@/components/ai/FloatingAIButton';
 import { MobileNav } from '@/components/MobileNav';
 import { Providers } from '@/components/providers/Providers';
 import { SiteSettingsProvider } from '@/lib/site-settings';
-import { queryOne } from '@/lib/db';
+import { query } from '@/lib/db';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -143,18 +143,16 @@ export default async function RootLayout({
     pathname.startsWith('/merchant') || 
     pathname.startsWith('/user');
 
-  // 从数据库读取站点设置
+  // 从数据库读取站点设置（多行 key-value 表）
   let siteSettings: Record<string, string> = {};
   try {
-    const rows = await queryOne('SELECT * FROM settings');
-    if (rows) {
-      // settings 表是 key-value 结构
-      if (Array.isArray(rows)) {
-        for (const row of rows) {
-          if (row.key && row.value) siteSettings[row.key] = row.value;
-        }
-      } else if (rows.key && rows.value) {
-        siteSettings[rows.key] = rows.value;
+    const rows = await query('SELECT * FROM settings');
+    if (Array.isArray(rows)) {
+      for (const row of rows) {
+        const r = row as any;
+        const key = r.key || r.setting_key || r.name || '';
+        const val = r.value || r.setting_value || r.val || '';
+        if (key) siteSettings[key] = String(val ?? '');
       }
     }
   } catch {
