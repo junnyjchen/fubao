@@ -6,11 +6,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { loadModels, saveModels, type AIModelConfig } from '@/lib/ai/store';
+import { loadModels, updateModel, deleteModel, type AIModelConfig } from '@/lib/ai/store';
+import { insert, queryOne } from '@/lib/db';
 
 export async function GET() {
   try {
-    const models = loadModels();
+    const models = await loadModels();
     // 不返回完整 apiKey，只返回前4位+后4位
     const safeModels = models.map(m => ({
       ...m,
@@ -25,58 +26,57 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const models = loadModels();
-
     const { id, name, provider, apiKey, baseUrl, model, isActive, priority, maxTokens, temperature } = body;
 
     if (!name || !provider || !baseUrl || !model) {
       return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
-
     if (id) {
       // 更新已有模型
-      const idx = models.findIndex(m => m.id === id);
-      if (idx === -1) {
+      const existing = await queryOne('SELECT id FROM ai_model_configs WHERE id = ?', [Number(id)]);
+      if (!existing) {
         return NextResponse.json({ error: '模型不存在' }, { status: 404 });
       }
+      // 构建更新数据
+      const updateData: Partial<AIModelConfig> = {
+        name,
+        provider,
+        baseUrl,
+        model,
+        isActive: isActive ?? true,
+        priority: priority ?? 99,
+        maxTokens: maxTokens ?? 4096,
+        temperature: temperature ?? 0.7,
+      };
       // 如果传了新的 apiKey 且不是掩码，则更新
       if (apiKey && !apiKey.includes('****')) {
-        models[idx].apiKey = apiKey;
+        updateData.apiKey = apiKey;
       }
-      models[idx].name = name;
-      models[idx].provider = provider;
-      models[idx].baseUrl = baseUrl;
-      models[idx].model = model;
-      models[idx].isActive = isActive ?? models[idx].isActive;
-      models[idx].priority = priority ?? models[idx].priority;
-      models[idx].maxTokens = maxTokens ?? models[idx].maxTokens;
-      models[idx].temperature = temperature ?? models[idx].temperature;
-      models[idx].updatedAt = now;
+      const ok = await updateModel(String(id), updateData);
+      if (!ok) {
+        return NextResponse.json({ error: '更新失败' }, { status: 500 });
+      }
     } else {
       // 新增模型
       if (!apiKey || apiKey.includes('****')) {
         return NextResponse.json({ error: '请提供有效的 API Key' }, { status: 400 });
       }
-      const newModel: AIModelConfig = {
-        id: `${provider}-${Date.now()}`,
+      const models = await loadModels();
+      await insert('ai_model_configs', {
         name,
         provider,
-        apiKey,
-        baseUrl,
-        model,
-        isActive: isActive ?? false,
+        api_key: apiKey,
+        base_url: baseUrl,
+        model_name: model,
+        status: isActive ? 1 : 0,
         priority: priority ?? models.length + 1,
-        maxTokens: maxTokens ?? 4096,
+        max_tokens: maxTokens ?? 4096,
         temperature: temperature ?? 0.7,
-        createdAt: now,
-        updatedAt: now,
-      };
-      models.push(newModel);
+        is_default: isActive ? 1 : 0,
+      });
     }
 
-    saveModels(models);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -91,13 +91,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: '缺少模型 ID' }, { status: 400 });
     }
 
-    const models = loadModels();
-    const filtered = models.filter(m => m.id !== id);
-    if (filtered.length === models.length) {
+    const ok = await deleteModel(id);
+    if (!ok) {
       return NextResponse.json({ error: '模型不存在' }, { status: 404 });
     }
 
-    saveModels(filtered);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

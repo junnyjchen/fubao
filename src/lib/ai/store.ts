@@ -1,28 +1,15 @@
 /**
  * @fileoverview AI 模型配置 & 知识库存储层
- * @description 使用 JSON 文件持久化存储，支持 Docker 环境
+ * @description 使用 MySQL 持久化存储，部署后配置不丢失
  */
 
-import fs from 'fs';
-import path from 'path';
-
-const DATA_DIR = path.join(process.cwd(), 'data', 'ai');
-const MODELS_FILE = path.join(DATA_DIR, 'models.json');
-const KNOWLEDGE_FILE = path.join(DATA_DIR, 'knowledge.json');
-const DOCS_DIR = path.join(DATA_DIR, 'docs');
-
-// 确保目录存在
-function ensureDir(dir: string) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
+import { query, queryOne, insert, update as dbUpdate, remove as dbRemove } from '@/lib/db';
 
 // ==================== 模型配置 ====================
 
 export interface AIModelConfig {
   id: string;
-  name: string;           // 显示名称，如 "DeepSeek V3"
+  name: string;           // 显示名称，如 "DeepSeek V4"
   provider: string;        // openai | deepseek | kimi | doubao | qwen | glm | custom
   apiKey: string;
   baseUrl: string;
@@ -35,10 +22,9 @@ export interface AIModelConfig {
   updatedAt: string;
 }
 
-// 默认模型配置模板
-const DEFAULT_MODELS: AIModelConfig[] = [
+// 默认模型配置模板（仅在表为空时插入）
+const DEFAULT_MODELS: Omit<AIModelConfig, 'id' | 'createdAt' | 'updatedAt'>[] = [
   {
-    id: 'deepseek-default',
     name: 'DeepSeek V4',
     provider: 'deepseek',
     apiKey: process.env.DEEPSEEK_API_KEY || '',
@@ -48,11 +34,8 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     priority: 1,
     maxTokens: 4096,
     temperature: 0.7,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
-    id: 'openai-default',
     name: 'OpenAI GPT-4o',
     provider: 'openai',
     apiKey: process.env.OPENAI_API_KEY || '',
@@ -62,11 +45,8 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     priority: 2,
     maxTokens: 4096,
     temperature: 0.7,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
-    id: 'kimi-default',
     name: 'Kimi (Moonshot)',
     provider: 'kimi',
     apiKey: '',
@@ -76,11 +56,8 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     priority: 3,
     maxTokens: 4096,
     temperature: 0.7,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
-    id: 'doubao-default',
     name: '豆包 (Doubao)',
     provider: 'doubao',
     apiKey: '',
@@ -90,11 +67,8 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     priority: 4,
     maxTokens: 4096,
     temperature: 0.7,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
-    id: 'qwen-default',
     name: '通义千问 (Qwen)',
     provider: 'qwen',
     apiKey: '',
@@ -104,11 +78,8 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     priority: 5,
     maxTokens: 4096,
     temperature: 0.7,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
   {
-    id: 'glm-default',
     name: '智谱 GLM-4',
     provider: 'glm',
     apiKey: '',
@@ -118,41 +89,146 @@ const DEFAULT_MODELS: AIModelConfig[] = [
     priority: 6,
     maxTokens: 4096,
     temperature: 0.7,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   },
 ];
 
-export function loadModels(): AIModelConfig[] {
-  ensureDir(DATA_DIR);
-  if (!fs.existsSync(MODELS_FILE)) {
-    saveModels(DEFAULT_MODELS);
-    return DEFAULT_MODELS;
-  }
+/** 数据库行 → AIModelConfig 映射 */
+function rowToModel(row: Record<string, unknown>): AIModelConfig {
+  return {
+    id: String(row.id),
+    name: String(row.name || ''),
+    provider: String(row.provider || ''),
+    apiKey: String(row.api_key || ''),
+    baseUrl: String(row.base_url || ''),
+    model: String(row.model_name || ''),
+    isActive: Number(row.status) === 1,
+    priority: Number(row.priority || 0),
+    maxTokens: Number(row.max_tokens || 4096),
+    temperature: Number(row.temperature ?? 0.7),
+    createdAt: row.created_at ? new Date(row.created_at as string).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at as string).toISOString() : new Date().toISOString(),
+  };
+}
+
+/** 确保默认模型已初始化（表为空时插入） */
+async function ensureDefaultModels(): Promise<void> {
   try {
-    const data = fs.readFileSync(MODELS_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return DEFAULT_MODELS;
+    const rows = await query('SELECT COUNT(*) as cnt FROM ai_model_configs');
+    const cnt = (rows as any[])?.[0]?.cnt ?? 0;
+    if (cnt > 0) return;
+
+    // 表为空，插入默认模型
+    for (const m of DEFAULT_MODELS) {
+      await insert('ai_model_configs', {
+        name: m.name,
+        provider: m.provider,
+        api_key: m.apiKey,
+        base_url: m.baseUrl,
+        model_name: m.model,
+        status: m.isActive ? 1 : 0,
+        priority: m.priority,
+        max_tokens: m.maxTokens ?? 4096,
+        temperature: m.temperature ?? 0.7,
+        is_default: m.isActive ? 1 : 0,
+      });
+    }
+  } catch (err) {
+    console.error('[AI Store] ensureDefaultModels failed:', err);
   }
 }
 
-export function saveModels(models: AIModelConfig[]): void {
-  ensureDir(DATA_DIR);
-  fs.writeFileSync(MODELS_FILE, JSON.stringify(models, null, 2), 'utf-8');
+export async function loadModels(): Promise<AIModelConfig[]> {
+  try {
+    await ensureDefaultModels();
+    const rows = await query('SELECT * FROM ai_model_configs ORDER BY priority ASC, id ASC');
+    return (rows as any[]).map(rowToModel);
+  } catch (err) {
+    console.error('[AI Store] loadModels failed:', err);
+    return [];
+  }
+}
+
+export async function saveModels(models: AIModelConfig[]): Promise<void> {
+  // 此方法不再使用文件写入，改为全量同步到数据库
+  // 先清空再重新插入（保持简单，admin 页面调用频率低）
+  try {
+    await dbRemove('ai_model_configs', { '1': '1' } as any);
+    for (const m of models) {
+      await insert('ai_model_configs', {
+        name: m.name,
+        provider: m.provider,
+        api_key: m.apiKey,
+        base_url: m.baseUrl,
+        model_name: m.model,
+        status: m.isActive ? 1 : 0,
+        priority: m.priority,
+        max_tokens: m.maxTokens ?? 4096,
+        temperature: m.temperature ?? 0.7,
+        is_default: m.isActive ? 1 : 0,
+      });
+    }
+  } catch (err) {
+    console.error('[AI Store] saveModels failed:', err);
+  }
 }
 
 /** @deprecated 使用 loadModels 代替 */
 export const getModelConfigs = loadModels;
 
-export function getActiveModel(): AIModelConfig | null {
-  const models = loadModels();
-  // 优先返回有 apiKey 的活跃模型
-  const withKey = models.filter(m => m.isActive && m.apiKey).sort((a, b) => a.priority - b.priority);
-  if (withKey.length > 0) return withKey[0];
-  // 回退：返回任意活跃模型（apiKey 可能由环境变量提供）
-  const active = models.filter(m => m.isActive).sort((a, b) => a.priority - b.priority);
-  return active[0] || null;
+export async function getActiveModel(): Promise<AIModelConfig | null> {
+  try {
+    await ensureDefaultModels();
+    // 优先返回有 apiKey 的活跃模型
+    const row = await queryOne(
+      "SELECT * FROM ai_model_configs WHERE status = 1 AND api_key != '' ORDER BY priority ASC, id ASC LIMIT 1"
+    );
+    if (row) return rowToModel(row as Record<string, unknown>);
+
+    // 回退：返回任意活跃模型（apiKey 可能由环境变量提供）
+    const fallback = await queryOne(
+      'SELECT * FROM ai_model_configs WHERE status = 1 ORDER BY priority ASC, id ASC LIMIT 1'
+    );
+    return fallback ? rowToModel(fallback as Record<string, unknown>) : null;
+  } catch (err) {
+    console.error('[AI Store] getActiveModel failed:', err);
+    return null;
+  }
+}
+
+/** 更新单个模型配置（增量，不覆盖其他模型） */
+export async function updateModel(id: string, data: Partial<AIModelConfig>): Promise<boolean> {
+  try {
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.provider !== undefined) updateData.provider = data.provider;
+    if (data.apiKey !== undefined) updateData.api_key = data.apiKey;
+    if (data.baseUrl !== undefined) updateData.base_url = data.baseUrl;
+    if (data.model !== undefined) updateData.model_name = data.model;
+    if (data.isActive !== undefined) {
+      updateData.status = data.isActive ? 1 : 0;
+      updateData.is_default = data.isActive ? 1 : 0;
+    }
+    if (data.priority !== undefined) updateData.priority = data.priority;
+    if (data.maxTokens !== undefined) updateData.max_tokens = data.maxTokens;
+    if (data.temperature !== undefined) updateData.temperature = data.temperature;
+
+    const affected = await dbUpdate('ai_model_configs', updateData, { id: Number(id) });
+    return affected > 0;
+  } catch (err) {
+    console.error('[AI Store] updateModel failed:', err);
+    return false;
+  }
+}
+
+/** 删除模型 */
+export async function deleteModel(id: string): Promise<boolean> {
+  try {
+    const affected = await dbRemove('ai_model_configs', { id: Number(id) });
+    return affected > 0;
+  } catch (err) {
+    console.error('[AI Store] deleteModel failed:', err);
+    return false;
+  }
 }
 
 // ==================== 知识库 ====================
@@ -174,105 +250,139 @@ export interface KnowledgeDocument {
   updatedAt: string;
 }
 
-export function loadKnowledge(): KnowledgeDocument[] {
-  ensureDir(DATA_DIR);
-  if (!fs.existsSync(KNOWLEDGE_FILE)) {
-    saveKnowledge([]);
-    return [];
-  }
+/** 数据库行 → KnowledgeDocument 映射 */
+function rowToKnowledge(row: Record<string, unknown>): KnowledgeDocument {
+  let tags: string[] = [];
   try {
-    const data = fs.readFileSync(KNOWLEDGE_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
+    const raw = row.tags;
+    if (typeof raw === 'string') tags = JSON.parse(raw);
+    else if (Array.isArray(raw)) tags = raw;
+  } catch { /* ignore */ }
+
+  return {
+    id: String(row.id),
+    title: String(row.title || ''),
+    content: String(row.content || ''),
+    fileName: String(row.source_url || row.title || ''),
+    originalName: String(row.source_url || ''),
+    fileType: String(row.source_type || 'txt'),
+    fileSize: Number((row.content as string)?.length ?? 0),
+    category: String(row.category || ''),
+    tags,
+    createdAt: row.created_at ? new Date(row.created_at as string).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at as string).toISOString() : new Date().toISOString(),
+  };
+}
+
+export async function loadKnowledge(): Promise<KnowledgeDocument[]> {
+  try {
+    const rows = await query("SELECT * FROM ai_knowledge WHERE status = 'active' ORDER BY id DESC");
+    return (rows as any[]).map(rowToKnowledge);
+  } catch (err) {
+    console.error('[AI Store] loadKnowledge failed:', err);
     return [];
   }
 }
 
 export const getKnowledgeDocs = loadKnowledge;
 
-export function saveKnowledge(docs: KnowledgeDocument[]): void {
-  ensureDir(DATA_DIR);
-  fs.writeFileSync(KNOWLEDGE_FILE, JSON.stringify(docs, null, 2), 'utf-8');
+export async function saveKnowledge(_docs: KnowledgeDocument[]): Promise<void> {
+  // 知识库不再使用文件存储，改为逐条操作数据库
+  // 此方法保留兼容性，但实际通过 addKnowledge/deleteKnowledge 操作
+  console.warn('[AI Store] saveKnowledge() is deprecated, use addKnowledge/deleteKnowledge instead');
 }
 
-export function addKnowledge(doc: KnowledgeDocument): KnowledgeDocument {
-  const docs = loadKnowledge();
-  docs.unshift(doc);
-  saveKnowledge(docs);
-  // 保存文档内容到文件
-  ensureDir(DOCS_DIR);
-  fs.writeFileSync(path.join(DOCS_DIR, `${doc.id}.txt`), doc.content, 'utf-8');
-  return doc;
+export async function addKnowledge(doc: KnowledgeDocument): Promise<KnowledgeDocument> {
+  try {
+    const id = await insert('ai_knowledge', {
+      title: doc.title,
+      content: doc.content,
+      category: doc.category || '',
+      source_type: doc.fileType || 'manual',
+      source_url: doc.originalName || doc.fileName || '',
+      tags: JSON.stringify(doc.tags || []),
+      status: 'active',
+    });
+    return { ...doc, id: String(id) };
+  } catch (err) {
+    console.error('[AI Store] addKnowledge failed:', err);
+    return doc;
+  }
 }
 
-export function deleteKnowledge(id: string): boolean {
-  const docs = loadKnowledge();
-  const filtered = docs.filter(d => d.id !== id);
-  if (filtered.length === docs.length) return false;
-  saveKnowledge(filtered);
-  // 删除文档文件
-  const docFile = path.join(DOCS_DIR, `${id}.txt`);
-  if (fs.existsSync(docFile)) fs.unlinkSync(docFile);
-  return true;
+export async function deleteKnowledge(id: string): Promise<boolean> {
+  try {
+    const affected = await dbRemove('ai_knowledge', { id: Number(id), status: 'active' });
+    return affected > 0;
+  } catch (err) {
+    console.error('[AI Store] deleteKnowledge failed:', err);
+    return false;
+  }
 }
 
-export function getKnowledgeContent(id: string): string | null {
-  const docFile = path.join(DOCS_DIR, `${id}.txt`);
-  if (!fs.existsSync(docFile)) return null;
-  return fs.readFileSync(docFile, 'utf-8');
+export async function getKnowledgeContent(id: string): Promise<string | null> {
+  try {
+    const row = await queryOne('SELECT content FROM ai_knowledge WHERE id = ?', [Number(id)]);
+    return row ? String((row as any).content || '') : null;
+  } catch (err) {
+    console.error('[AI Store] getKnowledgeContent failed:', err);
+    return null;
+  }
 }
 
 /**
  * 简单关键词匹配检索知识库
  * 返回最相关的文档片段
  */
-export function searchKnowledge(query: string, maxResults = 3): Array<{ title: string; snippet: string }> {
-  const docs = loadKnowledge();
-  if (docs.length === 0) return [];
+export async function searchKnowledge(queryText: string, maxResults = 3): Promise<Array<{ title: string; snippet: string }>> {
+  try {
+    const rows = await query(
+      "SELECT id, title, content FROM ai_knowledge WHERE status = 'active' ORDER BY id DESC"
+    );
+    if (!rows || rows.length === 0) return [];
 
-  const results: Array<{ title: string; snippet: string; score: number }> = [];
+    const results: Array<{ title: string; snippet: string; score: number }> = [];
 
-  for (const doc of docs) {
-    const content = getKnowledgeContent(doc.id);
-    if (!content) continue;
+    for (const row of rows as any[]) {
+      const content = String(row.content || '');
+      if (!content) continue;
 
-    // 分词并计算匹配度
-    const keywords = query.split(/[\s,，。！？、]+/).filter(k => k.length > 0);
-    let score = 0;
-    const lowerContent = content.toLowerCase();
-    const lowerQuery = query.toLowerCase();
+      const keywords = queryText.split(/[\s,，。！？、]+/).filter(k => k.length > 0);
+      let score = 0;
+      const lowerContent = content.toLowerCase();
+      const lowerQuery = queryText.toLowerCase();
 
-    for (const kw of keywords) {
-      const lowerKw = kw.toLowerCase();
-      // 精确匹配加分
-      const regex = new RegExp(lowerKw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      const matches = lowerContent.match(regex);
-      if (matches) score += matches.length * 2;
+      for (const kw of keywords) {
+        const lowerKw = kw.toLowerCase();
+        const regex = new RegExp(lowerKw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const matches = lowerContent.match(regex);
+        if (matches) score += matches.length * 2;
+      }
+
+      if (row.title && (String(row.title).toLowerCase().includes(lowerQuery) || lowerQuery.includes(String(row.title).toLowerCase()))) {
+        score += 10;
+      }
+
+      if (score > 0) {
+        const snippet = extractSnippet(content, queryText, 300);
+        results.push({ title: String(row.title || ''), snippet, score });
+      }
     }
 
-    // 标题匹配加分
-    if (doc.title.toLowerCase().includes(lowerQuery) || lowerQuery.includes(doc.title.toLowerCase())) {
-      score += 10;
-    }
-
-    if (score > 0) {
-      // 提取相关片段
-      const snippet = extractSnippet(content, query, 300);
-      results.push({ title: doc.title, snippet, score });
-    }
+    return results
+      .sort((a, b) => b.score - a.score)
+      .slice(0, maxResults)
+      .map(({ title, snippet }) => ({ title, snippet }));
+  } catch (err) {
+    console.error('[AI Store] searchKnowledge failed:', err);
+    return [];
   }
-
-  return results
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxResults)
-    .map(({ title, snippet }) => ({ title, snippet }));
 }
 
-function extractSnippet(content: string, query: string, maxLen: number): string {
-  const keywords = query.split(/[\s,，。！？、]+/).filter(k => k.length > 1);
+function extractSnippet(content: string, queryText: string, maxLen: number): string {
+  const keywords = queryText.split(/[\s,，。！？、]+/).filter(k => k.length > 1);
   const lowerContent = content.toLowerCase();
 
-  // 找第一个关键词出现的位置
   let bestPos = 0;
   for (const kw of keywords) {
     const pos = lowerContent.indexOf(kw.toLowerCase());

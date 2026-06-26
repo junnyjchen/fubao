@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { messages = [], model: requestedModel, thinking = false } = body;
-    const activeModel = getActiveModel();
+    const activeModel = await getActiveModel();
     const model = requestedModel || (activeModel ? activeModel.model : 'deepseek-chat');
 
     if (!messages.length) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查 LLM 是否已配置
-    if (!isLLMConfigured()) {
+    if (!(await isLLMConfigured())) {
       return new Response(
         JSON.stringify({ error: 'AI 服務未配置，請在後台「AI模型配置」中啟用至少一個模型' }),
         { status: 503, headers: { 'Content-Type': 'application/json' } }

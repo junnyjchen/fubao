@@ -172,6 +172,41 @@ CREATE TABLE IF NOT EXISTS `settings` (
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ===== ai_model_configs 表（如不存在则创建）=====
+CREATE TABLE IF NOT EXISTS `ai_model_configs` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL DEFAULT '',
+  `provider` VARCHAR(50) NOT NULL DEFAULT '',
+  `model_name` VARCHAR(100) NOT NULL DEFAULT '',
+  `base_url` VARCHAR(500) NOT NULL DEFAULT '',
+  `api_key` VARCHAR(500) NOT NULL DEFAULT '',
+  `max_tokens` INT NOT NULL DEFAULT 4096,
+  `temperature` DECIMAL(3,2) NOT NULL DEFAULT 0.70,
+  `priority` INT NOT NULL DEFAULT 0,
+  `is_default` TINYINT NOT NULL DEFAULT 0,
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ai_model_configs 缺失字段迁移（旧表可能缺少 name/priority）
+CALL safe_add_column('ai_model_configs', 'name', 'VARCHAR(100) DEFAULT NULL AFTER `id`');
+CALL safe_add_column('ai_model_configs', 'priority', 'INT DEFAULT 0 AFTER `temperature`');
+
+-- 插入默认 AI 模型配置（增量，不覆盖已有数据）
+INSERT IGNORE INTO ai_model_configs (id, `name`, provider, model_name, base_url, api_key, max_tokens, temperature, priority, is_default, status) VALUES
+(1, 'DeepSeek V4', 'deepseek', 'deepseek-chat', 'https://api.deepseek.com', '', 8192, 0.70, 1, 1, 1),
+(2, 'OpenAI GPT-4o', 'openai', 'gpt-4o', 'https://api.openai.com/v1', '', 4096, 0.70, 2, 0, 1),
+(3, 'Kimi', 'moonshot', 'moonshot-v1-auto', 'https://api.moonshot.cn/v1', '', 8192, 0.70, 3, 0, 1),
+(4, '豆包', 'doubao', 'doubao-pro-32k', 'https://ark.cn-beijing.volces.com/api/v3', '', 4096, 0.70, 4, 0, 1),
+(5, '通义千问', 'qwen', 'qwen-turbo', 'https://dashscope.aliyuncs.com/compatible-mode/v1', '', 4096, 0.70, 5, 0, 1),
+(6, '智谱 GLM-4', 'zhipu', 'glm-4', 'https://open.bigmodel.cn/api/paas/v4', '', 4096, 0.70, 6, 0, 1);
+
+-- ai_knowledge 缺失字段迁移
+CALL safe_add_column('ai_knowledge', 'file_type', 'VARCHAR(20) DEFAULT NULL AFTER `tags`');
+CALL safe_add_column('ai_knowledge', 'file_size', 'INT UNSIGNED DEFAULT 0 AFTER `file_type`');
+CALL safe_add_column('ai_knowledge', 'chunk_count', 'INT UNSIGNED DEFAULT 0 AFTER `file_size`');
+
 -- ===== 清理 =====
 DROP PROCEDURE IF EXISTS safe_add_column;
 

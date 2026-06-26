@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isLLMConfigured()) {
+    if (!(await isLLMConfigured())) {
       return NextResponse.json({ 
         error: 'AI 服務未配置，請在後台「AI模型配置」中啟用至少一個模型' 
       }, { status: 503 });

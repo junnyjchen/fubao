@@ -4,11 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getKnowledgeDocs } from '@/lib/ai/store';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-
-const UPLOAD_DIR = join(process.cwd(), 'data', 'knowledge');
+import { getKnowledgeContent } from '@/lib/ai/store';
+import { queryOne } from '@/lib/db';
 
 export async function GET(
   _request: NextRequest,
@@ -16,16 +13,23 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const docs = getKnowledgeDocs();
-    const doc = docs.find(d => d.id === id);
-    if (!doc) {
+    
+    // 从数据库读取
+    const row = await queryOne('SELECT * FROM ai_knowledge WHERE id = ?', [Number(id)]);
+    if (!row) {
       return NextResponse.json({ error: '文档不存在' }, { status: 404 });
     }
 
-    const filePath = join(UPLOAD_DIR, doc.fileName);
-    const content = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '';
-
-    return NextResponse.json({ ...doc, content });
+    const doc = row as any;
+    return NextResponse.json({
+      id: String(doc.id),
+      title: doc.title || '',
+      content: doc.content || '',
+      category: doc.category || '',
+      tags: doc.tags || '[]',
+      createdAt: doc.created_at,
+      updatedAt: doc.updated_at,
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -61,6 +61,7 @@ async function publishProduct(
     merchant_id: merchantId,
     name: content.title,
     subtitle: content.summary.substring(0, 50),
+    main_image: options?.cover_image || '',
     category_id: categoryId,
     description: content.summary,
     detail: content.content,
@@ -69,7 +70,7 @@ async function publishProduct(
     stock: options?.stock || 100,
     is_certified: 0,
     status: options?.status ? 1 : 0,
-    tags: Array.isArray(content.tags) ? content.tags.join(',') : '',
+    purpose: Array.isArray(content.tags) ? content.tags.join(',') : '',
   });
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
@@ -115,18 +116,29 @@ async function publishNews(
   content: PublishRequest['content'],
   options?: PublishRequest['options']
 ) {
+  // 生成 slug
+  const slug = content.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+    .replace(/^-|-$/g, '') + '-' + Date.now();
+
   const result = await insert('news', {
     title: content.title,
+    slug,
     summary: content.summary,
     content: content.content,
-    cover: options?.cover_image || '',
+    cover_image: options?.cover_image || '',
+    category: content.category || 'news',
+    author: '符寶網編輯部',
+    tags: Array.isArray(content.tags) ? JSON.stringify(content.tags) : null,
     is_featured: options?.is_featured ? 1 : 0,
     status: options?.status ? 1 : 0,
-    views: 0,
+    view_count: 0,
+    published_at: options?.status ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null,
   });
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
-  return { id: insertId, type: 'news', title: content.title };
+  return { id: insertId, type: 'news', title: content.title, slug };
 }
 
 /**

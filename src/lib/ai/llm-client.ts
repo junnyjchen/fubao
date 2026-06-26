@@ -108,11 +108,11 @@ function getEnvProviderConfig(): ProviderConfig {
  * 从后台配置获取 Provider，fallback 到 .env
  * 每次调用都重新读取，确保后台修改立即生效
  */
-function resolveProviderConfig(): ProviderConfig {
+async function resolveProviderConfig(): Promise<ProviderConfig> {
   const envConfig = getEnvProviderConfig();
 
   try {
-    const active = getActiveModel();
+    const active = await getActiveModel();
     if (active) {
       // 优先使用后台配置的 apiKey，否则 fallback 到环境变量
       const apiKey = active.apiKey || envConfig.apiKey;
@@ -186,25 +186,27 @@ export class LLMClient {
   /**
    * 获取当前 Provider 配置（每次调用都重新解析，确保后台配置生效）
    */
-  private get provider(): ProviderConfig {
+  private async getProvider(): Promise<ProviderConfig> {
     return resolveProviderConfig();
   }
 
   /**
    * 获取可用模型列表
    */
-  getAvailableModels(): { id: string; provider: string }[] {
-    return this.provider.models.map((m) => ({
+  async getAvailableModels(): Promise<{ id: string; provider: string }[]> {
+    const provider = await this.getProvider();
+    return provider.models.map((m) => ({
       id: m,
-      provider: this.provider.name,
+      provider: provider.name,
     }));
   }
 
   /**
    * 获取当前 provider 名称
    */
-  getProviderName(): string {
-    return this.provider.name;
+  async getProviderName(): Promise<string> {
+    const provider = await this.getProvider();
+    return provider.name;
   }
 
   /**
@@ -214,7 +216,7 @@ export class LLMClient {
     messages: Message[],
     llmConfig?: LLMConfig
   ): Promise<LLMResponse> {
-    const { provider } = this;
+    const provider = await this.getProvider();
     const model = llmConfig?.model || provider.defaultModel;
     const temperature = llmConfig?.temperature ?? provider.temperature;
     const maxTokens = llmConfig?.maxTokens || provider.maxTokens;
@@ -276,7 +278,7 @@ export class LLMClient {
     messages: Message[],
     llmConfig?: LLMConfig
   ): AsyncGenerator<StreamChunk, void, unknown> {
-    const { provider } = this;
+    const provider = await this.getProvider();
     const model = llmConfig?.model || provider.defaultModel;
     const temperature = llmConfig?.temperature ?? provider.temperature;
     const maxTokens = llmConfig?.maxTokens || provider.maxTokens;
@@ -410,9 +412,9 @@ export function getLLMClient(): LLMClient {
 /**
  * 检查 LLM 是否已配置（后台配置或 .env 任一有 API Key 即可）
  */
-export function isLLMConfigured(): boolean {
+export async function isLLMConfigured(): Promise<boolean> {
   try {
-    const active = getActiveModel();
+    const active = await getActiveModel();
     if (active && active.apiKey) return true;
   } catch {
     // 读取失败

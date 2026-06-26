@@ -55,6 +55,15 @@ INSERT IGNORE INTO ai_knowledge (id, title, content, category, source_type, tags
 (2, '开光仪式流程', '开光是一种宗教仪式，通过特定的法事程序，赋予法器灵性和法力。开光仪式一般包括：净坛、请神、加持、封符等步骤。', 'ceremony', 'manual', '["开光","仪式","法器"]', 'active'),
 (3, '风水基础知识', '风水是中国传统文化的重要组成部分，讲究人与自然环境的和谐。风水学主要包括阳宅风水和阴宅风水两大类。', 'fengshui', 'manual', '["风水","基础","环境"]', 'active');
 
+-- AI 模型配置（增量插入，仅当记录不存在时插入，已有记录不覆盖）
+INSERT IGNORE INTO ai_model_configs (id, `name`, provider, model_name, base_url, api_key, max_tokens, temperature, priority, is_default, status) VALUES
+(1, 'DeepSeek V4', 'deepseek', 'deepseek-chat', 'https://api.deepseek.com', '', 8192, 0.70, 1, 1, 1),
+(2, 'OpenAI GPT-4o', 'openai', 'gpt-4o', 'https://api.openai.com/v1', '', 4096, 0.70, 2, 0, 1),
+(3, 'Kimi', 'moonshot', 'moonshot-v1-auto', 'https://api.moonshot.cn/v1', '', 8192, 0.70, 3, 0, 1),
+(4, '豆包', 'doubao', 'doubao-pro-32k', 'https://ark.cn-beijing.volces.com/api/v3', '', 4096, 0.70, 4, 0, 1),
+(5, '通义千问', 'qwen', 'qwen-turbo', 'https://dashscope.aliyuncs.com/compatible-mode/v1', '', 4096, 0.70, 5, 0, 1),
+(6, '智谱 GLM-4', 'zhipu', 'glm-4', 'https://open.bigmodel.cn/api/paas/v4', '', 4096, 0.70, 6, 0, 1);
+
 -- AI 問答
 INSERT IGNORE INTO ai_qa (id, question, answer, category, knowledge_id, keywords, is_active) VALUES
 (1, '什么是符咒？', '符咒是道教法术的重要组成部分，由符文和咒语组成，用于沟通天地、驱邪镇煞。', 'fulu', 1, '["符咒","道教"]', 1),

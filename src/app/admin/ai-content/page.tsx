@@ -843,7 +843,7 @@ export default function AIContentPage() {
                                   {item.content.summary}
                                 </p>
                                 <div className="flex items-center gap-1 mt-2">
-                                  {item.content.keywords.slice(0, 3).map((kw, i) => (
+                                  {(item.content.keywords || []).slice(0, 3).map((kw, i) => (
                                     <Badge key={i} variant="secondary" className="text-xs">
                                       {kw}
                                     </Badge>
@@ -1133,7 +1133,7 @@ export default function AIContentPage() {
                         <Badge variant="outline" className="text-xs">自動提取</Badge>
                       </Label>
                       <div className="flex flex-wrap gap-1">
-                        {generatedContent.keywords.map((kw, i) => (
+                        {(generatedContent.keywords || []).map((kw, i) => (
                           <Badge key={i} variant="secondary" className="text-xs">
                             {kw}
                           </Badge>
@@ -1555,7 +1555,7 @@ export default function AIContentPage() {
               <div>
                 <h2 className="text-2xl font-bold">{generatedContent.title}</h2>
                 <div className="flex items-center gap-2 mt-2">
-                  {generatedContent.keywords.slice(0, 3).map((kw, i) => (
+                  {(generatedContent.keywords || []).slice(0, 3).map((kw, i) => (
                     <Badge key={i} variant="secondary">{kw}</Badge>
                   ))}
                 </div>

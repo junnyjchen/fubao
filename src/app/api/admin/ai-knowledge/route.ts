@@ -3,20 +3,10 @@
  * GET    /api/admin/ai-knowledge        - 获取所有文档
  * POST   /api/admin/ai-knowledge        - 上传文档
  * DELETE /api/admin/ai-knowledge?id=xxx  - 删除文档
- * GET    /api/admin/ai-knowledge/[id]   - 获取文档内容
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { loadKnowledge, saveKnowledge, type KnowledgeDocument } from '@/lib/ai/store';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
-
-const UPLOAD_DIR = join(process.cwd(), 'data', 'knowledge');
-
-// 确保上传目录存在
-if (!existsSync(UPLOAD_DIR)) {
-  mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+import { query, insert, remove, queryOne } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,22 +15,37 @@ export async function GET(request: NextRequest) {
 
     if (id) {
       // 获取单个文档内容
-      const docs = loadKnowledge();
-      const doc = docs.find(d => d.id === id);
-      if (!doc) {
+      const row = await queryOne('SELECT * FROM ai_knowledge WHERE id = ?', [Number(id)]);
+      if (!row) {
         return NextResponse.json({ error: '文档不存在' }, { status: 404 });
       }
-      // 读取文件内容
-      const filePath = join(UPLOAD_DIR, doc.fileName);
-      if (existsSync(filePath)) {
-        const content = readFileSync(filePath, 'utf-8');
-        return NextResponse.json({ ...doc, content });
-      }
-      return NextResponse.json({ ...doc, content: '' });
+      const doc = row as any;
+      return NextResponse.json({
+        id: String(doc.id),
+        title: doc.title || '',
+        content: doc.content || '',
+        category: doc.category || '',
+        tags: doc.tags || '[]',
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at,
+      });
     }
 
-    const docs = loadKnowledge();
-    return NextResponse.json({ documents: docs });
+    // 获取所有文档列表
+    const rows = await query('SELECT id, title, category, tags, file_type, file_size, chunk_count, created_at, updated_at FROM ai_knowledge ORDER BY created_at DESC');
+    const documents = (rows as any[]).map(row => ({
+      id: String(row.id),
+      title: row.title || '',
+      category: row.category || '',
+      tags: row.tags || '[]',
+      fileType: row.file_type || '',
+      fileSize: row.file_size || 0,
+      chunkCount: row.chunk_count || 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+
+    return NextResponse.json({ documents });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -70,38 +75,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
-    const docId = `doc-${Date.now()}`;
-    const fileName = `${docId}.${ext}`;
-
-    // 保存文件
-    writeFileSync(join(UPLOAD_DIR, fileName), buffer);
-
     // 分块存储（用于知识检索）
     const chunks = splitIntoChunks(content, 500);
 
-    const doc: KnowledgeDocument = {
-      id: docId,
+    const result = await insert('ai_knowledge', {
       title: title || file.name,
       content,
-      fileName,
-      originalName: file.name,
-      fileType: ext,
-      fileSize: buffer.length,
       category,
-      size: buffer.length,
-      chunks,
-      chunkCount: chunks.length,
-      tags: [],
-      createdAt: now,
-      updatedAt: now,
-    };
+      tags: JSON.stringify([]),
+      file_type: ext,
+      file_size: buffer.length,
+      chunk_count: chunks.length,
+    });
 
-    const docs = loadKnowledge();
-    docs.push(doc);
-    saveKnowledge(docs);
-
-    return NextResponse.json({ success: true, document: { ...doc, content: undefined } });
+    return NextResponse.json({
+      success: true,
+      document: {
+        id: String(result),
+        title: title || file.name,
+        category,
+        fileType: ext,
+        fileSize: buffer.length,
+        chunkCount: chunks.length,
+      },
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -115,20 +112,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: '缺少文档 ID' }, { status: 400 });
     }
 
-    const docs = loadKnowledge();
-    const doc = docs.find(d => d.id === id);
-    if (!doc) {
-      return NextResponse.json({ error: '文档不存在' }, { status: 404 });
-    }
-
-    // 删除文件
-    const filePath = join(UPLOAD_DIR, doc.fileName);
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
-    }
-
-    const filtered = docs.filter(d => d.id !== id);
-    saveKnowledge(filtered);
+    await remove('ai_knowledge', { id: Number(id) });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
