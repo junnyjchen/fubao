@@ -83,21 +83,29 @@ async function publishWiki(
   content: PublishRequest['content'],
   options?: PublishRequest['options']
 ) {
-  const categoryId = categoryMapping.wiki[content.category || 'culture'] || 5;
+  // 生成 slug：标题转拼音风格 + 时间戳
+  const slug = content.title
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+    .replace(/^-|-$/g, '') + '-' + Date.now();
 
-  const result = await insert('wiki_articles', {
+  const result = await insert('articles', {
     title: content.title,
-    category_id: categoryId,
+    slug,
     summary: content.summary,
     content: content.content,
+    cover_image: options?.cover_image || '',
+    category: content.category || 'culture',
     author: '符寶網編輯部',
-    tags: Array.isArray(content.tags) ? content.tags.join(',') : '',
+    tags: Array.isArray(content.tags) ? JSON.stringify(content.tags) : null,
     status: options?.status ? 1 : 0,
-    views: 0,
+    view_count: 0,
+    like_count: 0,
+    published_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
   });
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
-  return { id: insertId, type: 'wiki', title: content.title };
+  return { id: insertId, type: 'wiki', title: content.title, slug };
 }
 
 /**
