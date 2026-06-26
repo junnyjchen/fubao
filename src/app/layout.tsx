@@ -155,6 +155,12 @@ export default async function RootLayout({
         if (key) siteSettings[key] = String(val ?? '');
       }
     }
+    // Convert default_currency code to currency symbol for client-side use
+    const currencyCode = siteSettings['default_currency'] || 'HKD';
+    const CURRENCY_SYMBOLS: Record<string, string> = {
+      HKD: 'HK$', CNY: '¥', USD: '$', TWD: 'NT$', JPY: '¥', KRW: '₩', EUR: '€', GBP: '£',
+    };
+    siteSettings['currency'] = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
   } catch {
     // 数据库不可用时使用默认值
   }

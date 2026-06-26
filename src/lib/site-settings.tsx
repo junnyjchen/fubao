@@ -20,6 +20,18 @@ interface SiteSettings {
   [key: string]: string;
 }
 
+/** 货币代码 → 符号映射 */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  HKD: 'HK$',
+  CNY: '¥',
+  USD: '$',
+  TWD: 'NT$',
+  JPY: '¥',
+  KRW: '₩',
+  EUR: '€',
+  GBP: '£',
+};
+
 const defaultSettings: SiteSettings = {
   site_name: '符寶網',
   site_logo: '',
@@ -73,6 +85,9 @@ export function SiteSettingsProvider({ children, initialSettings }: { children: 
               }
             });
           }
+          // Convert default_currency code to currency symbol
+          const currencyCode = settingsMap['default_currency'] || 'HKD';
+          settingsMap.currency = CURRENCY_SYMBOLS[currencyCode] || currencyCode;
           setSettings(settingsMap);
         }
       }

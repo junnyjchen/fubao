@@ -122,7 +122,7 @@ function CheckoutPageContent() {
   const searchParams = useSearchParams();
   const { t, isRTL } = useI18n();
   const { settings } = useSiteSettings();
-  const currency = settings.currency || '{currency}';
+  const currency = settings.currency || 'HK$';
   
   const cartItemIdsStr = searchParams.get('cartItemIds') || '';
   const cartItemIds = useMemo(() => cartItemIdsStr ? cartItemIdsStr.split(',').map(Number) : [], [cartItemIdsStr]);
