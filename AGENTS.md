@@ -11,7 +11,7 @@
 | UI | shadcn/ui + Tailwind CSS 4 |
 | 语言 | TypeScript 5 / PHP 8 |
 | 包管理 | 前端 **pnpm** (强制) / 后端 composer |
-| 数据库 | MySQL 优先 + Mock DB 自动降级 |
+| 数据库 | MySQL（生产唯一） |
 | AI 集成 | DeepSeek/豆包/Kimi (流式输出，默认 DeepSeek) |
 | 邮件 | QQ邮箱SMTP (nodemailer / PHPMailer) |
 | 部署 | systemd + Nginx (无 Docker) |
@@ -61,7 +61,7 @@
 │   │   ├── shop/             # 商城组件
 │   │   └── ...
 │   └── lib/                   # 工具库
-│       ├── db.ts             # Mock DB + MySQL 双模式数据库
+│       ├── db.ts             # MySQL 数据库操作
 │       ├── mysql.ts          # MySQL 连接池
 │       ├── api-response.ts   # 统一 API 响应格式
 │       ├── api-client.ts     # 前端请求封装
@@ -316,9 +316,7 @@ if (isApiSuccess(data)) {
 ### 11. 数据库
 | 功能 | 说明 |
 |------|------|
-| MySQL 优先 | 有MySQL环境时自动使用 |
-| Mock DB 降级 | MySQL不可用时自动降级到内存数据库 |
-| 文件持久化 | Mock DB 数据保存到 .db-data/mock-db.json |
+| MySQL | 生产环境唯一数据存储 |
 | 一键部署 | sql/deploy-mysql.sh 脚本 |
 | 数据库管理 | /admin/database 管理界面 |
 
@@ -359,6 +357,68 @@ const userId = await getAuthUserId(request);
 
 ---
 
+## 编码行为准则
+
+> 来源: [andrej-karpathy-skills/CLAUDE.md](https://github.com/forrestchang/andrej-karpathy-skills)
+
+### 1. 先思考再编码
+
+**不假设、不隐藏疑问、暴露权衡。**
+
+实施前：
+- 明确陈述假设。不确定时先问。
+- 存在多种理解时，列出选项而非默默选一个。
+- 有更简单的方案时说出来。该反驳就反驳。
+- 遇到不清晰的地方，停下来。指出困惑点。提问。
+
+### 2. 简单优先
+
+**最少代码解决问题。不写猜测性代码。**
+
+- 不实现用户没要求的功能。
+- 不为只用到一次的代码建抽象层。
+- 不添加没被要求的"灵活性"或"可配置性"。
+- 不为不可能发生的场景写错误处理。
+- 写了 200 行但 50 行能搞定 → 重写。
+
+自问："资深工程师会觉得这过度复杂吗？" 如果是，简化。
+
+### 3. 精准修改
+
+**只动必须动的。只清理自己造成的混乱。**
+
+编辑已有代码时：
+- 不"顺手优化"相邻代码、注释或格式。
+- 不重构没坏的东西。
+- 匹配现有风格，即使你觉得有更好的写法。
+- 发现无关的死代码，提出来——但不要删。
+
+修改造成孤立代码时：
+- 删除**你的修改**导致不再使用的 import/变量/函数。
+- 不删除已有的死代码，除非被要求。
+
+检验标准：每行改动都能追溯到用户的需求。
+
+### 4. 目标驱动执行
+
+**定义成功标准。循环直到验证通过。**
+
+把任务转化为可验证的目标：
+- "加校验" → "为无效输入写测试，然后让测试通过"
+- "修 bug" → "写一个能复现的测试，然后让它通过"
+- "重构 X" → "确保前后测试都通过"
+
+多步骤任务，先陈述简要计划：
+```
+1. [步骤] → 验证: [检查项]
+2. [步骤] → 验证: [检查项]
+3. [步骤] → 验证: [检查项]
+```
+
+强成功标准让你独立循环。弱标准（"搞出来就行"）需要不断澄清。
+
+---
+
 ## 开发规范
 
 ### Hydration 安全
@@ -389,21 +449,6 @@ export function Component() {
 
 // 检查 API 响应格式
 if (isApiSuccess(data)) { ... }
-```
-
----
-
-## Mock 数据模式
-
-当 MySQL 不可用时自动降级到 Mock DB：
-
-```typescript
-import { mockUsers } from '@/lib/auth/mockStore';
-
-// 预置测试用户
-// 邮箱: test@example.com / demo@example.com  密码: admin123
-// 管理后台: admin / editor  密码: admin123
-// 无数据库时也允许 admin / admin123 登录
 ```
 
 ---
@@ -440,4 +485,4 @@ COZE_PROJECT_ENV=PROD
 
 ---
 
-> 最后更新: 2026-06-24
+> 最后更新: 2026-06-26
