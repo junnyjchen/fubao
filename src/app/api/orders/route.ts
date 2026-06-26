@@ -96,15 +96,50 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const authUser = await getAuthUser(request);
-    if (!authUser) return errorResponse('請先登錄', 401);
-    const userId = authUser.userId;
-    if (!userId) {
-      return errorResponse('請先登錄', 401);
-    }
-
     const body = await request.json();
-    const { address_id, items, cart_item_ids, goods_id, quantity, remark, payment_method } = body;
+    const { address_id, items, cart_item_ids, goods_id, quantity, remark, payment_method, guest_address } = body;
+
+    // 游客下单模式
+    const isGuest = !!guest_address;
+    let userId: number | string;
+    let authUser: any = null;
+
+    if (isGuest) {
+      // 游客使用 user_id = 0 或创建一个临时用户
+      // 先尝试获取或创建游客用户
+      const guestEmail = guest_address.email || `guest_${Date.now()}@temp.fubao.ltd`;
+      const guestName = guest_address.name || '遊客';
+      const guestPhone = guest_address.phone || '';
+
+      // 查找是否已有该邮箱的游客账号
+      let guestUser = await queryOne(
+        'SELECT id FROM users WHERE email = ?',
+        [guestEmail]
+      ) as any;
+
+      if (!guestUser) {
+        // 创建游客用户
+        const guestId = await dbInsert('users', {
+          name: guestName,
+          email: guestEmail,
+          phone: guestPhone,
+          password: '',
+          role: 'guest',
+          status: 1,
+        });
+        userId = guestId;
+      } else {
+        userId = guestUser.id;
+      }
+      authUser = { userId, email: guestEmail, name: guestName };
+    } else {
+      authUser = await getAuthUser(request);
+      if (!authUser) return errorResponse('請先登錄', 401);
+      userId = authUser.userId;
+      if (!userId) {
+        return errorResponse('請先登錄', 401);
+      }
+    }
 
     // 解析购买商品列表
     let orderItemsInput: Array<{ goods_id: number; quantity: number }> = [];
@@ -129,16 +164,27 @@ export async function POST(request: NextRequest) {
       return errorResponse('請選擇商品');
     }
 
-    // 获取地址 - 如果没有传address_id，尝试获取默认地址
+    // 获取地址
     let address: any = null;
-    if (address_id) {
+    if (isGuest && guest_address) {
+      // 游客模式：直接使用传入的地址信息
+      address = {
+        name: guest_address.name || '遊客',
+        phone: guest_address.phone || '',
+        province: guest_address.province || '',
+        city: guest_address.city || '',
+        district: guest_address.district || '',
+        address: guest_address.address || '',
+        is_default: 1,
+      };
+    } else if (address_id) {
       address = await queryOne('SELECT * FROM addresses WHERE id = ? AND user_id = ?', [address_id, userId]);
     }
     if (!address) {
       address = await queryOne('SELECT * FROM addresses WHERE user_id = ? ORDER BY is_default DESC LIMIT 1', [userId]);
     }
-    if (!address) {
-      // 自动创建一个默认地址
+    if (!address && !isGuest) {
+      // 自动创建一个默认地址（仅登录用户）
       const addrId = await dbInsert('addresses', {
         user_id: userId,
         name: '默認收件人',
@@ -150,6 +196,9 @@ export async function POST(request: NextRequest) {
         is_default: 1,
       });
       address = await queryOne('SELECT * FROM addresses WHERE id = ?', [addrId]);
+    }
+    if (!address) {
+      return errorResponse('請填寫收貨地址');
     }
 
     // 计算订单金额

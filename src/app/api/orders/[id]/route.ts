@@ -86,6 +86,14 @@ export async function PUT(
       if (body.status === 'delivered') updateData.delivered_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
     }
     if (body.remark !== undefined) updateData.remark = body.remark;
+    // 支付状态更新
+    if (body.payment_status) updateData.payment_status = body.payment_status;
+    if (body.payment_method) updateData.payment_method = body.payment_method;
+    if (body.payment_no) updateData.payment_no = body.payment_no;
+    // 支付时间（支付成功时自动记录）
+    if (body.payment_status === 'paid') {
+      updateData.paid_at = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    }
 
     await dbUpdate('orders', updateData, { id: parseInt(id) });
 

@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, phone, province, city, district, address, is_default, tag } = body;
 
-    if (!name || !phone || !address) {
+    if (!name || !address) {
       return errorResponse('請填寫完整地址信息');
     }
 
@@ -55,17 +55,22 @@ export async function POST(request: NextRequest) {
       await dbUpdate('addresses', { is_default: 0 }, { user_id: userId, is_default: 1 });
     }
 
-    const id = await dbInsert('addresses', {
+    const insertData: Record<string, unknown> = {
       user_id: userId,
       name,
-      phone,
+      phone: phone || '',
       province: province || null,
       city: city || null,
       district: district || null,
       address,
       is_default: is_default ? 1 : 0,
-      tag: tag || null,
-    });
+    };
+    // tag 列可能不存在，尝试添加
+    try {
+      insertData.tag = tag || null;
+    } catch { /* ignore */ }
+
+    const id = await dbInsert('addresses', insertData);
 
     return successResponse({ id }, '地址添加成功');
   } catch (error) {
@@ -104,7 +109,7 @@ export async function PUT(request: NextRequest) {
 
     const updateData: Record<string, unknown> = {};
     if (name !== undefined) updateData.name = name;
-    if (phone !== undefined) updateData.phone = phone;
+    if (phone !== undefined) updateData.phone = phone || '';
     if (province !== undefined) updateData.province = province;
     if (city !== undefined) updateData.city = city;
     if (district !== undefined) updateData.district = district;

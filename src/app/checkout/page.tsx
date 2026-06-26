@@ -12,11 +12,13 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
-import { RequireAuth } from '@/components/auth/RequireAuth';
+import { useAuth } from '@/lib/auth/context';
 import { useI18n } from '@/lib/i18n';
 import { useSiteSettings } from '@/lib/site-settings';
 import {
@@ -122,7 +124,9 @@ function CheckoutPageContent() {
   const searchParams = useSearchParams();
   const { t, isRTL } = useI18n();
   const { settings } = useSiteSettings();
+  const { user, loading: authLoading } = useAuth();
   const currency = settings.currency || 'HK$';
+  const isGuest = !authLoading && !user;
   
   const cartItemIdsStr = searchParams.get('cartItemIds') || '';
   const cartItemIds = useMemo(() => cartItemIdsStr ? cartItemIdsStr.split(',').map(Number) : [], [cartItemIdsStr]);
@@ -138,6 +142,17 @@ function CheckoutPageContent() {
   const [showCouponSelector, setShowCouponSelector] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat' | 'balance' | 'paypal' | 'payprotocol'>('alipay');
   const [remark, setRemark] = useState('');
+
+  // 游客地址表单
+  const [guestAddress, setGuestAddress] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    province: '香港',
+    city: '九龍',
+    district: '觀塘區',
+    address: '',
+  });
 
   const checkout = t.checkoutPage;
 
@@ -155,6 +170,45 @@ function CheckoutPageContent() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // 游客模式：从 localStorage 加载购物车
+      if (isGuest) {
+        const stored = localStorage.getItem('fubao_guest_cart');
+        if (stored) {
+          try {
+            const guestCart = JSON.parse(stored);
+            // 需要从 API 获取商品信息
+            const goodsIds = guestCart.map((item: any) => item.goods_id);
+            if (goodsIds.length > 0) {
+              const goodsRes = await fetch(`/api/goods?ids=${goodsIds.join(',')}`);
+              const goodsData = await goodsRes.json();
+              const goodsMap = new Map();
+              if (goodsData.data) {
+                (goodsData.data as any[]).forEach((g: any) => goodsMap.set(g.id, g));
+              }
+              const items = guestCart.map((item: any) => {
+                const goods = goodsMap.get(item.goods_id) || {};
+                return {
+                  id: item.id || item.goods_id,
+                  goods_id: item.goods_id,
+                  quantity: item.quantity,
+                  goods: {
+                    id: item.goods_id,
+                    name: goods.name || '商品',
+                    price: parseFloat(goods.price || '0'),
+                    image: goods.main_image || null,
+                  },
+                  merchant_id: 0,
+                  merchant_name: '',
+                };
+              });
+              setCartItems(items);
+            }
+          } catch { /* ignore */ }
+        }
+        setLoading(false);
+        return;
+      }
+
       const headers = getAuthHeaders();
       // 加载地址
       const addrRes = await fetch('/api/addresses', { headers });
@@ -230,7 +284,7 @@ function CheckoutPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [cartItemIds, orderId, getAuthHeaders]);
+  }, [cartItemIds, orderId, getAuthHeaders, isGuest]);
 
   useEffect(() => {
     if (!loadedRef.current) {
@@ -264,7 +318,17 @@ function CheckoutPageContent() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!selectedAddressId) {
+    // 游客模式：验证地址表单
+    if (isGuest) {
+      if (!guestAddress.name.trim()) {
+        toast.error('請填寫收貨人姓名');
+        return;
+      }
+      if (!guestAddress.address.trim()) {
+        toast.error('請填寫詳細地址');
+        return;
+      }
+    } else if (!selectedAddressId) {
       toast.error(checkout.selectAddress);
       return;
     }
@@ -276,6 +340,43 @@ function CheckoutPageContent() {
 
     setSubmitting(true);
     try {
+      // 游客模式：创建游客订单
+      if (isGuest) {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartItems.map(item => ({ goods_id: item.goods_id, quantity: item.quantity })),
+            guest_address: {
+              name: guestAddress.name.trim(),
+              phone: guestAddress.phone.trim() || '未提供',
+              email: guestAddress.email.trim() || '',
+              province: guestAddress.province,
+              city: guestAddress.city,
+              district: guestAddress.district,
+              address: guestAddress.address.trim(),
+            },
+            payment_method: paymentMethod,
+            remark: remark.trim() || undefined,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.data) {
+          // 保存游客订单ID到 localStorage
+          const guestOrders = JSON.parse(localStorage.getItem('fubao_guest_orders') || '[]');
+          guestOrders.push(data.data.id);
+          localStorage.setItem('fubao_guest_orders', JSON.stringify(guestOrders));
+          // 清除游客购物车
+          localStorage.removeItem('fubao_guest_cart');
+          router.push(`/payment/${data.data.id}`);
+        } else if (data.error) {
+          toast.error(data.error);
+        }
+        setSubmitting(false);
+        return;
+      }
+
       // 直接下单模式：更新已有订单
       if (orderId) {
         const res = await fetch(`/api/orders`, {
@@ -287,12 +388,12 @@ function CheckoutPageContent() {
             coupon_id: selectedCoupon?.id,
             payment_method: paymentMethod,
             remark: remark.trim() || undefined,
-            status: 0, // 待付款
+            status: 'pending',
           }),
         });
         const data = await res.json();
         if (data.data || data.success) {
-          router.push(`/payment?orderId=${orderId}`);
+          router.push(`/payment/${orderId}`);
         } else {
           toast.error(data.error || checkout.submitFailed);
         }
@@ -313,7 +414,7 @@ function CheckoutPageContent() {
 
         const data = await res.json();
         if (data.data) {
-          router.push(`/payment?orderId=${data.data.id}`);
+          router.push(`/payment/${data.data.id}`);
         } else if (data.error) {
           toast.error(data.error);
         }
@@ -324,7 +425,7 @@ function CheckoutPageContent() {
     } finally {
       setSubmitting(false);
     }
-  }, [selectedAddressId, cartItems, cartItemIds, orderId, selectedCoupon, paymentMethod, remark, router, checkout]);
+  }, [isGuest, guestAddress, selectedAddressId, cartItems, cartItemIds, orderId, selectedCoupon, paymentMethod, remark, router, checkout, getAuthHeaders]);
 
   if (loading) {
     return <CheckoutSkeleton />;
@@ -372,7 +473,49 @@ function CheckoutPageContent() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedAddress ? (
+                {isGuest ? (
+                  /* 游客地址表单 */
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{checkout.address.name} *</Label>
+                        <Input
+                          value={guestAddress.name}
+                          onChange={(e) => setGuestAddress({ ...guestAddress, name: e.target.value })}
+                          placeholder="請輸入收貨人姓名"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{checkout.address.phone}</Label>
+                        <Input
+                          value={guestAddress.phone}
+                          onChange={(e) => setGuestAddress({ ...guestAddress, phone: e.target.value })}
+                          placeholder="選填"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Email（可選，用於接收訂單通知）</Label>
+                      <Input
+                        type="email"
+                        value={guestAddress.email}
+                        onChange={(e) => setGuestAddress({ ...guestAddress, email: e.target.value })}
+                        placeholder="example@email.com"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">{checkout.address.detailAddress} *</Label>
+                      <Input
+                        value={guestAddress.address}
+                        onChange={(e) => setGuestAddress({ ...guestAddress, address: e.target.value })}
+                        placeholder="請輸入詳細地址（街道、門牌號等）"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      免註冊快速下單，訂單編號將在提交後顯示。如需查看訂單歷史，建議<Link href="/login" className="text-primary underline">登錄</Link>後下單。
+                    </p>
+                  </div>
+                ) : selectedAddress ? (
                   <div
                     className="p-4 border rounded-lg cursor-pointer hover:border-primary transition-colors"
                     onClick={() => router.push('/user/addresses?select=true')}
@@ -614,7 +757,7 @@ function CheckoutPageContent() {
                   <span className="text-primary">{currency}{totalAmount.toFixed(2)}</span>
                 </div>
 
-                <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitting || !selectedAddressId}>
+                <Button className="w-full" size="lg" onClick={handleSubmit} disabled={submitting || (!isGuest && !selectedAddressId)}>
                   {submitting ? (
                     <>
                       <Loader2 className={`w-4 h-4 animate-spin ${isRTL ? 'ms-2' : 'me-2'}`} />
@@ -656,16 +799,14 @@ function CheckoutPageContent() {
 
 export default function CheckoutPage() {
   return (
-    <RequireAuth>
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-muted/20 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        }
-      >
-        <CheckoutPageContent />
-      </Suspense>
-    </RequireAuth>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <CheckoutPageContent />
+    </Suspense>
   );
 }

@@ -360,6 +360,9 @@ export const translations = {
         add: '添加收貨地址',
         default: '默認',
         selectOther: '選擇其他地址',
+        name: '收貨人',
+        phone: '電話',
+        detailAddress: '詳細地址',
       },
       // 商品清单
       goodsList: {
@@ -1812,7 +1815,7 @@ export const translations = {
       cartEmpty: 'السلة فارغة',
       selectGoods: 'الرجاء تحديد المنتجات للشراء',
       backToCart: 'العودة للسلة',
-      address: { title: 'عنوان التوصيل', add: 'إضافة عنوان', default: 'افتراضي', selectOther: 'تحديد عنوان آخر' },
+      address: { title: 'عنوان التوصيل', add: 'إضافة عنوان', default: 'افتراضي', selectOther: 'تحديد عنوان آخر', name: 'المستلم', phone: 'الهاتف', detailAddress: 'العنوان التفصيلي' },
       goodsList: { title: 'قائمة المنتجات', merchant: 'البائع', quantity: 'الكمية' },
       coupon: { title: 'قسيمة', available: 'قسيمة متاحة', select: 'اختر قسيمة' },
       payment: {
@@ -3128,7 +3131,7 @@ export const translations = {
       cartEmpty: 'Your cart is empty',
       selectGoods: 'Please select items to purchase',
       backToCart: 'Back to Cart',
-      address: { title: 'Shipping Address', add: 'Add Address', default: 'Default', selectOther: 'Select another address' },
+      address: { title: 'Shipping Address', add: 'Add Address', default: 'Default', selectOther: 'Select another address', name: 'Recipient', phone: 'Phone', detailAddress: 'Detail Address' },
       goodsList: { title: 'Order Items', merchant: 'Merchant', quantity: 'Qty' },
       coupon: { title: 'Coupon', available: 'Coupons available', select: 'Select coupon' },
       payment: {

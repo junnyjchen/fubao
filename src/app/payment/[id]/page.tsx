@@ -40,14 +40,12 @@ interface Order {
   order_no: string;
   total_amount: string;
   pay_amount: string;
-  pay_status: number;
-  order_status: number;
-  pay_method: string | null;
-  pay_time: string | null;
-  shipping_name: string;
-  shipping_phone: string;
-  shipping_address: string;
-  remark: string | null;
+  payment_status: string;
+  status: string;
+  payment_method: string | null;
+  payment_no: string | null;
+  shipping_address: any;
+  note: string | null;
   created_at: string;
   items: OrderItem[];
 }
@@ -62,12 +60,13 @@ const payMethods = [
   { value: 'paypal', label: 'PayPal', icon: CreditCard, enabled: true, description: '支持國際信用卡' },
 ];
 
-const orderStatusMap: Record<number, { label: string; color: string }> = {
-  0: { label: '待付款', color: 'bg-yellow-100 text-yellow-800' },
-  1: { label: '待發貨', color: 'bg-blue-100 text-blue-800' },
-  2: { label: '已發貨', color: 'bg-purple-100 text-purple-800' },
-  3: { label: '已完成', color: 'bg-green-100 text-green-800' },
-  4: { label: '已取消', color: 'bg-gray-100 text-gray-800' },
+const orderStatusMap: Record<string, { label: string; color: string }> = {
+  pending: { label: '待付款', color: 'bg-yellow-100 text-yellow-800' },
+  paid: { label: '待發貨', color: 'bg-blue-100 text-blue-800' },
+  shipped: { label: '已發貨', color: 'bg-purple-100 text-purple-800' },
+  completed: { label: '已完成', color: 'bg-green-100 text-green-800' },
+  cancelled: { label: '已取消', color: 'bg-gray-100 text-gray-800' },
+  refunded: { label: '已退款', color: 'bg-red-100 text-red-800' },
 };
 
 export default function PaymentPage({ params }: PageProps) {
@@ -85,9 +84,18 @@ export default function PaymentPage({ params }: PageProps) {
         const res = await fetch(`/api/orders/${id}`);
         const data = await res.json();
         if (data.data) {
-          setOrder(data.data);
-          if (data.data.pay_method) {
-            setPayMethod(data.data.pay_method);
+          // 解析 address_snapshot
+          const order = data.data;
+          if (order.address_snapshot) {
+            try {
+              order.shipping_address = typeof order.address_snapshot === 'string'
+                ? JSON.parse(order.address_snapshot)
+                : order.address_snapshot;
+            } catch { /* ignore */ }
+          }
+          setOrder(order);
+          if (order.payment_method) {
+            setPayMethod(order.payment_method);
           }
         } else {
           router.push('/user/orders');
@@ -104,7 +112,7 @@ export default function PaymentPage({ params }: PageProps) {
 
   // 倒计时（30分钟）
   useEffect(() => {
-    if (!order || order.order_status !== 0) return;
+    if (!order || order.status !== 'pending') return;
 
     const createdAt = new Date(order.created_at).getTime();
     const expireTime = createdAt + 30 * 60 * 1000; // 30分钟后过期
@@ -119,7 +127,7 @@ export default function PaymentPage({ params }: PageProps) {
         fetch(`/api/orders/${order.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_status: 4 }),
+          body: JSON.stringify({ status: 'cancelled' }),
         });
       }
     }, 1000);
@@ -141,22 +149,20 @@ export default function PaymentPage({ params }: PageProps) {
       // 模拟支付流程
       if (payMethod === 'paypal') {
         // PayPal 支付流程
-        // 实际项目中需要跳转到 PayPal 支付页面
-        // 这里模拟支付成功
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         const res = await fetch(`/api/orders/${order.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            pay_status: 1,
-            pay_method: payMethod,
-            pay_time: new Date().toISOString(),
+            payment_status: 'paid',
+            payment_method: payMethod,
+            payment_no: 'PAYPAL_' + Date.now(),
           }),
         });
 
         const data = await res.json();
-        if (data.message) {
+        if (data.success) {
           router.push(`/user/orders?highlight=${order.id}`);
         }
       }
@@ -175,7 +181,7 @@ export default function PaymentPage({ params }: PageProps) {
       const res = await fetch(`/api/orders/${order.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_status: 4 }),
+        body: JSON.stringify({ status: 'cancelled' }),
       });
 
       const data = await res.json();
@@ -211,8 +217,8 @@ export default function PaymentPage({ params }: PageProps) {
     );
   }
 
-  const status = orderStatusMap[order.order_status] || orderStatusMap[0];
-  const isPayable = order.order_status === 0 && order.pay_status === 0;
+  const status = orderStatusMap[order.status] || orderStatusMap['pending'];
+  const isPayable = order.status === 'pending' && order.payment_status === 'unpaid';
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -256,11 +262,15 @@ export default function PaymentPage({ params }: PageProps) {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">收貨人</span>
-              <span>{order.shipping_name} {order.shipping_phone}</span>
+              <span>{order.shipping_address?.name || '-'} {order.shipping_address?.phone || ''}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">收貨地址</span>
-              <span className="text-right max-w-[200px]">{order.shipping_address}</span>
+              <span className="text-right max-w-[200px]">
+                {order.shipping_address
+                  ? `${order.shipping_address.province || ''}${order.shipping_address.city || ''}${order.shipping_address.district || ''}${order.shipping_address.address || ''}`
+                  : '-'}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -376,11 +386,11 @@ export default function PaymentPage({ params }: PageProps) {
                 )}
               </Button>
             </>
-          ) : order.order_status === 4 ? (
+          ) : order.status === 'cancelled' ? (
             <Button variant="outline" className="w-full" asChild>
               <Link href="/shop">繼續購物</Link>
             </Button>
-          ) : order.pay_status === 1 ? (
+          ) : order.payment_status === 'paid' ? (
             <Button className="w-full" disabled>
               <CheckCircle2 className="w-4 h-4 mr-2" />
               已支付
