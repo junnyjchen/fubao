@@ -39,11 +39,11 @@ export interface AIModelConfig {
 const DEFAULT_MODELS: AIModelConfig[] = [
   {
     id: 'deepseek-default',
-    name: 'DeepSeek V3',
+    name: 'DeepSeek V4',
     provider: 'deepseek',
     apiKey: process.env.DEEPSEEK_API_KEY || '',
-    baseUrl: 'https://api.deepseek.com/v1',
-    model: 'deepseek-chat',
+    baseUrl: 'https://api.deepseek.com',
+    model: 'deepseek-v4-flash',
     isActive: true,
     priority: 1,
     maxTokens: 4096,

@@ -1,17 +1,17 @@
 [
   {
     "id": "deepseek-default",
-    "name": "DeepSeek V3",
+    "name": "DeepSeek V4",
     "provider": "deepseek",
     "apiKey": "",
-    "baseUrl": "https://api.deepseek.com/v1",
-    "model": "deepseek-chat",
+    "baseUrl": "https://api.deepseek.com",
+    "model": "deepseek-v4-flash",
     "isActive": true,
     "priority": 1,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:47:56.188Z",
-    "updatedAt": "2026-06-15T16:47:56.188Z"
+    "createdAt": "2026-06-26T13:38:01.514Z",
+    "updatedAt": "2026-06-26T13:38:01.514Z"
   },
   {
     "id": "openai-default",
@@ -24,8 +24,8 @@
     "priority": 2,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:47:56.188Z",
-    "updatedAt": "2026-06-15T16:47:56.188Z"
+    "createdAt": "2026-06-26T13:38:01.514Z",
+    "updatedAt": "2026-06-26T13:38:01.514Z"
   },
   {
     "id": "kimi-default",
@@ -38,8 +38,8 @@
     "priority": 3,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:47:56.188Z",
-    "updatedAt": "2026-06-15T16:47:56.188Z"
+    "createdAt": "2026-06-26T13:38:01.514Z",
+    "updatedAt": "2026-06-26T13:38:01.514Z"
   },
   {
     "id": "doubao-default",
@@ -52,8 +52,8 @@
     "priority": 4,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:47:56.188Z",
-    "updatedAt": "2026-06-15T16:47:56.188Z"
+    "createdAt": "2026-06-26T13:38:01.514Z",
+    "updatedAt": "2026-06-26T13:38:01.514Z"
   },
   {
     "id": "qwen-default",
@@ -66,8 +66,8 @@
     "priority": 5,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:47:56.188Z",
-    "updatedAt": "2026-06-15T16:47:56.188Z"
+    "createdAt": "2026-06-26T13:38:01.514Z",
+    "updatedAt": "2026-06-26T13:38:01.514Z"
   },
   {
     "id": "glm-default",
@@ -80,7 +80,7 @@
     "priority": 6,
     "maxTokens": 4096,
     "temperature": 0.7,
-    "createdAt": "2026-06-15T16:47:56.188Z",
-    "updatedAt": "2026-06-15T16:47:56.188Z"
+    "createdAt": "2026-06-26T13:38:01.514Z",
+    "updatedAt": "2026-06-26T13:38:01.514Z"
   }
 ]

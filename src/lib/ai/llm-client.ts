@@ -94,10 +94,10 @@ function getEnvProviderConfig(): ProviderConfig {
     default:
       return {
         name: 'deepseek',
-        baseUrl: 'https://api.deepseek.com/v1',
+        baseUrl: 'https://api.deepseek.com',
         apiKey: process.env.DEEPSEEK_API_KEY || '',
         defaultModel: 'deepseek-chat',
-        models: ['deepseek-chat', 'deepseek-reasoner'],
+        models: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'],
         temperature: 0.7,
         maxTokens: 4096,
       };
