@@ -227,6 +227,7 @@ export class LLMClient {
       temperature,
       max_tokens: maxTokens,
       stream: false,
+      thinking: { type: 'disabled' },
     };
 
     const response = await fetch(`${provider.baseUrl}/chat/completions`, {
@@ -289,19 +290,44 @@ export class LLMClient {
       max_tokens: maxTokens,
       stream: true,
       stream_options: { include_usage: true },
+      // DeepSeek V4 默认开启 thinking 模式，必须显式关闭
+      // 否则模型只输出 reasoning_content，前端无可见内容
+      thinking: { type: 'disabled' },
     };
 
-    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${provider.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    // 超时控制：连接超时 15s，总超时 120s
+    const controller = new AbortController();
+    const connectTimeout = setTimeout(() => controller.abort(), 15000);
+    const totalTimeout = setTimeout(() => controller.abort(), 120000);
+
+    let response: Response;
+    try {
+      response = await fetch(`${provider.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${provider.apiKey}`,
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: unknown) {
+      clearTimeout(connectTimeout);
+      clearTimeout(totalTimeout);
+      if (fetchErr instanceof DOMException && fetchErr.name === 'AbortError') {
+        throw new Error('AI 服務連接超時，請檢查網絡或稍後重試');
+      }
+      throw new Error(`AI 服務連接失敗: ${fetchErr instanceof Error ? fetchErr.message : '未知錯誤'}`);
+    } finally {
+      clearTimeout(connectTimeout);
+    }
 
     if (!response.ok) {
+      clearTimeout(totalTimeout);
       const errorText = await response.text();
+      if (response.status === 402) {
+        throw new Error('AI 服務帳戶餘額不足，請充值後重試');
+      }
       if (response.status === 403 && errorText.includes('not supported')) {
         throw new Error('AI 服務暫不支持當前地區，請聯繫管理員配置可用地區的 API Key');
       }
@@ -313,6 +339,8 @@ export class LLMClient {
       }
       throw new Error(`LLM API 錯誤 (${response.status}): ${errorText.slice(0, 500)}`);
     }
+
+    clearTimeout(totalTimeout);
 
     const reader = response.body?.getReader();
     if (!reader) {

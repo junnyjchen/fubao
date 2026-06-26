@@ -574,6 +574,11 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
     );
     saveConversations(finalConversations);
 
+    // 超时控制：连接超时 15s，总超时 120s
+    const abortController = new AbortController();
+    const connectTimeoutId = setTimeout(() => abortController.abort(), 15000);
+    const totalTimeoutId = setTimeout(() => abortController.abort(), 120000);
+
     try {
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -585,10 +590,19 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
           })),
           model: selectedModelId || undefined,
         }),
+        signal: abortController.signal,
       });
 
+      clearTimeout(connectTimeoutId);
+
       if (!response.ok) {
-        throw new Error('網絡請求失敗');
+        // 尝试读取 JSON 错误（503 等配置错误）
+        let errorMsg = 'AI 服務暫時不可用';
+        try {
+          const errorJson = await response.json();
+          if (errorJson.error) errorMsg = errorJson.error;
+        } catch {}
+        throw new Error(errorMsg);
       }
 
       const reader = response.body!.getReader();
@@ -631,7 +645,21 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
                 saveConversations(streamConversations);
               }
               if (parsed.error) {
+                // 立即更新 UI 显示错误信息
                 accumulatedContent = `抱歉，${parsed.error}`;
+                const errorConversations = finalConversations.map((c) =>
+                  c.id === finalConversation.id
+                    ? {
+                        ...c,
+                        messages: c.messages.map((m) =>
+                          m.id === aiMessageId
+                            ? { ...m, content: accumulatedContent, status: 'error' as const }
+                            : m
+                        ),
+                      }
+                    : c
+                );
+                saveConversations(errorConversations);
               }
             } catch {
               // 忽略解析错误
@@ -640,13 +668,20 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
         }
       }
 
+      clearTimeout(totalTimeoutId);
+
+      // 只有没有收到 error 事件时才标记为 done
       const doneConversations = finalConversations.map((c) =>
         c.id === finalConversation.id
           ? {
               ...c,
               messages: c.messages.map((m) =>
                 m.id === aiMessageId
-                  ? { ...m, content: accumulatedContent || '抱歉，我暫時無法回答這個問題，請稍後再試。', status: 'done' as const }
+                  ? {
+                      ...m,
+                      content: accumulatedContent || '抱歉，我暫時無法回答這個問題，請稍後再試。',
+                      status: m.status === 'error' ? ('error' as const) : ('done' as const),
+                    }
                   : m
               ),
             }
@@ -661,21 +696,24 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
         audio.play().catch(() => {});
       }
     } catch (err) {
+      clearTimeout(connectTimeoutId);
+      clearTimeout(totalTimeoutId);
       console.error('发送消息失败:', err);
+      const errorMsg = err instanceof Error ? err.message : '網絡發生錯誤';
       const errorConversations = finalConversations.map((c) =>
         c.id === finalConversation.id
           ? {
               ...c,
               messages: c.messages.map((m) =>
                 m.id === aiMessageId
-                  ? { ...m, content: '抱歉，網絡發生錯誤，請稍後再試。', status: 'error' as const }
+                  ? { ...m, content: `抱歉，${errorMsg}`, status: 'error' as const }
                   : m
               ),
             }
           : c
       );
       saveConversations(errorConversations);
-      toast.error('網絡發生錯誤');
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
