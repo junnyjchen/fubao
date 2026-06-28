@@ -8,11 +8,12 @@ import { getLLMClient } from '@/lib/ai/llm-client';
 export async function GET() {
   try {
     const client = getLLMClient();
-    const models = client.getAvailableModels();
+    const models = await client.getAvailableModels();
+    const provider = await client.getProviderName();
 
     return NextResponse.json({
       success: true,
-      provider: client.getProviderName(),
+      provider,
       models,
     });
   } catch (error: unknown) {

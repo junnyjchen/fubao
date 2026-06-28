@@ -43,6 +43,7 @@ export interface LLMResponse {
 export interface StreamChunk {
   content: string;
   done: boolean;
+  reasoning?: string;
 }
 
 // ============================================================
@@ -291,11 +292,10 @@ export class LLMClient {
       temperature,
       max_tokens: maxTokens,
       stream: true,
-      stream_options: { include_usage: true },
-      // DeepSeek V4 默认开启 thinking 模式，必须显式关闭
-      // 否则模型只输出 reasoning_content，前端无可见内容
-      thinking: { type: 'disabled' },
     };
+
+    // 注意：DeepSeek V3/V4 聊天模型不传 thinking 参数
+    // DeepSeek R1 (reasoner) 始终开启 thinking，无法禁用，前端需处理 reasoning_content
 
     // 超时控制：连接超时 15s，总超时 120s
     const controller = new AbortController();
@@ -380,8 +380,9 @@ export class LLMClient {
             }
 
             // 思考内容（DeepSeek / 豆包 thinking 模式）
+            // 不作为正文输出，仅标记为 reasoning，前端可选择是否展示
             if (delta?.reasoning_content) {
-              yield { content: delta.reasoning_content, done: false };
+              yield { content: '', done: false, reasoning: delta.reasoning_content };
             }
           } catch {
             // 跳过解析失败的行

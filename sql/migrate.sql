@@ -43,6 +43,7 @@ CALL safe_add_column('news', 'slug', 'VARCHAR(200) DEFAULT NULL');
 CALL safe_add_column('news', 'category', 'VARCHAR(100) DEFAULT NULL');
 CALL safe_add_column('news', 'tags', 'VARCHAR(500) DEFAULT NULL');
 CALL safe_add_column('news', 'published_at', 'DATETIME DEFAULT NULL');
+CALL safe_add_column('news', 'is_featured', 'TINYINT DEFAULT 0');
 
 -- 回填 published_at
 UPDATE `news` SET `published_at` = `created_at` WHERE `published_at` IS NULL AND `created_at` IS NOT NULL;

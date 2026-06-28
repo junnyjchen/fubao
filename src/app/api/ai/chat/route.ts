@@ -98,6 +98,11 @@ export async function POST(request: NextRequest) {
               const data = JSON.stringify({ content: chunk.content });
               controller.enqueue(encoder.encode(`data: ${data}\n\n`));
             }
+            // 思考内容单独发送，前端可选择折叠展示
+            if (chunk.reasoning) {
+              const data = JSON.stringify({ reasoning: chunk.reasoning });
+              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+            }
           }
 
           // 发送结束标记

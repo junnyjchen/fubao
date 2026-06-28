@@ -59,6 +59,7 @@ export interface AIMessage {
   status?: 'sending' | 'streaming' | 'done' | 'error';
   feedback?: 'like' | 'dislike' | null;
   attachments?: { type: string; url: string }[];
+  reasoning?: string; // AI 思考过程
 }
 
 // 会话类型
@@ -612,6 +613,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
 
       const decoder = new TextDecoder();
       let accumulatedContent = '';
+      let accumulatedReasoning = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -627,6 +629,24 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
 
             try {
               const parsed = JSON.parse(data);
+              // 处理思考内容（DeepSeek V4 等 thinking 模式）
+              if (parsed.reasoning) {
+                accumulatedReasoning += parsed.reasoning;
+
+                const streamConversations = finalConversations.map((c) =>
+                  c.id === finalConversation.id
+                    ? {
+                        ...c,
+                        messages: c.messages.map((m) =>
+                          m.id === aiMessageId
+                            ? { ...m, content: accumulatedContent || accumulatedReasoning, reasoning: accumulatedReasoning, status: 'streaming' as const }
+                            : m
+                        ),
+                      }
+                    : c
+                );
+                saveConversations(streamConversations);
+              }
               if (parsed.content) {
                 accumulatedContent += parsed.content;
 
@@ -636,7 +656,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
                         ...c,
                         messages: c.messages.map((m) =>
                           m.id === aiMessageId
-                            ? { ...m, content: accumulatedContent, status: 'streaming' as const }
+                            ? { ...m, content: accumulatedContent, reasoning: accumulatedReasoning || undefined, status: 'streaming' as const }
                             : m
                         ),
                       }
@@ -671,6 +691,8 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
       clearTimeout(totalTimeoutId);
 
       // 只有没有收到 error 事件时才标记为 done
+      // 如果只有 reasoning 没有 content，将 reasoning 作为内容展示
+      const finalContent = accumulatedContent || accumulatedReasoning || '抱歉，我暫時無法回答這個問題，請稍後再試。';
       const doneConversations = finalConversations.map((c) =>
         c.id === finalConversation.id
           ? {
@@ -679,7 +701,8 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
                 m.id === aiMessageId
                   ? {
                       ...m,
-                      content: accumulatedContent || '抱歉，我暫時無法回答這個問題，請稍後再試。',
+                      content: finalContent,
+                      reasoning: accumulatedContent ? (accumulatedReasoning || undefined) : undefined,
                       status: m.status === 'error' ? ('error' as const) : ('done' as const),
                     }
                   : m
@@ -1322,10 +1345,24 @@ function MessageBubble({ message, onCopy, onFeedback, isCopied, onContextMenu }:
           {isUser ? (
             <p className="whitespace-pre-wrap text-sm">{message.content}</p>
           ) : (
-            <div
-              className="prose prose-sm dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
-            />
+            <>
+              {/* AI 思考过程（可折叠） */}
+              {message.reasoning && (
+                <details className="mb-2 group/reasoning">
+                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    思考過程
+                  </summary>
+                  <div className="mt-1 p-2 bg-muted/50 rounded-lg text-xs text-muted-foreground whitespace-pre-wrap max-h-40 overflow-y-auto">
+                    {message.reasoning}
+                  </div>
+                </details>
+              )}
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+              />
+            </>
           )}
           {isStreaming && (
             <span className="inline-block ml-1 animate-pulse">▍</span>

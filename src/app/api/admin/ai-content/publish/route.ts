@@ -46,6 +46,9 @@ const categoryMapping: Record<ContentType, Record<string, number>> = {
 
 /**
  * 发布产品内容
+ * goods 表列：name, subtitle, main_image, price, original_price, stock,
+ *   is_certified, category_id, merchant_id, type, purpose, status, description
+ * (detail 列为 migrate 新增，可能不存在)
  */
 async function publishProduct(
   content: PublishRequest['content'],
@@ -57,21 +60,33 @@ async function publishProduct(
   const merchant = await queryOne('SELECT id FROM merchants WHERE status = 1 LIMIT 1');
   const merchantId = merchant?.id || 1;
 
-  const result = await insert('goods', {
+  // 检查 goods 表是否有 detail 列
+  const detailCol = await queryOne("SHOW COLUMNS FROM goods LIKE 'detail'");
+  const hasDetailCol = !!detailCol;
+
+  const insertData: Record<string, unknown> = {
     merchant_id: merchantId,
     name: content.title,
     subtitle: content.summary.substring(0, 50),
     main_image: options?.cover_image || '',
     category_id: categoryId,
     description: content.summary,
-    detail: content.content,
     price: options?.price || 288,
     original_price: options?.original_price || 388,
     stock: options?.stock || 100,
     is_certified: 0,
-    status: options?.status ? 1 : 0,
     purpose: Array.isArray(content.tags) ? content.tags.join(',') : '',
-  });
+    status: options?.status ? 1 : 0,
+  };
+
+  // detail 列存在时存完整内容，否则合并到 description
+  if (hasDetailCol) {
+    insertData.detail = content.content;
+  } else {
+    insertData.description = content.summary + '\n\n' + content.content;
+  }
+
+  const result = await insert('goods', insertData);
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
   return { id: insertId, type: 'product', title: content.title };
@@ -122,7 +137,11 @@ async function publishNews(
     .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
     .replace(/^-|-$/g, '') + '-' + Date.now();
 
-  const result = await insert('news', {
+  // 检查 news 表是否有 is_featured 列
+  const featuredCol = await queryOne("SHOW COLUMNS FROM news LIKE 'is_featured'");
+  const hasFeaturedCol = !!featuredCol;
+
+  const insertData: Record<string, unknown> = {
     title: content.title,
     slug,
     summary: content.summary,
@@ -131,11 +150,16 @@ async function publishNews(
     category: content.category || 'news',
     author: '符寶網編輯部',
     tags: Array.isArray(content.tags) ? JSON.stringify(content.tags) : null,
-    is_featured: options?.is_featured ? 1 : 0,
     status: options?.status ? 1 : 0,
     view_count: 0,
     published_at: options?.status ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null,
-  });
+  };
+
+  if (hasFeaturedCol) {
+    insertData.is_featured = options?.is_featured ? 1 : 0;
+  }
+
+  const result = await insert('news', insertData);
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
   return { id: insertId, type: 'news', title: content.title, slug };
