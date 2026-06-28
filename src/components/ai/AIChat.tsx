@@ -585,7 +585,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: messageText,
+          message: text,
           history: conversation.messages.map((m) => ({
             role: m.role,
             content: m.content,
