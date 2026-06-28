@@ -18,6 +18,15 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const includeAll = searchParams.get('includeAll') === 'true';
     const category = searchParams.get('category');
+    const type = searchParams.get('type'); // 前端新闻分类（1=环球, 2=行业, 3=活动, 4=互动）
+
+    // 新闻分类映射: type 数字 → category 关键词
+    const typeCategoryMap: Record<string, string> = {
+      '1': '环球',
+      '2': '行业',
+      '3': '活动',
+      '4': '互动',
+    };
 
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -25,7 +34,11 @@ export async function GET(request: NextRequest) {
     if (!includeAll) {
       conditions.push('status = 1');
     }
-    if (category) {
+    // 支持 type 参数（前端用数字分类）和 category 参数（直接分类名）
+    if (type && typeCategoryMap[type]) {
+      conditions.push('category = ?');
+      params.push(typeCategoryMap[type]);
+    } else if (category) {
       conditions.push('category = ?');
       params.push(category);
     }
@@ -47,6 +60,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
+      success: true,
       data,
       total,
       page,

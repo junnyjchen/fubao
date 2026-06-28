@@ -26,7 +26,7 @@ async function generateWithLLM(prompt: string): Promise<string> {
 }
 
 /** 生成產品內容的提示詞 */
-function buildProductPrompt(topic: string): string {
+function buildProductPrompt(topic: string, category?: string): string {
   return `請為以下玄門文化產品撰寫詳細的商品描述：
 
 產品名稱：${topic}
@@ -38,13 +38,15 @@ function buildProductPrompt(topic: string): string {
   "content": "產品詳細描述（包含材質、功效、使用方法等，500字以上）",
   "price": 建議售價（數字）,
   "original_price": 原價（數字）,
-  "category": "分類名稱",
+  "category": "${category || 'fuzhou'}",
   "tags": ["標籤1", "標籤2", "標籤3"]
-}`;
+}
+
+category 必須是以下值之一：fuzhou(符咒), faqi(法器), fengshui(風水), zhouyi(周易), daojiao(道教), fojiao(佛教)`;
 }
 
 /** 生成百科內容的提示詞 */
-function buildWikiPrompt(topic: string): string {
+function buildWikiPrompt(topic: string, category?: string): string {
   return `請為以下玄門文化主題撰寫百科文章：
 
 主題：${topic}
@@ -54,9 +56,11 @@ function buildWikiPrompt(topic: string): string {
   "title": "文章標題",
   "summary": "文章摘要（100字以內）",
   "content": "文章正文（1000字以上，包含歷史淵源、文化內涵、現代應用等）",
-  "category": "分類名稱",
+  "category": "${category || 'daojiao'}",
   "tags": ["標籤1", "標籤2", "標籤3"]
-}`;
+}
+
+category 必須是以下值之一：fuzhou(符咒), faqi(法器), fengshui(風水), zhouyi(周易), daojiao(道教), fojiao(佛教)`;
 }
 
 /** 生成新聞內容的提示詞 */
@@ -70,15 +74,17 @@ function buildNewsPrompt(topic: string): string {
   "title": "新聞標題",
   "summary": "新聞摘要（100字以內）",
   "content": "新聞正文（800字以上）",
-  "category": "分類名稱",
+  "category": "新聞動態",
   "tags": ["標籤1", "標籤2", "標籤3"]
-}`;
+}
+
+category 必須是以下值之一：新聞動態, 活動資訊, 行業資訊, 政策法規`;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { topic, type = 'news' } = body;
+    const { topic, type = 'news', category } = body;
 
     if (!topic) {
       return NextResponse.json({ error: '請提供主題' }, { status: 400 });
@@ -95,10 +101,10 @@ export async function POST(request: NextRequest) {
     const contentType = type as ContentType;
     switch (contentType) {
       case 'product':
-        prompt = buildProductPrompt(topic);
+        prompt = buildProductPrompt(topic, category);
         break;
       case 'wiki':
-        prompt = buildWikiPrompt(topic);
+        prompt = buildWikiPrompt(topic, category);
         break;
       case 'news':
       default:

@@ -6,6 +6,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, insert } from '@/lib/db';
 
+/** 百科分类映射: AI 生成值 → 前端分类 key */
+const BAIKE_CATEGORY_MAP: Record<string, string> = {
+  '符咒': 'fuzhou', '符籙': 'fuzhou', '符箓': 'fuzhou', 'talisman': 'fuzhou',
+  '法器': 'faqi', 'ritual': 'faqi', 'instrument': 'faqi',
+  '风水': 'fengshui', '風水': 'fengshui', 'fengshui': 'fengshui',
+  '周易': 'zhouyi', '易經': 'zhouyi', '易经': 'zhouyi', 'iching': 'zhouyi',
+  '道教': 'daojiao', 'daoism': 'daojiao', 'taoism': 'daojiao', 'culture': 'daojiao',
+  '佛教': 'fojiao', 'buddhism': 'fojiao',
+};
+
+/** 新闻分类映射: AI 生成值 → 前端分类 key */
+const NEWS_CATEGORY_MAP: Record<string, string> = {
+  '环球': '1', '全球': '1', '国际': '1', 'global': '1',
+  '行业': '2', '产业': '2', 'industry': '2',
+  '活动': '3', '法会': '3', 'activity': '3',
+  '互动': '4', '社区': '4', 'interaction': '4',
+};
+
+/** 根据内容智能映射百科分类 */
+function mapBaikeCategory(category?: string): string {
+  if (!category) return 'fuzhou';
+  const lower = category.toLowerCase();
+  // 精确匹配
+  if (BAIKE_CATEGORY_MAP[category]) return BAIKE_CATEGORY_MAP[category];
+  if (BAIKE_CATEGORY_MAP[lower]) return BAIKE_CATEGORY_MAP[lower];
+  // 模糊匹配
+  for (const [key, value] of Object.entries(BAIKE_CATEGORY_MAP)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) return value;
+  }
+  return 'fuzhou'; // 默认: 符咒
+}
+
+/** 根据内容智能映射新闻分类 */
+function mapNewsCategory(category?: string): string {
+  if (!category) return '2'; // 默认: 行业
+  const lower = category.toLowerCase();
+  if (NEWS_CATEGORY_MAP[category]) return NEWS_CATEGORY_MAP[category];
+  if (NEWS_CATEGORY_MAP[lower]) return NEWS_CATEGORY_MAP[lower];
+  for (const [key, value] of Object.entries(NEWS_CATEGORY_MAP)) {
+    if (lower.includes(key.toLowerCase()) || key.toLowerCase().includes(lower)) return value;
+  }
+  return '2'; // 默认: 行业
+}
+
 /** 内容类型 */
 type ContentType = 'product' | 'wiki' | 'news';
 
@@ -89,6 +133,9 @@ async function publishProduct(
   const result = await insert('goods', insertData);
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
+  if (insertId === 0) {
+    throw new Error('商品发布失败，请检查数据库字段是否匹配');
+  }
   return { id: insertId, type: 'product', title: content.title };
 }
 
@@ -111,7 +158,7 @@ async function publishWiki(
     summary: content.summary,
     content: content.content,
     cover_image: options?.cover_image || '',
-    category: content.category || 'culture',
+    category: mapBaikeCategory(content.category),
     author: '符寶網編輯部',
     tags: Array.isArray(content.tags) ? JSON.stringify(content.tags) : null,
     status: options?.status ? 1 : 0,
@@ -121,6 +168,9 @@ async function publishWiki(
   });
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
+  if (insertId === 0) {
+    console.error('[publishWiki] 百科发布失败, db.insert 返回 0');
+  }
   return { id: insertId, type: 'wiki', title: content.title, slug };
 }
 
@@ -147,7 +197,7 @@ async function publishNews(
     summary: content.summary,
     content: content.content,
     cover_image: options?.cover_image || '',
-    category: content.category || 'news',
+    category: mapNewsCategory(content.category),
     author: '符寶網編輯部',
     tags: Array.isArray(content.tags) ? JSON.stringify(content.tags) : null,
     status: options?.status ? 1 : 0,
@@ -162,6 +212,12 @@ async function publishNews(
   const result = await insert('news', insertData);
 
   const insertId = typeof result === 'number' ? result : (result as any)?.id || 0;
+  if (insertId === 0) {
+    console.error('[publishNews] 新闻发布失败, db.insert 返回 0');
+  }
+  if (insertId === 0) {
+    throw new Error('新闻发布失败，请检查数据库字段是否匹配');
+  }
   return { id: insertId, type: 'news', title: content.title, slug };
 }
 
