@@ -39,6 +39,7 @@ import {
   Brain,
   Cpu,
   BookOpen,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -79,6 +80,7 @@ const navItems: NavItem[] = [
   { key: 'orders', label: '訂單管理', icon: ShoppingCart, href: '/admin/orders', permission: 'order.view' },
   { key: 'merchants', label: '商戶管理', icon: Store, href: '/admin/merchants', permission: 'merchant.view' },
   { key: 'merchant-applications', label: '商戶審核', icon: ClipboardCheck, href: '/admin/merchant-applications', permission: 'merchant.audit' },
+  { key: 'free-gifts', label: '免費領管理', icon: Gift, href: '/admin/free-gifts', permission: 'goods.view' },
   {
     key: 'content',
     label: '內容運營',

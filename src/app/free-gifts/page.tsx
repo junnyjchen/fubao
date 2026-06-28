@@ -51,13 +51,18 @@ import { NotificationCenter, NotificationButton } from '@/components/free-gifts/
 interface FreeGift {
   id: number;
   name: string;
+  title?: string;
   description: string;
   image: string | null;
-  original_price: string;
+  cover_image?: string;
+  original_price: string | number;
   stock: number;
+  remain_count?: number;
+  total_count?: number;
   claimed: number;
   limit_per_user: number;
-  shipping_fee: string;
+  shipping_fee: string | number;
+  points_required?: number;
   is_active: boolean;
   start_time: string;
   end_time: string;
@@ -131,12 +136,14 @@ function FreeGiftsContent() {
       const res = await fetch('/api/free-gifts');
       const data = await res.json();
       if (data.success || data.data) {
-        const giftsData = (Array.isArray(data.data) ? data.data : []).map((g: FreeGift, idx: number) => ({
+        const giftsData = (Array.isArray(data.data) ? data.data : []).map((g: FreeGift) => ({
           ...g,
-          is_new_user_only: idx === 0,
-          category: ['符箓', '飾品', '香薰', '掛件'][idx % 4],
-          rating: 4.5 + Math.random() * 0.5,
-          review_count: Math.floor(Math.random() * 100) + 20,
+          // 使用 API 返回的真实字段，兼容旧字段名
+          stock: g.stock ?? g.remain_count ?? 0,
+          is_new_user_only: g.is_new_user_only ?? false,
+          category: g.category || '其他',
+          rating: g.rating ?? (4.5 + Math.random() * 0.5),
+          review_count: g.review_count ?? (Math.floor(Math.random() * 100) + 20),
         }));
         setGifts(giftsData);
       }
@@ -202,8 +209,8 @@ function FreeGiftsContent() {
       case 'newest': return b.id - a.id;
       case 'hot': return getProgress(b) - getProgress(a);
       case 'ending': return getRemainingDays(a) - getRemainingDays(b);
-      case 'price_high': return parseFloat(b.original_price) - parseFloat(a.original_price);
-      case 'price_low': return parseFloat(a.original_price) - parseFloat(b.original_price);
+      case 'price_high': return parseFloat(String(b.original_price)) - parseFloat(String(a.original_price));
+      case 'price_low': return parseFloat(String(a.original_price)) - parseFloat(String(b.original_price));
       default: return 0;
     }
   });

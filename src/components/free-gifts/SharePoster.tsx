@@ -28,8 +28,8 @@ interface SharePosterProps {
     id: number;
     name: string;
     description: string;
-    original_price: string;
-    shipping_fee: string;
+    original_price: string | number;
+    shipping_fee: string | number;
     image?: string | null;
     merchant?: {
       name: string;

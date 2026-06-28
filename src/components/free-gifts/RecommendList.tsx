@@ -16,10 +16,10 @@ interface RecommendGift {
   id: number;
   name: string;
   image: string | null;
-  original_price: string;
+  original_price: string | number;
   stock: number;
   claimed: number;
-  shipping_fee: string;
+  shipping_fee: string | number;
   category?: string;
   rating?: number;
 }

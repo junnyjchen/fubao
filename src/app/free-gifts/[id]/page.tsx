@@ -64,15 +64,21 @@ import { Bell } from 'lucide-react';
 interface FreeGift {
   id: number;
   name: string;
+  title?: string;
   description: string;
   image: string | null;
-  original_price: string;
+  cover_image?: string;
+  original_price: string | number;
   stock: number;
+  remain_count?: number;
+  total_count?: number;
   claimed: number;
   limit_per_user: number;
-  shipping_fee: string;
+  shipping_fee: string | number;
+  points_required?: number;
   is_active: boolean;
   is_new_user_only?: boolean;
+  category?: string;
   rating?: number;
   review_count?: number;
   merchant?: {
@@ -155,9 +161,11 @@ function FreeGiftDetailContent({ params }: PageProps) {
       if (giftData) {
         setGift({
           ...giftData,
-          is_new_user_only: parseInt(id) === 1,
-          rating: 4.5 + Math.random() * 0.5,
-          review_count: Math.floor(Math.random() * 100) + 20,
+          stock: giftData.stock ?? giftData.remain_count ?? 0,
+          is_new_user_only: giftData.is_new_user_only ?? false,
+          category: giftData.category || '其他',
+          rating: giftData.rating ?? (4.5 + Math.random() * 0.5),
+          review_count: giftData.review_count ?? (Math.floor(Math.random() * 100) + 20),
         });
       } else {
         toast.error('商品不存在');

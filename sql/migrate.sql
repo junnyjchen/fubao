@@ -208,6 +208,43 @@ CALL safe_add_column('ai_knowledge', 'file_type', 'VARCHAR(20) DEFAULT NULL AFTE
 CALL safe_add_column('ai_knowledge', 'file_size', 'INT UNSIGNED DEFAULT 0 AFTER `file_type`');
 CALL safe_add_column('ai_knowledge', 'chunk_count', 'INT UNSIGNED DEFAULT 0 AFTER `file_size`');
 
+-- ===== free_gifts 缺失字段迁移 =====
+CALL safe_add_column('free_gifts', 'name', 'VARCHAR(200) NOT NULL DEFAULT \'\' COMMENT \'商品名稱\' AFTER `title`');
+CALL safe_add_column('free_gifts', 'image', 'VARCHAR(500) NOT NULL DEFAULT \'\' COMMENT \'商品圖片URL\' AFTER `cover_image`');
+CALL safe_add_column('free_gifts', 'original_price', 'DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT \'原價\' AFTER `image`');
+CALL safe_add_column('free_gifts', 'claimed', 'INT NOT NULL DEFAULT 0 COMMENT \'已領取數量\' AFTER `remain_count`');
+CALL safe_add_column('free_gifts', 'limit_per_user', 'INT NOT NULL DEFAULT 1 COMMENT \'每人限領\' AFTER `claimed`');
+CALL safe_add_column('free_gifts', 'shipping_fee', 'DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT \'郵寄運費\' AFTER `limit_per_user`');
+CALL safe_add_column('free_gifts', 'merchant_id', 'INT UNSIGNED DEFAULT NULL COMMENT \'商戶ID\' AFTER `shipping_fee`');
+CALL safe_add_column('free_gifts', 'category', 'VARCHAR(50) NOT NULL DEFAULT \'\' COMMENT \'分類\' AFTER `merchant_id`');
+CALL safe_add_column('free_gifts', 'is_new_user_only', 'TINYINT NOT NULL DEFAULT 0 COMMENT \'僅限新用戶\' AFTER `category`');
+CALL safe_add_column('free_gifts', 'is_active', 'TINYINT NOT NULL DEFAULT 1 COMMENT \'是否啟用\' AFTER `is_new_user_only`');
+
+-- 创建 free_gift_claims 表（如果不存在）
+CREATE TABLE IF NOT EXISTS `free_gift_claims` (
+  `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `gift_id` INT UNSIGNED NOT NULL COMMENT '免費商品ID',
+  `user_id` INT UNSIGNED NOT NULL COMMENT '用戶ID',
+  `receive_type` ENUM('shipping','pickup') NOT NULL DEFAULT 'pickup' COMMENT '領取方式',
+  `shipping_name` VARCHAR(100) DEFAULT NULL COMMENT '收貨人姓名',
+  `shipping_phone` VARCHAR(30) DEFAULT NULL COMMENT '收貨人手機',
+  `shipping_address` VARCHAR(500) DEFAULT NULL COMMENT '收貨地址',
+  `claim_no` VARCHAR(50) NOT NULL DEFAULT '' COMMENT '領取編號',
+  `pay_amount` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '支付金額',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '0=待處理 1=已確認 2=已發貨 3=已完成 4=已取消',
+  `claimed_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '領取時間',
+  `completed_at` DATETIME DEFAULT NULL COMMENT '完成時間',
+  KEY `idx_gift_id` (`gift_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_claim_no` (`claim_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 同步 title → name（已有数据以 title 值填充 name 字段）
+UPDATE free_gifts SET name = title WHERE name = '' OR name IS NULL;
+-- 同步 remain_count → stock 逻辑（remain_count 即为剩余库存）
+-- 同步 cover_image → image（已有数据以 cover_image 值填充 image 字段）
+UPDATE free_gifts SET image = cover_image WHERE image = '' OR image IS NULL;
+
 -- ===== 清理 =====
 DROP PROCEDURE IF EXISTS safe_add_column;
 

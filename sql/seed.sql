@@ -92,3 +92,11 @@ INSERT IGNORE INTO categories_i18n (id, category_id, locale, name) VALUES
 (10, 5, 'ja', '風水擺件'),
 (11, 6, 'en', 'Lucky Accessories'),
 (12, 6, 'ja', '開運飾品');
+
+-- 免費領活動
+INSERT IGNORE INTO free_gifts (id, title, name, description, cover_image, image, original_price, total_count, remain_count, claimed, limit_per_user, shipping_fee, points_required, merchant_id, category, is_new_user_only, is_active, status, start_time, end_time) VALUES
+(1, '招財符', '招財符', '道教正統招財符，經法師開光加持，助您財運亨通。數量有限，先到先得！', '/images/products/fu-1.jpg', '/images/products/fu-1.jpg', 188.00, 100, 85, 15, 1, 18.00, 0, NULL, '符箓', 0, 1, 1, '2025-01-01 00:00:00', '2026-12-31 23:59:59'),
+(2, '平安護身符', '平安護身符', '隨身攜帶的平安護身符，保佑出入平安、諸事順遂。新用戶專享！', '/images/products/fu-2.jpg', '/images/products/fu-2.jpg', 128.00, 200, 150, 50, 1, 18.00, 0, NULL, '符箓', 1, 1, 1, '2025-01-01 00:00:00', '2026-12-31 23:59:59'),
+(3, '天然水晶手鏈', '天然水晶手鏈', '天然紫水晶手鏈，助益身心健康，提升靈性修養。', '/images/products/jewelry-1.jpg', '/images/products/jewelry-1.jpg', 328.00, 50, 30, 20, 1, 22.00, 0, NULL, '飾品', 0, 1, 1, '2025-01-01 00:00:00', '2026-12-31 23:59:59'),
+(4, '檀香線香套裝', '檀香線香套裝', '印度老山檀香線香，靜心冥想必備。含線香20支及香插一個。', '/images/products/incense-1.jpg', '/images/products/incense-1.jpg', 258.00, 80, 55, 25, 2, 18.00, 0, NULL, '香薰', 0, 1, 1, '2025-01-01 00:00:00', '2026-12-31 23:59:59'),
+(5, '八卦風水掛件', '八卦風水掛件', '精銅八卦掛件，可掛於門楣或車內，鎮宅化煞。', '/images/products/pendant-1.jpg', '/images/products/pendant-1.jpg', 168.00, 120, 90, 30, 1, 18.00, 0, NULL, '掛件', 0, 1, 1, '2025-01-01 00:00:00', '2026-12-31 23:59:59');
