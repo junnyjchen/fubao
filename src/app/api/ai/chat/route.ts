@@ -1,137 +1,141 @@
 import { NextRequest } from 'next/server';
-import { getLLMClient, isLLMConfigured } from '@/lib/ai/llm-client';
 import { getActiveModel } from '@/lib/ai/store';
+import { LLMClient, isLLMConfigured } from '@/lib/ai/llm-client';
 
-// 符寶網 AI 助手系统提示词
-const SYSTEM_PROMPT = `你是「符寶網」的玄門文化AI助手，你的名字叫「符寶」。
-
-你的专业领域：
-- 中国传统玄学文化（风水、命理、卜卦、择日）
-- 道教科仪、符咒法器知识
-- 佛学基础、禅修入门
-- 传统节日与民俗文化
-- 中医养生与气功基础
-
-你的回答风格：
-- 专业但通俗易懂，避免过度玄奥
-- 客观中立，不迷信不封建
-- 尊重传统文化的同时保持科学态度
-- 适当引用经典文献，增加权威性
-- 回答使用繁体中文
-
-注意事项：
-- 不提供具体的算命占卜服务
-- 不推荐任何超自然解决方案
-- 涉及健康问题建议咨询专业医生
-- 对于不确定的内容，坦诚说明`;
-
-// 豆包模型映射（豆包需要使用火山引擎的 endpoint ID，这里映射为实际的模型标识）
-const DOUBAO_MODEL_MAP: Record<string, string> = {
-  'doubao-lite': 'doubao-seed-2-0-lite-260215',
-  'doubao-mini': 'doubao-seed-2-0-mini-260215',
-  'doubao-pro': 'doubao-seed-2-0-pro-260215',
-  'doubao-default': 'doubao-seed-1-8-251228',
-};
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
+  // 检查 AI 是否已配置
+  const configured = await isLLMConfigured();
+  if (!configured) {
+    return createSSEErrorResponse('AI 模型未配置或 API Key 未設置，請在管理後台 AI 模型配置中設置有效的 API Key');
+  }
+
   try {
     const body = await request.json();
-    const { messages = [], model: requestedModel, thinking = false } = body;
+    const { message, history = [], thinking = false } = body;
+
+    if (!message || typeof message !== 'string') {
+      return createSSEErrorResponse('請提供有效的訊息內容');
+    }
+
     const activeModel = await getActiveModel();
-    const model = requestedModel || (activeModel ? activeModel.model : 'deepseek-chat');
-
-    if (!messages.length) {
-      return new Response(
-        JSON.stringify({ error: '请提供对话消息' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!activeModel) {
+      return createSSEErrorResponse('未找到活躍的 AI 模型，請在管理後台啟用至少一個模型');
     }
 
-    // 检查 LLM 是否已配置
-    if (!(await isLLMConfigured())) {
-      return new Response(
-        JSON.stringify({ error: 'AI 服務未配置，請在後台「AI模型配置」中啟用至少一個模型' }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // 映射模型ID（仅豆包需要映射，其他模型直接使用后台配置的 model 标识）
-    const mappedModel = DOUBAO_MODEL_MAP[model] || model;
-
-    // 构建消息列表
-    const sdkMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-      { role: 'system', content: SYSTEM_PROMPT },
+    // 构造完整的消息列表（系统提示 + 历史消息 + 当前消息）
+    const systemPrompt = '你是符寶網的 AI 助手，專注於玄門文化科普。你精通道教、佛教、符咒、法器、風水、周易等傳統文化知識，能以通俗易懂的方式為用戶解答相關問題。請用繁體中文回答。';
+    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+      { role: 'system', content: systemPrompt },
     ];
 
-    for (const msg of messages) {
-      if (msg.role === 'user' || msg.role === 'assistant') {
-        sdkMessages.push({ role: msg.role, content: msg.content });
+    // 添加历史消息
+    if (Array.isArray(history) && history.length > 0) {
+      for (const h of history) {
+        if (h.role === 'user' || h.role === 'assistant') {
+          messages.push({ role: h.role, content: h.content || '' });
+        }
       }
     }
 
-    // 确保至少有一条 user 消息
-    const hasUserMsg = sdkMessages.some(m => m.role === 'user');
-    if (!hasUserMsg) {
-      return new Response(
-        JSON.stringify({ error: '对话消息必须包含用户消息' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
+    // 添加当前用户消息
+    messages.push({ role: 'user', content: message });
 
-    // 初始化LLM客户端
-    const client = getLLMClient();
+    const client = new LLMClient();
+    const chatStream = client.stream(
+      messages,
+      {
+        maxTokens: activeModel.maxTokens || 2048,
+        temperature: activeModel.temperature || 0.7,
+      }
+    );
 
-    // SSE 流式输出
     const encoder = new TextEncoder();
+    const send = (data: Record<string, unknown>) => `data: ${JSON.stringify(data)}\n\n`;
+
     const stream = new ReadableStream({
       async start(controller) {
-        try {
-          const llmStream = client.stream(sdkMessages, {
-            model: mappedModel,
-            thinking: thinking ? 'enabled' : 'disabled',
-            temperature: 0.8,
-          });
+        let hasContent = false;
+        let hasReasoning = false;
 
-          for await (const chunk of llmStream) {
-            if (chunk.done) break;
+        try {
+          // 发送开始信号
+          controller.enqueue(encoder.encode(send({ type: 'start', model: activeModel.model })));
+
+          for await (const chunk of chatStream) {
             if (chunk.content) {
-              const data = JSON.stringify({ content: chunk.content });
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+              hasContent = true;
+              controller.enqueue(encoder.encode(send({ type: 'content', content: chunk.content })));
             }
-            // 思考内容单独发送，前端可选择折叠展示
+
             if (chunk.reasoning) {
-              const data = JSON.stringify({ reasoning: chunk.reasoning });
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+              hasReasoning = true;
+              controller.enqueue(encoder.encode(send({ type: 'reasoning', content: chunk.reasoning })));
+            }
+
+            if (chunk.done) {
+              break;
             }
           }
 
-          // 发送结束标记
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
-        } catch (error: unknown) {
-          const errMsg = error instanceof Error ? error.message : 'AI 服务暂时不可用';
-          console.error('[AI Chat] Stream error:', errMsg);
-          const errorData = JSON.stringify({ error: errMsg });
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          controller.close();
+          // 如果流结束但没有内容也没有推理，发送警告
+          if (!hasContent && !hasReasoning) {
+            console.warn('[AI Chat] Stream ended without content. Model:', activeModel.model);
+            controller.enqueue(encoder.encode(send({
+              type: 'error',
+              content: 'AI 模型未返回任何內容，可能原因：1) 模型名稱不正確 2) API Key 無權限 3) 模型服務暫時不可用。請檢查管理後台 AI 模型配置。',
+            })));
+          }
+
+          controller.enqueue(encoder.encode(send({ type: 'done' })));
+        } catch (streamError) {
+          const errMsg = streamError instanceof Error ? streamError.message : '串流錯誤';
+          console.error('[AI Chat] Stream iteration error:', errMsg);
+          controller.enqueue(encoder.encode(send({ type: 'error', content: `AI 回覆出錯: ${errMsg}` })));
+          controller.enqueue(encoder.encode(send({ type: 'done' })));
+        } finally {
+          try { controller.close(); } catch { /* already closed */ }
         }
       },
     });
 
     return new Response(stream, {
+      status: 200,
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
+        'Connection': 'keep-alive',
       },
     });
-  } catch (error: unknown) {
-    console.error('[AI Chat] Error:', error);
-    const message = error instanceof Error ? error.message : 'AI 服务暂时不可用';
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+  } catch (error) {
+    console.error('[AI Chat] Request error:', error);
+    const msg = error instanceof Error ? error.message : '請求處理錯誤';
+    return createSSEErrorResponse(msg);
   }
+}
+
+/**
+ * 创建 SSE 格式的错误响应（HTTP 200 + text/event-stream）
+ * 前端可以统一用 SSE 解析方式处理
+ */
+function createSSEErrorResponse(errorMessage: string) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'error', content: errorMessage })}\n\n`));
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }

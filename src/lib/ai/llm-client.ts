@@ -224,13 +224,14 @@ export class LLMClient {
 
     const openaiMessages = messages.map(toOpenAIMessage);
 
+    // 注意：DeepSeek V3/V4 聊天模型不传 thinking 参数
+    // DeepSeek R1 (reasoner) 始终开启 thinking，无法禁用，前端需处理 reasoning_content
     const body: Record<string, unknown> = {
       model,
       messages: openaiMessages,
       temperature,
       max_tokens: maxTokens,
       stream: false,
-      thinking: { type: 'disabled' },
     };
 
     const response = await fetch(`${provider.baseUrl}/chat/completions`, {

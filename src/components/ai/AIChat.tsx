@@ -585,11 +585,12 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: updatedMessages.map((m) => ({
+          message: messageText,
+          history: conversation.messages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
-          model: selectedModelId || undefined,
+          thinking: true,
         }),
         signal: abortController.signal,
       });
@@ -597,10 +598,11 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
       clearTimeout(connectTimeoutId);
 
       if (!response.ok) {
-        // 尝试读取 JSON 错误（503 等配置错误）
+        // 尝试读取错误信息
         let errorMsg = 'AI 服務暫時不可用';
         try {
-          const errorJson = await response.json();
+          const errorText = await response.text();
+          const errorJson = JSON.parse(errorText);
           if (errorJson.error) errorMsg = errorJson.error;
         } catch {}
         throw new Error(errorMsg);
@@ -614,85 +616,114 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
       const decoder = new TextDecoder();
       let accumulatedContent = '';
       let accumulatedReasoning = '';
+      let buffer = ''; // 处理跨 chunk 的不完整行
+      let hasError = false;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        // 保留最后一个可能不完整的行
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
+          const trimmedLine = line.trim();
+          if (!trimmedLine.startsWith('data: ')) continue;
+          const data = trimmedLine.slice(6);
+          if (data === '[DONE]') continue;
 
-            try {
-              const parsed = JSON.parse(data);
-              // 处理思考内容（DeepSeek V4 等 thinking 模式）
-              if (parsed.reasoning) {
-                accumulatedReasoning += parsed.reasoning;
+          try {
+            const parsed = JSON.parse(data);
+            const eventType = parsed.type; // 'start' | 'content' | 'reasoning' | 'error' | 'done'
 
-                const streamConversations = finalConversations.map((c) =>
-                  c.id === finalConversation.id
-                    ? {
-                        ...c,
-                        messages: c.messages.map((m) =>
-                          m.id === aiMessageId
-                            ? { ...m, content: accumulatedContent || accumulatedReasoning, reasoning: accumulatedReasoning, status: 'streaming' as const }
-                            : m
-                        ),
-                      }
-                    : c
-                );
-                saveConversations(streamConversations);
-              }
-              if (parsed.content) {
-                accumulatedContent += parsed.content;
+            // 新格式: { type: 'content', content: '...' }
+            // 旧格式兼容: { content: '...' } / { reasoning: '...' } / { error: '...' }
 
-                const streamConversations = finalConversations.map((c) =>
-                  c.id === finalConversation.id
-                    ? {
-                        ...c,
-                        messages: c.messages.map((m) =>
-                          m.id === aiMessageId
-                            ? { ...m, content: accumulatedContent, reasoning: accumulatedReasoning || undefined, status: 'streaming' as const }
-                            : m
-                        ),
-                      }
-                    : c
-                );
-                saveConversations(streamConversations);
-              }
-              if (parsed.error) {
-                // 立即更新 UI 显示错误信息
-                accumulatedContent = `抱歉，${parsed.error}`;
-                const errorConversations = finalConversations.map((c) =>
-                  c.id === finalConversation.id
-                    ? {
-                        ...c,
-                        messages: c.messages.map((m) =>
-                          m.id === aiMessageId
-                            ? { ...m, content: accumulatedContent, status: 'error' as const }
-                            : m
-                        ),
-                      }
-                    : c
-                );
-                saveConversations(errorConversations);
-              }
-            } catch {
-              // 忽略解析错误
+            if (eventType === 'content' || (!eventType && parsed.content)) {
+              // 内容增量
+              accumulatedContent += parsed.content;
+              const streamConversations = finalConversations.map((c) =>
+                c.id === finalConversation.id
+                  ? {
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === aiMessageId
+                          ? { ...m, content: accumulatedContent, reasoning: accumulatedReasoning || undefined, status: 'streaming' as const }
+                          : m
+                      ),
+                    }
+                  : c
+              );
+              saveConversations(streamConversations);
+            } else if (eventType === 'reasoning' || (!eventType && parsed.reasoning)) {
+              // 思考/推理内容增量
+              accumulatedReasoning += parsed.content || parsed.reasoning;
+              const streamConversations = finalConversations.map((c) =>
+                c.id === finalConversation.id
+                  ? {
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === aiMessageId
+                          ? { ...m, content: accumulatedContent || accumulatedReasoning, reasoning: accumulatedReasoning, status: 'streaming' as const }
+                          : m
+                      ),
+                    }
+                  : c
+              );
+              saveConversations(streamConversations);
+            } else if (eventType === 'error' || (!eventType && parsed.error)) {
+              // 错误事件
+              hasError = true;
+              const errorContent = parsed.content || parsed.error;
+              accumulatedContent = `⚠️ ${errorContent}`;
+              const errorConversations = finalConversations.map((c) =>
+                c.id === finalConversation.id
+                  ? {
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === aiMessageId
+                          ? { ...m, content: accumulatedContent, status: 'error' as const }
+                          : m
+                      ),
+                    }
+                  : c
+              );
+              saveConversations(errorConversations);
+            } else if (eventType === 'start') {
+              // 连接已建立，清除连接超时
+              clearTimeout(connectTimeoutId);
             }
+            // 'done' 类型不需要特殊处理，循环结束时会处理
+          } catch {
+            // 忽略解析错误
+          }
+        }
+      }
+
+      // 处理 buffer 中剩余的数据
+      if (buffer.trim().startsWith('data: ')) {
+        const data = buffer.trim().slice(6);
+        if (data !== '[DONE]') {
+          try {
+            const parsed = JSON.parse(data);
+            const eventType = parsed.type;
+            if (eventType === 'content' || (!eventType && parsed.content)) {
+              accumulatedContent += parsed.content;
+            } else if (eventType === 'reasoning' || (!eventType && parsed.reasoning)) {
+              accumulatedReasoning += parsed.content || parsed.reasoning;
+            }
+          } catch {
+            // 忽略解析错误
           }
         }
       }
 
       clearTimeout(totalTimeoutId);
 
-      // 只有没有收到 error 事件时才标记为 done
       // 如果只有 reasoning 没有 content，将 reasoning 作为内容展示
-      const finalContent = accumulatedContent || accumulatedReasoning || '抱歉，我暫時無法回答這個問題，請稍後再試。';
+      const finalContent = accumulatedContent || accumulatedReasoning || '抱歉，AI 未返回任何內容，請檢查管理後台 AI 模型配置。';
       const doneConversations = finalConversations.map((c) =>
         c.id === finalConversation.id
           ? {
@@ -703,7 +734,7 @@ export function AIChat({ adminMode = false }: { adminMode?: boolean }) {
                       ...m,
                       content: finalContent,
                       reasoning: accumulatedContent ? (accumulatedReasoning || undefined) : undefined,
-                      status: m.status === 'error' ? ('error' as const) : ('done' as const),
+                      status: hasError ? ('error' as const) : ('done' as const),
                     }
                   : m
               ),
