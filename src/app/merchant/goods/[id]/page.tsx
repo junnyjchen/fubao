@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ImageUpload, SingleImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface GoodsForm {
@@ -14,7 +14,7 @@ interface GoodsForm {
   category_id: string;
   type: number;
   purpose: string;
-  main_image: string;
+  images: string[];
   content: string;
   is_certified: boolean;
   status: number;
@@ -34,7 +34,7 @@ export default function MerchantGoodsEditPage() {
     category_id: '',
     type: 1,
     purpose: '',
-    main_image: '',
+    images: [],
     content: '',
     is_certified: false,
     status: 1,
@@ -72,6 +72,22 @@ export default function MerchantGoodsEditPage() {
       const data = await res.json();
       if (data.success !== false && data.data) {
         const g = data.data;
+        // Parse images: could be JSON array or comma-separated string
+        let imageList: string[] = [];
+        if (Array.isArray(g.images)) {
+          imageList = g.images;
+        } else if (typeof g.images === 'string' && g.images) {
+          try {
+            imageList = JSON.parse(g.images);
+          } catch {
+            imageList = g.images.split(',').filter(Boolean);
+          }
+        }
+        // If main_image exists but not in images array, prepend it
+        if (g.main_image && !imageList.includes(g.main_image)) {
+          imageList = [g.main_image, ...imageList];
+        }
+
         setForm({
           name: g.name || '',
           subtitle: g.subtitle || '',
@@ -81,8 +97,8 @@ export default function MerchantGoodsEditPage() {
           category_id: String(g.category_id ?? ''),
           type: g.type ?? 1,
           purpose: g.purpose || '',
-          main_image: g.main_image || '',
-          content: g.content || '',
+          images: imageList,
+          content: g.content || g.detail || '',
           is_certified: !!g.is_certified,
           status: g.status ?? 1,
         });
@@ -105,6 +121,7 @@ export default function MerchantGoodsEditPage() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           ...form,
+          main_image: form.images[0] || '',
           price: Number(form.price),
           original_price: form.original_price ? Number(form.original_price) : null,
           stock: Number(form.stock),
@@ -252,14 +269,15 @@ export default function MerchantGoodsEditPage() {
           </div>
         </section>
 
-        {/* 主图上传 */}
+        {/* 商品图片 */}
         <section className="bg-card rounded-xl border border-border p-6 shadow-sm">
-          <h2 className="font-bold text-base mb-4">主图</h2>
-          <SingleImageUpload
-            value={form.main_image}
-            onChange={(url) => setForm((f) => ({ ...f, main_image: url }))}
-            folder="goods/main"
-            maxSize={5}
+          <h2 className="font-bold text-base mb-4">商品图片</h2>
+          <p className="text-sm text-muted-foreground mb-3">第一张图片将作为商品主图，建议尺寸 800x800，支持 JPG/PNG/WebP，最多上传 9 张</p>
+          <ImageUpload
+            value={form.images}
+            onChange={(urls) => setForm((f) => ({ ...f, images: urls }))}
+            maxCount={9}
+            folder="merchant/goods"
           />
         </section>
 

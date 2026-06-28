@@ -26,7 +26,7 @@ import {
   Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SingleImageUpload, ImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface Category {
@@ -312,39 +312,23 @@ export default function GoodsNewPage() {
           </CardContent>
         </Card>
 
-        {/* 商品主图 */}
+        {/* 商品圖片 */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">商品主圖</CardTitle>
+            <CardTitle className="text-base">商品圖片</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <SingleImageUpload
-              value={form.main_image}
-              onChange={url => setForm(prev => ({ ...prev, main_image: url }))}
-              folder="goods"
-              maxSize={5}
-              placeholder="上傳主圖"
-            />
-            <p className="text-xs text-muted-foreground">
-              建議尺寸: 800x800px，支持 JPG、PNG、WebP 格式，單個文件不超過 5MB
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* 商品图集 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">商品圖集</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <ImageUpload
               value={form.images}
-              onChange={urls => setForm(prev => ({ ...prev, images: urls }))}
+              onChange={urls => setForm(prev => ({ ...prev, images: urls, main_image: urls[0] || '' }))}
               maxCount={9}
-              folder="goods/gallery"
+              folder="goods"
               maxSize={5}
-              placeholder="點擊或拖拽圖片上傳商品圖集"
+              placeholder="點擊或拖拽圖片上傳"
             />
+            <p className="text-xs text-muted-foreground">
+              第一張圖片將作為商品主圖，建議尺寸 800x800px，支持 JPG、PNG、WebP 格式，最多 9 張
+            </p>
           </CardContent>
         </Card>
 

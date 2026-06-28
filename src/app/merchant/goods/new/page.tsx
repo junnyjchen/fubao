@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ImageUpload, SingleImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 export default function MerchantNewGoodsPage() {
@@ -20,8 +20,7 @@ export default function MerchantNewGoodsPage() {
     type: '1',
     purpose: '',
     description: '',
-    main_image: '',
-    images: '',
+    images: [] as string[],
     is_certified: false,
   });
 
@@ -48,6 +47,7 @@ export default function MerchantNewGoodsPage() {
     try {
       const body = {
         ...form,
+        main_image: form.images[0] || '',
         price: parseFloat(form.price) || 0,
         original_price: parseFloat(form.original_price) || undefined,
         stock: parseInt(form.stock) || 0,
@@ -76,7 +76,7 @@ export default function MerchantNewGoodsPage() {
     }
   };
 
-  const updateForm = (field: string, value: string | boolean) => {
+  const updateForm = (field: string, value: string | boolean | string[]) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
@@ -160,13 +160,14 @@ export default function MerchantNewGoodsPage() {
             </div>
           </div>
 
-          {/* 主图上传 */}
+          {/* 商品图片 */}
           <div className="bg-card rounded-xl border border-border p-6 space-y-4">
-            <h2 className="font-semibold text-foreground text-base">主图</h2>
-            <p className="text-sm text-muted-foreground">第一张图片将作为商品主图，建议尺寸 800x800，支持 JPG/PNG/WebP</p>
-            <SingleImageUpload
-              value={form.main_image}
-              onChange={(url) => updateForm('main_image', url)}
+            <h2 className="font-semibold text-foreground text-base">商品图片</h2>
+            <p className="text-sm text-muted-foreground">第一张图片将作为商品主图，建议尺寸 800x800，支持 JPG/PNG/WebP，最多上传 9 张</p>
+            <ImageUpload
+              value={form.images}
+              onChange={(urls) => updateForm('images', urls)}
+              maxCount={9}
               folder="merchant/goods"
             />
           </div>

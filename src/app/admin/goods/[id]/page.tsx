@@ -27,7 +27,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SingleImageUpload, ImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface Category {
@@ -177,7 +177,7 @@ export default function GoodsEditPage({ params }: PageProps) {
           price: form.price,
           original_price: form.original_price || null,
           stock: parseInt(form.stock) || 0,
-          main_image: form.main_image || null,
+          main_image: form.images.length > 0 ? form.images[0] : null,
           images: form.images.length > 0 ? form.images : null,
           description: form.description || null,
           is_certified: form.is_certified,
@@ -367,39 +367,23 @@ export default function GoodsEditPage({ params }: PageProps) {
           </CardContent>
         </Card>
 
-        {/* 商品主图 */}
+        {/* 商品图片（第一张为主图） */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">商品主圖</CardTitle>
+            <CardTitle className="text-base">商品圖片</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <SingleImageUpload
-              value={form.main_image}
-              onChange={url => setForm(prev => ({ ...prev, main_image: url }))}
-              folder="goods"
-              maxSize={5}
-              placeholder="上傳主圖"
-            />
-            <p className="text-xs text-muted-foreground">
-              建議尺寸: 800x800px，支持 JPG、PNG、WebP 格式，單個文件不超過 5MB
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* 商品图集 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">商品圖集</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <ImageUpload
               value={form.images}
               onChange={urls => setForm(prev => ({ ...prev, images: urls }))}
               maxCount={9}
-              folder="goods/gallery"
+              folder="goods"
               maxSize={5}
-              placeholder="點擊或拖拽圖片上傳商品圖集"
+              placeholder="點擊或拖拽圖片上傳（第一張為主圖）"
             />
+            <p className="text-xs text-muted-foreground">
+              第一張圖片將作為商品主圖，建議尺寸 800x800px，支持 JPG、PNG、WebP 格式，最多9張
+            </p>
           </CardContent>
         </Card>
 
