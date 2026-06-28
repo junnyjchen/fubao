@@ -1,6 +1,6 @@
 /**
  * @fileoverview 商户商品编辑页面
- * @description 商户编辑已发布商品
+ * @description 商户编辑已有商品（真实API版）
  * @module app/merchant/dashboard/goods/[id]/page
  */
 
@@ -17,7 +17,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -27,34 +26,24 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import {
   ArrowLeft,
   Save,
-  Send,
   Loader2,
   Package,
   DollarSign,
+  Tag,
   FileText,
   Image as ImageIcon,
   Shield,
-  AlertCircle,
-  Trash2,
-  Eye,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
-interface GoodsData {
-  id: number;
+interface GoodsForm {
   name: string;
-  category_id: number;
+  category_id: number | null;
   price: number;
   original_price: number;
   stock: number;
@@ -67,72 +56,93 @@ interface GoodsData {
   cert_type: string;
   keywords: string;
   status: number;
-  sales: number;
-  created_at: string;
 }
 
 export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
+  const { id } = use(params);
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('basic');
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [form, setForm] = useState<GoodsData | null>(null);
+  const [form, setForm] = useState<GoodsForm>({
+    name: '',
+    category_id: null,
+    price: 0,
+    original_price: 0,
+    stock: 0,
+    unit: '件',
+    description: '',
+    content: '',
+    images: [],
+    video_url: '',
+    has_cert: false,
+    cert_type: '',
+    keywords: '',
+    status: 0,
+  });
 
+  // 加载商品数据
   useEffect(() => {
-    loadGoods();
-  }, [resolvedParams.id]);
+    const loadGoods = async () => {
+      try {
+        const merchantToken = localStorage.getItem('merchant_token');
+        const res = await fetch(`/api/merchant/goods?id=${id}`, {
+          headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
+        });
+        const data = await res.json();
 
-  const loadGoods = async () => {
-    setLoading(true);
-    try {
-      const merchantToken = localStorage.getItem('merchant_token');
-      const res = await fetch(`/api/merchant/goods`, {
-        headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
-      });
-      const data = await res.json();
-      if (data.data) {
-        const goodsList = data.data as any[];
-        const item = goodsList.find((g: any) => g.id === parseInt(resolvedParams.id));
-        if (item) {
-          const imageArr = item.images ? (typeof item.images === 'string' ? item.images.split(',').filter(Boolean) : item.images) : [];
+        if (data.success && data.data) {
+          const g = data.data;
+          // 解析 specs
+          let certType = '';
+          if (g.specs) {
+            try {
+              const specsObj = typeof g.specs === 'string' ? JSON.parse(g.specs) : g.specs;
+              certType = specsObj?.cert_type || '';
+            } catch { /* ignore */ }
+          }
+          // 解析 images
+          let images: string[] = [];
+          if (Array.isArray(g.images)) {
+            images = g.images;
+          } else if (typeof g.images === 'string' && g.images.trim()) {
+            try { images = JSON.parse(g.images); } catch { images = g.images.split(',').filter(Boolean); }
+          }
+
           setForm({
-            id: item.id,
-            name: item.name || '',
-            category_id: item.category_id || 1,
-            price: item.price || 0,
-            original_price: item.original_price || 0,
-            stock: item.stock || 0,
-            unit: item.unit || '件',
-            description: item.description || '',
-            content: item.content || '',
-            images: imageArr,
-            video_url: item.video_url || '',
-            has_cert: !!item.is_certified,
-            cert_type: item.specifications ? (typeof item.specifications === 'string' ? JSON.parse(item.specifications).cert_type || '' : item.specifications.cert_type || '') : '',
-            keywords: item.subtitle || '',
-            status: item.status ?? 1,
-            sales: item.sales || 0,
-            created_at: item.created_at || '',
+            name: g.name || '',
+            category_id: g.category_id || null,
+            price: parseFloat(g.price) || 0,
+            original_price: parseFloat(g.original_price) || 0,
+            stock: g.stock || 0,
+            unit: '件',
+            description: g.description || '',
+            content: g.detail || '',
+            images,
+            video_url: '',
+            has_cert: !!g.is_certified,
+            cert_type: certType,
+            keywords: g.subtitle || '',
+            status: g.status ?? 0,
           });
         } else {
-          toast.error('商品不存在');
+          toast.error('商品不存在或無權訪問');
           router.push('/merchant/dashboard/goods');
         }
+      } catch (error) {
+        console.error('加載商品失敗:', error);
+        toast.error('加載商品失敗');
+        router.push('/merchant/dashboard/goods');
+      } finally {
+        setPageLoading(false);
       }
-    } catch (error) {
-      console.error('加载商品失败:', error);
-      toast.error('加載商品失敗');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    loadGoods();
+  }, [id, router]);
 
-  const handleSubmit = async (isDraft = false) => {
-    if (!form) return;
+  const handleSubmit = async (e: React.FormEvent, isDraft = false) => {
+    e.preventDefault();
 
-    // 表单验证
     if (!form.name.trim()) {
       toast.error('請填寫商品名稱');
       return;
@@ -146,7 +156,7 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
     try {
       const merchantToken = localStorage.getItem('merchant_token');
       const res = await fetch('/api/merchant/goods', {
@@ -156,7 +166,7 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
           ...(merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {}),
         },
         body: JSON.stringify({
-          id: form.id,
+          id: parseInt(id),
           name: form.name,
           subtitle: form.keywords || '',
           price: form.price,
@@ -166,52 +176,34 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
           type: 1,
           purpose: '',
           description: form.description,
+          detail: form.content || null,
           main_image: form.images[0] || '',
-          images: form.images.join(','),
+          images: form.images,
           is_certified: form.has_cert,
-          status: isDraft ? 0 : form.status,
-          specifications: form.cert_type ? { cert_type: form.cert_type } : null,
+          specs: form.cert_type ? JSON.stringify({ cert_type: form.cert_type }) : null,
+          status: isDraft ? 0 : 1,
         }),
       });
 
       const data = await res.json();
 
-      if (data.success || data.data) {
-        toast.success(isDraft ? '商品已保存為草稿' : '商品更新成功');
+      if (data.success) {
+        toast.success('商品更新成功');
         router.push('/merchant/dashboard/goods');
       } else {
-        toast.error(data.error || data.message || '更新失敗');
+        toast.error(data.error || '更新失敗');
       }
     } catch (error) {
-      console.error('更新商品失败:', error);
+      console.error('更新商品失敗:', error);
       toast.error('操作失敗，請重試');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      const merchantToken = localStorage.getItem('merchant_token');
-      const res = await fetch(`/api/merchant/goods?id=${form?.id}`, {
-        method: 'DELETE',
-        headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('商品已刪除');
-        router.push('/merchant/dashboard/goods');
-      } else {
-        toast.error(data.error || '刪除失敗');
-      }
-    } catch (error) {
-      toast.error('刪除失敗');
-    }
-  };
-
-  if (loading || !form) {
+  if (pageLoading) {
     return (
-      <MerchantLayout title="編輯商品" description="修改商品信息">
+      <MerchantLayout title="編輯商品" description="">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -221,64 +213,14 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
 
   return (
     <MerchantLayout title="編輯商品" description="修改商品信息">
-      {/* 返回按钮 */}
-      <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" asChild>
-          <Link href="/merchant/dashboard/goods">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            返回商品列表
-          </Link>
-        </Button>
-        <div className="flex items-center gap-4">
-          <Link href={`/shop/${form.id}`} target="_blank">
-            <Button variant="outline" size="sm">
-              <Eye className="w-4 h-4 mr-2" />
-              預覽商品
-            </Button>
-          </Link>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            刪除商品
-          </Button>
-        </div>
-      </div>
+      <Button variant="ghost" className="mb-4" asChild>
+        <Link href="/merchant/dashboard/goods">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          返回商品列表
+        </Link>
+      </Button>
 
-      {/* 商品状态信息 */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground">商品ID</p>
-                <p className="font-mono">{form.id}</p>
-              </div>
-              <Separator orientation="vertical" className="h-8" />
-              <div>
-                <p className="text-sm text-muted-foreground">狀態</p>
-                <Badge className={form.status === 1 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                  {form.status === 1 ? '銷售中' : '已下架'}
-                </Badge>
-              </div>
-              <Separator orientation="vertical" className="h-8" />
-              <div>
-                <p className="text-sm text-muted-foreground">銷量</p>
-                <p className="font-medium">{form.sales}</p>
-              </div>
-              <Separator orientation="vertical" className="h-8" />
-              <div>
-                <p className="text-sm text-muted-foreground">創建時間</p>
-                <p>{form.created_at}</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(false); }}>
+      <form onSubmit={(e) => handleSubmit(e, false)}>
         <div className="grid lg:grid-cols-3 gap-6">
           {/* 左侧表单 */}
           <div className="lg:col-span-2 space-y-6">
@@ -292,224 +234,194 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
                   <FileText className="w-4 h-4 mr-2" />
                   商品詳情
                 </TabsTrigger>
-                <TabsTrigger value="cert">
-                  <Shield className="w-4 h-4 mr-2" />
-                  認證信息
+                <TabsTrigger value="images">
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  商品圖片
                 </TabsTrigger>
               </TabsList>
 
               {/* 基本信息 */}
-              <TabsContent value="basic" className="space-y-6">
+              <TabsContent value="basic">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">商品信息</CardTitle>
+                    <CardTitle>基本信息</CardTitle>
+                    <CardDescription>填寫商品的基本屬性信息</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>商品名稱 <span className="text-destructive">*</span></Label>
-                      <Input
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        placeholder="請輸入商品名稱"
-                        maxLength={100}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>商品名稱 *</Label>
+                        <Input
+                          value={form.name}
+                          onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                          placeholder="請輸入商品名稱"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>商品分類 *</Label>
+                        <Select
+                          value={form.category_id?.toString() || ''}
+                          onValueChange={(v) => setForm(f => ({ ...f, category_id: parseInt(v) }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="選擇分類" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">符籙</SelectItem>
+                            <SelectItem value="2">法器</SelectItem>
+                            <SelectItem value="3">書籍</SelectItem>
+                            <SelectItem value="4">服飾</SelectItem>
+                            <SelectItem value="5">其他</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>關鍵詞</Label>
+                        <Input
+                          value={form.keywords}
+                          onChange={(e) => setForm(f => ({ ...f, keywords: e.target.value }))}
+                          placeholder="搜索關鍵詞，空格分隔"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>售價 (HKD) *</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={form.price}
+                            onChange={(e) => setForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>原價 (HKD)</Label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={form.original_price}
+                            onChange={(e) => setForm(f => ({ ...f, original_price: parseFloat(e.target.value) || 0 }))}
+                            className="pl-10"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>庫存 *</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={form.stock}
+                          onChange={(e) => setForm(f => ({ ...f, stock: parseInt(e.target.value) || 0 }))}
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label>商品分類 <span className="text-destructive">*</span></Label>
-                      <Select
-                        value={form.category_id?.toString()}
-                        onValueChange={(v) => setForm({ ...form, category_id: parseInt(v) })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="請選擇分類" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">符箓類</SelectItem>
-                          <SelectItem value="2">法器類</SelectItem>
-                          <SelectItem value="3">書籍類</SelectItem>
-                          <SelectItem value="4">服飾類</SelectItem>
-                          <SelectItem value="5">其他</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                    <Separator />
                     <div className="space-y-2">
                       <Label>商品簡介</Label>
                       <Textarea
                         value={form.description}
-                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                        placeholder="請輸入商品簡介"
+                        onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                        placeholder="簡要描述商品特點"
                         rows={3}
-                        maxLength={200}
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>搜索關鍵詞</Label>
-                      <Input
-                        value={form.keywords}
-                        onChange={(e) => setForm({ ...form, keywords: e.target.value })}
-                        placeholder="多個關鍵詞用逗號分隔"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
-                      價格與庫存
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>售價 (HK$) <span className="text-destructive">*</span></Label>
-                        <Input
-                          type="number"
-                          value={form.price}
-                          onChange={(e) => setForm({ ...form, price: parseFloat(e.target.value) || 0 })}
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>原價 (HK$)</Label>
-                        <Input
-                          type="number"
-                          value={form.original_price}
-                          onChange={(e) => setForm({ ...form, original_price: parseFloat(e.target.value) || 0 })}
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>庫存 <span className="text-destructive">*</span></Label>
-                        <Input
-                          type="number"
-                          value={form.stock}
-                          onChange={(e) => setForm({ ...form, stock: parseInt(e.target.value) || 0 })}
-                          min="0"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>單位</Label>
-                        <Select
-                          value={form.unit}
-                          onValueChange={(v) => setForm({ ...form, unit: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="件">件</SelectItem>
-                            <SelectItem value="個">個</SelectItem>
-                            <SelectItem value="套">套</SelectItem>
-                            <SelectItem value="本">本</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ImageIcon className="w-4 h-4" />
-                      商品圖片
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ImageUpload
-                      value={form.images}
-                      onChange={(urls) => setForm({ ...form, images: urls })}
-                      maxCount={9}
-                      folder="merchant/goods"
-                    />
                   </CardContent>
                 </Card>
               </TabsContent>
 
               {/* 商品详情 */}
-              <TabsContent value="detail" className="space-y-6">
+              <TabsContent value="detail">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">商品詳情</CardTitle>
+                    <CardTitle>商品詳情</CardTitle>
+                    <CardDescription>豐富的商品詳細描述</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {form && (
-                      <RichTextEditor
-                        value={form.content}
-                        onChange={(html) => setForm({ ...form, content: html })}
-                        placeholder="请输入商品详情内容..."
-                      />
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">商品視頻</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <Label>視頻鏈接</Label>
-                      <Input
-                        value={form.video_url}
-                        onChange={(e) => setForm({ ...form, video_url: e.target.value })}
-                        placeholder="請輸入視頻鏈接"
-                      />
-                    </div>
+                    <RichTextEditor
+                      value={form.content}
+                      onChange={(value) => setForm(f => ({ ...f, content: value }))}
+                      placeholder="請輸入商品詳細描述..."
+                    />
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* 认证信息 */}
-              <TabsContent value="cert" className="space-y-6">
+              {/* 商品图片 */}
+              <TabsContent value="images">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Shield className="w-4 h-4" />
-                      一物一證認證
-                    </CardTitle>
+                    <CardTitle>商品圖片</CardTitle>
+                    <CardDescription>上傳商品圖片，第一張為封面圖，支持多張</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">開啟認證</p>
-                        <p className="text-sm text-muted-foreground">
-                          商品售出後自動生成認證證書
-                        </p>
-                      </div>
-                      <Switch
-                        checked={form.has_cert}
-                        onCheckedChange={(checked) => setForm({ ...form, has_cert: checked })}
+                  <CardContent className="space-y-6">
+                    <div className="space-y-3">
+                      <Label>商品圖片（第一張為封面）</Label>
+                      <ImageUpload
+                        value={form.images}
+                        onChange={(images) => setForm(f => ({ ...f, images }))}
+                        maxCount={9}
+                        folder="merchant/goods"
                       />
+                      {form.images.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">圖片預覽（拖動調整順序，第一張為封面）</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                            {form.images.map((img, idx) => (
+                              <div key={idx} className="relative group aspect-square rounded-lg overflow-hidden border bg-muted">
+                                <img src={img} alt={`商品圖${idx + 1}`} className="w-full h-full object-cover" />
+                                {idx === 0 && (
+                                  <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded">
+                                    封面
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    const newImages = form.images.filter((_, i) => i !== idx);
+                                    setForm(f => ({ ...f, images: newImages }));
+                                  }}
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
+                    <Separator />
+                    <div className="flex items-center space-x-3">
+                      <Switch
+                        checked={form.has_cert}
+                        onCheckedChange={(v) => setForm(f => ({ ...f, has_cert: v }))}
+                      />
+                      <div>
+                        <Label>開光/認證商品</Label>
+                        <p className="text-sm text-muted-foreground">標記此商品經過開光或認證</p>
+                      </div>
+                    </div>
                     {form.has_cert && (
-                      <div className="space-y-2">
+                      <div className="space-y-2 ml-9">
                         <Label>認證類型</Label>
-                        <Select
+                        <Input
                           value={form.cert_type}
-                          onValueChange={(v) => setForm({ ...form, cert_type: v })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="請選擇認證類型" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="開光認證">開光認證</SelectItem>
-                            <SelectItem value="真品認證">真品認證</SelectItem>
-                            <SelectItem value="收藏認證">收藏認證</SelectItem>
-                            <SelectItem value="傳承認證">傳承認證</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          onChange={(e) => setForm(f => ({ ...f, cert_type: e.target.value }))}
+                          placeholder="如：道教開光、佛教加持等"
+                        />
                       </div>
                     )}
                   </CardContent>
@@ -518,89 +430,71 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
             </Tabs>
           </div>
 
-          {/* 右侧信息 */}
-          <div className="space-y-6">
-            <Card className="sticky top-20">
+          {/* 右侧操作 */}
+          <div className="space-y-4">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-base">保存設置</CardTitle>
+                <CardTitle>發布設置</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>商品狀態</Label>
-                  <Select
-                    value={form.status.toString()}
-                    onValueChange={(v) => setForm({ ...form, status: parseInt(v) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0">下架</SelectItem>
-                      <SelectItem value="1">上架銷售</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    checked={form.status === 1}
+                    onCheckedChange={(v) => setForm(f => ({ ...f, status: v ? 1 : 0 }))}
+                  />
+                  <div>
+                    <Label>立即上架</Label>
+                    <p className="text-sm text-muted-foreground">關閉則保存為草稿</p>
+                  </div>
                 </div>
-
                 <Separator />
+                <Button className="w-full" type="submit" disabled={loading}>
+                  {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  保存修改
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={(e) => handleSubmit(e, true)}
+                  disabled={loading}
+                >
+                  保存為草稿
+                </Button>
+              </CardContent>
+            </Card>
 
-                <div className="space-y-3">
-                  <Button
-                    type="button"
-                    className="w-full"
-                    onClick={() => handleSubmit(false)}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        保存中...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2" />
-                        保存修改
-                      </>
+            <Card>
+              <CardHeader>
+                <CardTitle>商品預覽</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {form.images.length > 0 ? (
+                  <div className="space-y-2">
+                    <img
+                      src={form.images[0]}
+                      alt={form.name}
+                      className="w-full aspect-square object-cover rounded-lg"
+                    />
+                    {form.images.length > 1 && (
+                      <div className="flex gap-1">
+                        {form.images.slice(1, 5).map((img, idx) => (
+                          <img key={idx} src={img} alt="" className="w-1/4 aspect-square object-cover rounded" />
+                        ))}
+                      </div>
                     )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleSubmit(true)}
-                    disabled={saving}
-                  >
-                    保存為草稿
-                  </Button>
-                </div>
+                  </div>
+                ) : (
+                  <div className="w-full aspect-square bg-muted rounded-lg flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                )}
+                <h3 className="font-medium mt-2 line-clamp-2">{form.name || '未命名商品'}</h3>
+                <p className="text-primary font-bold">HK${form.price}</p>
               </CardContent>
             </Card>
           </div>
         </div>
       </form>
-
-      {/* 删除确认弹窗 */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="w-5 h-5" />
-              確認刪除
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p>確定要刪除商品「{form.name}」嗎？</p>
-            <p className="text-sm text-muted-foreground mt-2">此操作不可恢復，已產生的訂單數據將保留。</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              取消
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              確認刪除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </MerchantLayout>
   );
 }

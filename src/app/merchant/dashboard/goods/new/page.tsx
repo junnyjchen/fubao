@@ -124,10 +124,12 @@ export default function MerchantGoodsNewPage() {
           type: 1,
           purpose: '',
           description: form.description,
+          detail: form.content || null,
           main_image: form.images[0] || '',
-          images: form.images.join(','),
+          images: form.images,
           is_certified: form.has_cert,
-          specifications: form.cert_type ? { cert_type: form.cert_type } : null,
+          specs: form.cert_type ? JSON.stringify({ cert_type: form.cert_type }) : null,
+          status: isDraft ? 0 : 1,
         }),
       });
 

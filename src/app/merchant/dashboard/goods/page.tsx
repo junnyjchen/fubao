@@ -1,12 +1,12 @@
 /**
  * @fileoverview 商户商品管理页面
- * @description 商户管理自己的商品
+ * @description 商户管理自己的商品（真实API版）
  * @module app/merchant/dashboard/goods/page
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { MerchantLayout } from '@/components/merchant/MerchantLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -30,40 +30,41 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
   Plus,
   Search,
   Edit,
   Trash2,
   Package,
   Eye,
-  AlertCircle,
+  Loader2,
   ChevronLeft,
   ChevronRight,
   Image as ImageIcon,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Goods {
   id: number;
   name: string;
   main_image: string | null;
-  price: string;
-  original_price: string | null;
+  images: string[];
+  price: string | number;
+  original_price: string | number | null;
   stock: number;
   sales: number;
-  status: boolean;
+  status: number;
   category_id: number;
-  category_name?: string;
+  description: string;
   created_at: string;
 }
+
+const CATEGORY_MAP: Record<number, string> = {
+  1: '符籙',
+  2: '法器',
+  3: '書籍',
+  4: '服飾',
+  5: '其他',
+};
 
 export default function MerchantGoodsPage() {
   const [goods, setGoods] = useState<Goods[]>([]);
@@ -72,105 +73,89 @@ export default function MerchantGoodsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingGoods, setEditingGoods] = useState<Goods | null>(null);
   const limit = 15;
 
-  useEffect(() => {
-    loadGoods();
-  }, [statusFilter, page]);
-
-  const loadGoods = async () => {
+  const loadGoods = useCallback(async () => {
     setLoading(true);
     try {
-      // TODO: 调用真实API
-      const mockGoods: Goods[] = [
-        {
-          id: 1,
-          name: '開光平安符',
-          main_image: null,
-          price: '288',
-          original_price: '388',
-          stock: 156,
-          sales: 1250,
-          status: true,
-          category_id: 1,
-          category_name: '符籙',
-          created_at: '2026-03-01',
-        },
-        {
-          id: 2,
-          name: '桃木劍',
-          main_image: null,
-          price: '680',
-          original_price: null,
-          stock: 45,
-          sales: 320,
-          status: true,
-          category_id: 2,
-          category_name: '法器',
-          created_at: '2026-03-05',
-        },
-        {
-          id: 3,
-          name: '八卦鏡',
-          main_image: null,
-          price: '168',
-          original_price: '198',
-          stock: 8,
-          sales: 580,
-          status: true,
-          category_id: 2,
-          category_name: '法器',
-          created_at: '2026-03-10',
-        },
-        {
-          id: 4,
-          name: '太歲符',
-          main_image: null,
-          price: '368',
-          original_price: null,
-          stock: 200,
-          sales: 890,
-          status: false,
-          category_id: 1,
-          category_name: '符籙',
-          created_at: '2026-03-15',
-        },
-      ];
-
-      let filtered = mockGoods;
-      if (statusFilter === 'active') {
-        filtered = mockGoods.filter(g => g.status);
-      } else if (statusFilter === 'inactive') {
-        filtered = mockGoods.filter(g => !g.status);
-      } else if (statusFilter === 'low_stock') {
-        filtered = mockGoods.filter(g => g.stock < 20);
+      const merchantToken = localStorage.getItem('merchant_token');
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      if (statusFilter !== 'all') {
+        params.set('status', statusFilter === 'active' ? '1' : statusFilter === 'inactive' ? '0' : '');
+      }
+      if (searchTerm.trim()) {
+        params.set('keyword', searchTerm.trim());
       }
 
-      setGoods(filtered);
-      setTotal(filtered.length);
+      const res = await fetch(`/api/merchant/goods?${params}`, {
+        headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
+      });
+      const data = await res.json();
+
+      if (data.success && data.data) {
+        setGoods(data.data);
+        setTotal(data.total || 0);
+      } else {
+        setGoods([]);
+        setTotal(0);
+      }
     } catch (error) {
       console.error('加载商品失败:', error);
+      setGoods([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, statusFilter, searchTerm]);
 
-  const handleToggleStatus = async (id: number, currentStatus: boolean) => {
-    // TODO: 调用API
-    setGoods(goods.map(g => g.id === id ? { ...g, status: !currentStatus } : g));
+  useEffect(() => {
+    loadGoods();
+  }, [loadGoods]);
+
+  const handleToggleStatus = async (id: number, currentStatus: number) => {
+    try {
+      const merchantToken = localStorage.getItem('merchant_token');
+      const res = await fetch('/api/merchant/goods', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {}),
+        },
+        body: JSON.stringify({ id, status: currentStatus === 1 ? 0 : 1 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(currentStatus === 1 ? '商品已下架' : '商品已上架');
+        loadGoods();
+      } else {
+        toast.error(data.error || '操作失敗');
+      }
+    } catch (error) {
+      toast.error('操作失敗');
+    }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm('確定要刪除此商品嗎？')) return;
-    // TODO: 调用API
-    setGoods(goods.filter(g => g.id !== id));
+    try {
+      const merchantToken = localStorage.getItem('merchant_token');
+      const res = await fetch(`/api/merchant/goods?id=${id}`, {
+        method: 'DELETE',
+        headers: merchantToken ? { 'Authorization': `Bearer ${merchantToken}` } : {},
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('商品已刪除');
+        loadGoods();
+      } else {
+        toast.error(data.error || '刪除失敗');
+      }
+    } catch (error) {
+      toast.error('刪除失敗');
+    }
   };
-
-  const filteredGoods = goods.filter(g =>
-    g.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const totalPages = Math.ceil(total / limit);
 
@@ -184,8 +169,9 @@ export default function MerchantGoodsPage() {
             <Input
               placeholder="搜索商品名稱..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
               className="pl-10"
+              onKeyDown={(e) => { if (e.key === 'Enter') loadGoods(); }}
             />
           </div>
           <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
@@ -196,7 +182,6 @@ export default function MerchantGoodsPage() {
               <SelectItem value="all">全部商品</SelectItem>
               <SelectItem value="active">銷售中</SelectItem>
               <SelectItem value="inactive">已下架</SelectItem>
-              <SelectItem value="low_stock">庫存預警</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -211,8 +196,10 @@ export default function MerchantGoodsPage() {
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-12 text-muted-foreground">載入中...</div>
-          ) : filteredGoods.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : goods.length === 0 ? (
             <div className="text-center py-12">
               <Package className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground">暫無商品</p>
@@ -238,11 +225,11 @@ export default function MerchantGoodsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredGoods.map((item) => (
+                  {goods.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="w-14 h-14 bg-muted rounded flex items-center justify-center text-muted-foreground">
+                          <div className="w-14 h-14 bg-muted rounded flex items-center justify-center text-muted-foreground overflow-hidden">
                             {item.main_image ? (
                               <img src={item.main_image} alt={item.name} className="w-full h-full object-cover rounded" />
                             ) : (
@@ -251,12 +238,14 @@ export default function MerchantGoodsPage() {
                           </div>
                           <div>
                             <p className="font-medium">{item.name}</p>
-                            {item.category_name && (
-                              <Badge variant="outline" className="text-xs">{item.category_name}</Badge>
-                            )}
-                            {item.stock < 20 && (
-                              <Badge variant="destructive" className="text-xs ml-1">庫存不足</Badge>
-                            )}
+                            <div className="flex gap-1 mt-1">
+                              {item.category_id && (
+                                <Badge variant="outline" className="text-xs">{CATEGORY_MAP[item.category_id] || '其他'}</Badge>
+                              )}
+                              {item.stock < 20 && (
+                                <Badge variant="destructive" className="text-xs">庫存不足</Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
@@ -278,7 +267,7 @@ export default function MerchantGoodsPage() {
                       <TableCell className="text-muted-foreground">{item.sales}</TableCell>
                       <TableCell>
                         <Switch
-                          checked={item.status}
+                          checked={item.status === 1}
                           onCheckedChange={() => handleToggleStatus(item.id, item.status)}
                         />
                       </TableCell>
