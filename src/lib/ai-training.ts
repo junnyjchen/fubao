@@ -22,6 +22,7 @@ async function request<T = any>(
   };
 
   // 处理 GET 请求的参数
+  let fetchUrl = url;
   if (method === 'GET' && params) {
     const searchParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
@@ -30,13 +31,13 @@ async function request<T = any>(
       }
     });
     const queryString = searchParams.toString();
-    const fullUrl = queryString ? `${url}?${queryString}` : url;
+    if (queryString) fetchUrl = `${url}?${queryString}`;
     options.body = undefined;
   } else if (data) {
     options.body = JSON.stringify(data);
   }
 
-  const response = await fetch(url, options);
+  const response = await fetch(fetchUrl, options);
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: '请求失败' }));

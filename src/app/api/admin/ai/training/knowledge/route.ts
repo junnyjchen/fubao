@@ -1,8 +1,8 @@
 /**
- * AI 训练中心 - 知识库列表
+ * AI 训练中心 - 知识库列表 & 创建
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query, count } from '@/lib/db';
+import { query, count, insert } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,20 +15,16 @@ export async function GET(request: NextRequest) {
 
     let where = '1=1';
     const params: any[] = [];
-    let paramIdx = 0;
 
     if (category) {
-      paramIdx++;
       where += ` AND category = ?`;
       params.push(category);
     }
     if (status) {
-      paramIdx++;
       where += ` AND status = ?`;
       params.push(status);
     }
     if (keyword) {
-      paramIdx++;
       where += ` AND (title LIKE ? OR content LIKE ?)`;
       params.push(`%${keyword}%`, `%${keyword}%`);
     }
@@ -42,14 +38,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        list: list || [],
+        list: (list as any[] || []).map(item => ({
+          ...item,
+          tags: typeof item.tags === 'string' ? JSON.parse(item.tags || '[]') : (item.tags || []),
+        })),
         total,
         page,
         page_size: pageSize,
       }
     });
   } catch (error) {
-    console.error('获取知识库列表失败:', error);
+    console.error('獲取知識庫列表失敗:', error);
     return NextResponse.json({ success: true, data: { list: [], total: 0, page: 1, page_size: 10 } });
   }
 }
@@ -60,18 +59,27 @@ export async function POST(request: NextRequest) {
     const { title, content, category, source_type, source_url, tags, status } = body;
 
     if (!title || !content) {
-      return NextResponse.json({ error: '标题和内容不能为空' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '標題和內容不能為空' }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
-    await query(
-      `INSERT INTO ai_knowledge (title, content, category, source_type, source_url, tags, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, content, category || 'general', source_type || 'manual', source_url || '', JSON.stringify(tags || []), status || 'active', now, now]
-    );
+    const id = await insert('ai_knowledge', {
+      title,
+      content,
+      category: category || 'general',
+      source_type: source_type || 'manual',
+      source_url: source_url || '',
+      tags: JSON.stringify(tags || []),
+      status: status || 'active',
+    });
 
-    return NextResponse.json({ success: true, message: '创建成功' });
+    if (!id || id === 0) {
+      return NextResponse.json({ success: false, error: '創建失敗' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: '創建成功', data: { id } });
   } catch (error) {
-    console.error('创建知识库失败:', error);
-    return NextResponse.json({ error: '创建失败' }, { status: 500 });
+    console.error('創建知識庫失敗:', error);
+    const msg = error instanceof Error ? error.message : '創建失敗';
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

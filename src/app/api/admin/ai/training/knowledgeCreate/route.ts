@@ -2,7 +2,7 @@
  * AI 训练中心 - 知识库创建
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { insert } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,18 +10,27 @@ export async function POST(request: NextRequest) {
     const { title, content, category, source_type, source_url, tags, status } = body;
 
     if (!title || !content) {
-      return NextResponse.json({ error: '标题和内容不能为空' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '標題和內容不能為空' }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
-    await query(
-      `INSERT INTO ai_knowledge (title, content, category, source_type, source_url, tags, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, content, category || 'general', source_type || 'manual', source_url || '', JSON.stringify(tags || []), status || 'active', now, now]
-    );
+    const id = await insert('ai_knowledge', {
+      title,
+      content,
+      category: category || 'general',
+      source_type: source_type || 'manual',
+      source_url: source_url || '',
+      tags: JSON.stringify(tags || []),
+      status: status || 'active',
+    });
 
-    return NextResponse.json({ success: true, message: '创建成功' });
+    if (!id || id === 0) {
+      return NextResponse.json({ success: false, error: '創建失敗，請檢查數據格式' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, message: '創建成功', data: { id } });
   } catch (error) {
-    console.error('创建知识库失败:', error);
-    return NextResponse.json({ error: '创建失败' }, { status: 500 });
+    console.error('創建知識庫失敗:', error);
+    const msg = error instanceof Error ? error.message : '創建失敗';
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

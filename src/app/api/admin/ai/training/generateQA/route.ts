@@ -2,34 +2,42 @@
  * AI 训练中心 - 从知识库生成问答对
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query, queryOne } from '@/lib/db';
+import { queryOne, insert } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
     const { knowledge_id } = await request.json();
     if (!knowledge_id) {
-      return NextResponse.json({ error: '缺少knowledge_id参数' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '缺少knowledge_id參數' }, { status: 400 });
     }
 
     const knowledge = await queryOne('SELECT * FROM ai_knowledge WHERE id = ?', [knowledge_id]);
     if (!knowledge) {
-      return NextResponse.json({ error: '知识库不存在' }, { status: 404 });
+      return NextResponse.json({ success: false, error: '知識庫不存在' }, { status: 404 });
     }
 
-    // 简单模拟生成问答对：从知识库内容自动提取
     const content = (knowledge as any).content || '';
     const title = (knowledge as any).title || '';
-    const now = new Date().toISOString();
+    const category = (knowledge as any).category || 'general';
 
     // 生成基本问答对
-    await query(
-      `INSERT INTO ai_qa (question, answer, category, knowledge_id, keywords, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [`关于${title}的问题`, content, (knowledge as any).category || 'general', knowledge_id, JSON.stringify([title]), true, now, now]
-    );
+    const insertId = await insert('ai_qa', {
+      question: `關於${title}的問題`,
+      answer: content,
+      category,
+      knowledge_id,
+      keywords: JSON.stringify([title]),
+      is_active: true,
+    });
 
-    return NextResponse.json({ data: { success: true, count: 1 } });
+    if (!insertId) {
+      return NextResponse.json({ success: false, error: '生成問答對失敗' }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, data: { count: 1 } });
   } catch (error) {
-    console.error('生成问答对失败:', error);
-    return NextResponse.json({ error: '生成失败' }, { status: 500 });
+    console.error('生成問答對失敗:', error);
+    const msg = error instanceof Error ? error.message : '生成失敗';
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

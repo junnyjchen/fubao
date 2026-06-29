@@ -2,7 +2,7 @@
  * AI 训练中心 - 更新问答对
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { update } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,25 +10,25 @@ export async function POST(request: NextRequest) {
     const { id, question, answer, category, keywords, is_active } = body;
 
     if (!id) {
-      return NextResponse.json({ error: '缺少id参数' }, { status: 400 });
+      return NextResponse.json({ success: false, error: '缺少id參數' }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
-    const updates: string[] = ['updated_at = ?'];
-    const params: any[] = [now];
+    const updateData: Record<string, any> = {};
+    if (question !== undefined) updateData.question = question;
+    if (answer !== undefined) updateData.answer = answer;
+    if (category !== undefined) updateData.category = category;
+    if (keywords !== undefined) updateData.keywords = JSON.stringify(keywords);
+    if (is_active !== undefined) updateData.is_active = is_active ? 1 : 0;
 
-    if (question !== undefined) { updates.push('question = ?'); params.push(question); }
-    if (answer !== undefined) { updates.push('answer = ?'); params.push(answer); }
-    if (category !== undefined) { updates.push('category = ?'); params.push(category); }
-    if (keywords !== undefined) { updates.push('keywords = ?'); params.push(JSON.stringify(keywords)); }
-    if (is_active !== undefined) { updates.push('is_active = ?'); params.push(is_active); }
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: false, error: '沒有需要更新的欄位' }, { status: 400 });
+    }
 
-    params.push(id);
-    await query(`UPDATE ai_qa SET ${updates.join(', ')} WHERE id = ?`, params);
-
+    await update('ai_qa', updateData, { id });
     return NextResponse.json({ success: true, message: '更新成功' });
   } catch (error) {
-    console.error('更新问答对失败:', error);
-    return NextResponse.json({ error: '更新失败' }, { status: 500 });
+    console.error('更新問答對失敗:', error);
+    const msg = error instanceof Error ? error.message : '更新失敗';
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
