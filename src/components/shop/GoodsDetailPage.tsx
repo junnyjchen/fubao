@@ -305,8 +305,8 @@ export function GoodsDetailPage() {
       });
       const data = await res.json();
       if (data.data?.id) {
-        // 订单创建成功，直接跳结账页
-        router.push(`/checkout?order_id=${data.data.id}`);
+        // 订单创建成功，直接跳支付页
+        router.push(`/payment/${data.data.id}`);
       } else if (data.error) {
         toast.error(data.error);
       }

@@ -161,6 +161,7 @@ function CheckoutPageContent() {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('fubao_token');
       if (token) headers['Authorization'] = `Bearer ${token}`;
+      // Cookie 会自动携带 auth_token，无需手动添加
     }
     return headers;
   }, []);
@@ -237,14 +238,16 @@ function CheckoutPageContent() {
       const headers = getAuthHeaders();
       // 加载地址
       const addrRes = await fetch('/api/addresses', { headers });
-      const addrData = await addrRes.json();
-      if (addrData.data) {
-        setAddresses(addrData.data);
-        const defaultAddr = addrData.data.find((a: Address) => a.is_default);
-        if (defaultAddr) {
-          setSelectedAddressId(defaultAddr.id);
-        } else if (addrData.data.length > 0) {
-          setSelectedAddressId(addrData.data[0].id);
+      if (addrRes.ok) {
+        const addrData = await addrRes.json();
+        if (addrData.data) {
+          setAddresses(addrData.data);
+          const defaultAddr = addrData.data.find((a: Address) => a.is_default);
+          if (defaultAddr) {
+            setSelectedAddressId(defaultAddr.id);
+          } else if (addrData.data.length > 0) {
+            setSelectedAddressId(addrData.data[0].id);
+          }
         }
       }
 
@@ -287,17 +290,26 @@ function CheckoutPageContent() {
       // 模式2: 购物车下单 (cartItemIds)
       else if (cartItemIds.length > 0) {
         const cartRes = await fetch('/api/cart', { headers });
-        const cartData = await cartRes.json();
-        if (cartData.data) {
-          const allItems = cartData.data.flatMap((g: { merchant: { id: number; name: string }; items: CartItem[] }) =>
-            g.items.map((item: CartItem) => ({
-              ...item,
-              merchant_id: g.merchant.id,
-              merchant_name: g.merchant.name,
-            }))
-          );
-          const selectedItems = allItems.filter((item: CartItem) => cartItemIds.includes(item.id));
-          setCartItems(selectedItems);
+        if (!cartRes.ok) {
+          const errData = await cartRes.json().catch(() => ({}));
+          toast.error(errData.error || '加載購物車失敗');
+          setCartItems([]);
+        } else {
+          const cartData = await cartRes.json();
+          if (cartData.data?.groups) {
+            const allItems = cartData.data.groups.flatMap((g: { merchant: { id: number; name: string }; items: CartItem[] }) =>
+              g.items.map((item: CartItem) => ({
+                ...item,
+                merchant_id: g.merchant.id,
+                merchant_name: g.merchant.name,
+              }))
+            );
+            const selectedItems = allItems.filter((item: CartItem) => cartItemIds.includes(item.id));
+            setCartItems(selectedItems);
+          } else if (cartData.error) {
+            toast.error(cartData.error);
+            setCartItems([]);
+          }
         }
       }
 
