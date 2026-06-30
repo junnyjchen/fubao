@@ -165,7 +165,7 @@ export default function PaymentPage({ params }: PageProps) {
           method: 'PUT',
           headers: getAuthHeaders(),
           body: JSON.stringify({
-            payment_status: 'paid',
+            status: 'paid',
             payment_method: payMethod,
             payment_no: 'PAYPAL_' + Date.now(),
           }),
@@ -193,6 +193,7 @@ export default function PaymentPage({ params }: PageProps) {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ status: 'cancelled' }),
+        credentials: 'include',
       });
 
       const data = await res.json();

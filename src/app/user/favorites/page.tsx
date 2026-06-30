@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Heart, Trash2, ShoppingCart, Package } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import { useI18n } from '@/lib/i18n';
+import { getAuthHeaders } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 /** 收藏数据类型 */
@@ -132,7 +133,7 @@ export default function FavoritesPage() {
   const loadFavorites = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/favorites?targetType=goods&page=${currentPage}&limit=${pageSize}`);
+      const response = await fetch(`/api/favorites?targetType=goods&page=${currentPage}&limit=${pageSize}`, { headers: getAuthHeaders(), credentials: 'include' });
       const result = await response.json();
       if (result.data) {
         setFavorites(result.data);
@@ -153,7 +154,7 @@ export default function FavoritesPage() {
     try {
       const response = await fetch(
         `/api/favorites?targetType=goods&targetId=${targetId}`,
-        { method: 'DELETE' }
+        { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' }
       );
 
       if (response.ok) {
@@ -172,7 +173,8 @@ export default function FavoritesPage() {
     try {
       const res = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ goodsId, quantity: 1 }),
       });
 

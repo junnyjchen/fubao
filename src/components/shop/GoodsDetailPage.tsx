@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { getAuthHeaders } from '@/lib/api-client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -221,9 +222,9 @@ export function GoodsDetailPage() {
     if (!goods) return;
     setAddingToCart(true);
     try {
-      // 检查是否已登录：localStorage token 或 cookie（httpOnly cookie无法被JS读取，fetch会自动发送）
+      // 检查是否已登录
       const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
-      const hasAuth = !!token;
+      const hasAuth = !!token || (typeof document !== 'undefined' && document.cookie.includes('auth_token='));
 
       if (!hasAuth) {
         // 访客模式：存入 localStorage 购物车
@@ -251,12 +252,10 @@ export function GoodsDetailPage() {
         return;
       }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       const res = await fetch('/api/cart', {
         method: 'POST',
-        headers,
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ goodsId: goods.id, quantity }),
       });
       const data = await res.json();
@@ -295,13 +294,10 @@ export function GoodsDetailPage() {
         return;
       }
 
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
       // 直接创建订单（模式3: 单商品直接购买），跳过购物车
       const res = await fetch('/api/orders', {
         method: 'POST',
-        headers,
+        headers: getAuthHeaders(),
         credentials: 'include',
         body: JSON.stringify({ goods_id: goods.id, quantity }),
       });
@@ -309,8 +305,9 @@ export function GoodsDetailPage() {
       if (data.success && data.data?.id) {
         // 订单创建成功，直接跳支付页
         router.push(`/payment/${data.data.id}`);
-      } else if (data.error) {
-        toast.error(data.error);
+      } else {
+        // 订单创建失败，显示具体错误
+        toast.error(data.error || '下單失敗，請稍後重試');
       }
     } catch (error) {
       console.error('购买失败:', error);
@@ -324,7 +321,7 @@ export function GoodsDetailPage() {
     if (!goods) return;
     try {
       if (isFavorite) {
-        const res = await fetch(`/api/favorites?targetType=goods&targetId=${goods.id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/favorites?targetType=goods&targetId=${goods.id}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
         const data = await res.json();
         if (data.success) {
           setIsFavorite(false);
@@ -333,7 +330,8 @@ export function GoodsDetailPage() {
       } else {
         const res = await fetch('/api/favorites', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify({ targetType: 'goods', targetId: goods.id }),
         });
         const data = await res.json();

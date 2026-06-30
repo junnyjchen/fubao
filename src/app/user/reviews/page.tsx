@@ -32,6 +32,7 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthHeaders } from '@/lib/api-client';
 
 /** 评价数据类型 */
 interface Review {
@@ -89,8 +90,8 @@ export default function UserReviewsPage() {
     try {
       // 并行加载已评价和待评价
       const [reviewsRes, pendingRes] = await Promise.all([
-        fetch('/api/user/reviews'),
-        fetch('/api/user/reviews/pending'),
+        fetch('/api/user/reviews', { headers: getAuthHeaders(), credentials: 'include' }),
+        fetch('/api/user/reviews/pending', { headers: getAuthHeaders(), credentials: 'include' }),
       ]);
 
       const reviewsData = await reviewsRes.json();
@@ -136,7 +137,8 @@ export default function UserReviewsPage() {
     try {
       const res = await fetch('/api/reviews', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           order_id: selectedItem.order_id,
           goods_id: selectedItem.goods_id,

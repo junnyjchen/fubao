@@ -342,7 +342,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, order_id, status, cancel_reason, address_id, coupon_id, payment_method, remark } = body;
+    const { id, order_id, status, cancel_reason, address_id, coupon_id, payment_method, payment_no, remark } = body;
 
     const effectiveOrderId = id || order_id;
     if (!effectiveOrderId) {
@@ -386,19 +386,50 @@ export async function PUT(request: NextRequest) {
       for (const item of items) {
         await query('UPDATE goods SET stock = stock + ?, sales = GREATEST(sales - ?, 0) WHERE id = ?', [item.quantity, item.quantity, item.goods_id]);
       }
-      await dbUpdate('orders', effectiveOrderId, {
+      const cancelUpdates: Record<string, any> = {
         status: 'cancelled',
         cancel_reason: cancel_reason || '用戶取消',
-        cancelled_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      });
+      };
+      // cancelled_at 列可能不存在，尝试更新
+      try {
+        const cols = await query("SHOW COLUMNS FROM orders LIKE 'cancelled_at'");
+        if (Array.isArray(cols) && cols.length > 0) {
+          cancelUpdates.cancelled_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        }
+      } catch { /* ignore */ }
+      await dbUpdate('orders', effectiveOrderId, cancelUpdates);
       return messageResponse('訂單已取消');
     }
 
+    if (status === 'paid') {
+      // 支付成功
+      const updates: Record<string, any> = {
+        status: 'paid',
+        payment_status: 'paid',
+      };
+      if (payment_method) updates.payment_method = payment_method;
+      if (payment_no) updates.payment_no = payment_no;
+      // paid_at 列可能不存在，尝试更新
+      try {
+        const cols = await query("SHOW COLUMNS FROM orders LIKE 'paid_at'");
+        if (Array.isArray(cols) && cols.length > 0) {
+          updates.paid_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        }
+      } catch { /* ignore */ }
+      await dbUpdate('orders', effectiveOrderId, updates);
+      return messageResponse('支付成功');
+    }
+
     if (status === 'confirmed') {
-      await dbUpdate('orders', effectiveOrderId, {
-        status: 'confirmed',
-        confirmed_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
-      });
+      const confirmUpdates: Record<string, any> = { status: 'confirmed' };
+      // confirmed_at 列可能不存在，尝试更新
+      try {
+        const cols = await query("SHOW COLUMNS FROM orders LIKE 'confirmed_at'");
+        if (Array.isArray(cols) && cols.length > 0) {
+          confirmUpdates.confirmed_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        }
+      } catch { /* ignore */ }
+      await dbUpdate('orders', effectiveOrderId, confirmUpdates);
       return messageResponse('訂單已確認收貨');
     }
 

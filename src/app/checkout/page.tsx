@@ -400,7 +400,7 @@ function CheckoutPageContent() {
         });
 
         const data = await res.json();
-        if (data.data) {
+        if (data.success && data.data?.id) {
           // 保存游客订单ID到 localStorage
           const guestOrders = JSON.parse(localStorage.getItem('fubao_guest_orders') || '[]');
           guestOrders.push(data.data.id);
@@ -409,8 +409,8 @@ function CheckoutPageContent() {
           localStorage.removeItem('fubao_guest_cart');
           localStorage.removeItem('fubao_guest_checkout');
           router.push(`/payment/${data.data.id}`);
-        } else if (data.error) {
-          toast.error(data.error);
+        } else {
+          toast.error(data.error || checkout.submitFailed);
         }
         setSubmitting(false);
         return;
@@ -421,6 +421,7 @@ function CheckoutPageContent() {
         const res = await fetch(`/api/orders`, {
           method: 'PUT',
           headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify({
             id: parseInt(orderId),
             address_id: selectedAddressId,
@@ -431,7 +432,7 @@ function CheckoutPageContent() {
           }),
         });
         const data = await res.json();
-        if (data.data || data.success) {
+        if ((data.success || data.data) && orderId) {
           router.push(`/payment/${orderId}`);
         } else {
           toast.error(data.error || checkout.submitFailed);
@@ -453,10 +454,10 @@ function CheckoutPageContent() {
         });
 
         const data = await res.json();
-        if (data.data) {
+        if (data.success && data.data?.id) {
           router.push(`/payment/${data.data.id}`);
-        } else if (data.error) {
-          toast.error(data.error);
+        } else {
+          toast.error(data.error || checkout.submitFailed);
         }
       }
     } catch (error) {

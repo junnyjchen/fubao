@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RefundListSkeleton } from '@/components/common/PageSkeletons';
+import { getAuthHeaders } from '@/lib/api-client';
 
 /** 售后数据类型 */
 interface Refund {
@@ -110,7 +111,7 @@ export default function UserRefundsPage() {
     setLoading(true);
     try {
       const status = activeTab === 'all' ? '' : `&status=${activeTab}`;
-      const res = await fetch(`/api/user/refunds?limit=50${status}`);
+      const res = await fetch(`/api/user/refunds?limit=50${status}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setRefunds(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
@@ -134,7 +135,8 @@ export default function UserRefundsPage() {
     try {
       const res = await fetch('/api/user/refunds', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify(applyForm),
       });
 
@@ -165,7 +167,7 @@ export default function UserRefundsPage() {
    */
   const openDetail = async (refund: Refund) => {
     try {
-      const res = await fetch(`/api/refunds/${refund.id}`);
+      const res = await fetch(`/api/refunds/${refund.id}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setSelectedRefund(data.data);
       setDetailDialogOpen(true);
@@ -181,7 +183,8 @@ export default function UserRefundsPage() {
     try {
       const res = await fetch(`/api/refunds/${refund.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ status: 'cancelled' }),
       });
 

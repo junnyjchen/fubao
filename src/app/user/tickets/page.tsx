@@ -47,6 +47,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthHeaders } from '@/lib/api-client';
 import { format } from 'date-fns';
 
 /** 工单 */
@@ -122,7 +123,7 @@ export default function TicketsPage() {
   const loadTickets = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/user/tickets?status=${statusFilter}`);
+      const res = await fetch(`/api/user/tickets?status=${statusFilter}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setTickets(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
@@ -146,7 +147,8 @@ export default function TicketsPage() {
     try {
       const res = await fetch('/api/user/tickets', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           user_id: 1, // TODO: 从认证获取
           ...formData,
@@ -174,7 +176,7 @@ export default function TicketsPage() {
    */
   const handleViewDetail = async (ticketId: number) => {
     try {
-      const res = await fetch(`/api/tickets/${ticketId}`);
+      const res = await fetch(`/api/tickets/${ticketId}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setSelectedTicket(data.data);
     } catch (error) {
@@ -193,7 +195,8 @@ export default function TicketsPage() {
     try {
       const res = await fetch(`/api/tickets/${selectedTicket.id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           user_id: 1,
           content: replyContent,

@@ -26,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth/context';
 import { AuthDialog } from '@/components/auth/AuthDialog';
+import { getAuthHeaders } from '@/lib/api-client';
 
 interface Notification {
   id: number;
@@ -61,7 +62,7 @@ export default function NotificationsPage() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/notifications?userId=${user?.id}&pageSize=50`);
+      const res = await fetch(`/api/notifications?userId=${user?.id}&pageSize=50`, { headers: getAuthHeaders(), credentials: 'include' });
       const result = await res.json();
       if (result.success) {
         setNotifications(result.data);
@@ -78,7 +79,8 @@ export default function NotificationsPage() {
     try {
       await fetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ userId: user?.id, notificationId: id }),
       });
       fetchNotifications();
@@ -91,7 +93,8 @@ export default function NotificationsPage() {
     try {
       const res = await fetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ userId: user?.id, markAll: true }),
       });
       const result = await res.json();
@@ -110,6 +113,8 @@ export default function NotificationsPage() {
     try {
       const res = await fetch(`/api/notifications?id=${id}&userId=${user?.id}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
       const result = await res.json();
       if (result.success) {

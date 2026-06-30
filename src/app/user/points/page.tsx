@@ -24,6 +24,7 @@ import {
   Percent,
 } from 'lucide-react';
 import { PointsSkeleton } from '@/components/common/PageSkeletons';
+import { getAuthHeaders } from '@/lib/api-client';
 
 /** 等级信息 */
 interface LevelInfo {
@@ -73,8 +74,8 @@ export default function UserPointsPage() {
     setLoading(true);
     try {
       const [pointsRes, levelsRes] = await Promise.all([
-        fetch('/api/user/points'),
-        fetch('/api/user/level'),
+        fetch('/api/user/points', { headers: getAuthHeaders(), credentials: 'include' }),
+        fetch('/api/user/level', { headers: getAuthHeaders(), credentials: 'include' }),
       ]);
 
       const pointsData = await pointsRes.json();

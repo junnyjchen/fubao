@@ -46,6 +46,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthHeaders } from '@/lib/api-client';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ClaimCodeDisplay, QRCode } from '@/components/free-gifts/QRCode';
 import { CopyClaimCode } from '@/components/free-gifts/ShareButton';
@@ -155,7 +156,7 @@ function FreeGiftDetailContent({ params }: PageProps) {
   const loadGift = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/free-gifts');
+      const res = await fetch(`/api/free-gifts?limit=100`);
       const data = await res.json();
       const giftData = (Array.isArray(data.data) ? data.data : []).find((g: FreeGift) => g.id === parseInt(id));
       if (giftData) {
@@ -231,7 +232,8 @@ function FreeGiftDetailContent({ params }: PageProps) {
     try {
       const res = await fetch('/api/free-gifts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           gift_id: gift.id,
           receive_type: receiveType,

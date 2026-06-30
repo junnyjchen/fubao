@@ -4,6 +4,28 @@
  */
 
 /**
+ * 获取认证请求头（含 Content-Type 和 Authorization）
+ * 在所有需要认证的 API 调用中使用
+ */
+export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('fubao_token');
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+/**
+ * 带认证的 fetch 封装
+ * 自动附加 Authorization header 和 credentials: 'include'
+ */
+export async function authFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  const headers = { ...getAuthHeaders(), ...(init.headers as Record<string, string> || {}) };
+  return fetch(input, { ...init, headers, credentials: 'include' });
+}
+
+/**
  * 检查 API 响应是否成功
  * 兼容多种响应格式：
  * - { success: true, data } — 标准

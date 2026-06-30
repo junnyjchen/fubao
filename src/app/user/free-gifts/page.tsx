@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { getAuthHeaders } from '@/lib/api-client';
 import { QRCode } from '@/components/free-gifts/QRCode';
 import { CopyClaimCode } from '@/components/free-gifts/ShareButton';
 import { EmptyState } from '@/components/ui/empty-state';

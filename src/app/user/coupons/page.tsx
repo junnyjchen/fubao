@@ -29,6 +29,7 @@ import { useAuth } from '@/lib/auth/context';
 import { useI18n } from '@/lib/i18n';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
+import { getAuthHeaders } from '@/lib/api-client';
 import { CouponListSkeleton } from '@/components/common/PageSkeletons';
 
 interface UserCoupon {
@@ -271,7 +272,7 @@ export default function MyCouponsPage() {
   const loadCoupons = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/coupons?type=my&userId=${user?.id}`);
+      const res = await fetch(`/api/coupons?type=my&userId=${user?.id}`, { headers: getAuthHeaders(), credentials: 'include' });
       const result = await res.json();
       if (result.success) {
         setCoupons(result.data);

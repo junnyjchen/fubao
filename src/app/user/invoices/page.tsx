@@ -35,6 +35,7 @@ import {
 import { useAuth } from '@/lib/auth/context';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { UserLayout } from '@/components/user/UserLayout';
+import { getAuthHeaders } from '@/lib/api-client';
 
 interface Invoice {
   id: number;
@@ -95,8 +96,8 @@ export default function InvoicesPage() {
     setLoading(true);
     try {
       const [invoicesRes, ordersRes] = await Promise.all([
-        fetch('/api/invoices'),
-        fetch('/api/orders?status=completed'),
+        fetch('/api/invoices', { headers: getAuthHeaders(), credentials: 'include' }),
+        fetch('/api/orders?status=completed', { headers: getAuthHeaders(), credentials: 'include' }),
       ]);
       
       const invoicesData = await invoicesRes.json();
@@ -129,7 +130,8 @@ export default function InvoicesPage() {
     try {
       const res = await fetch('/api/invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           order_id: selectedOrder.id,
           invoice_type: invoiceType,

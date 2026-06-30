@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { getAuthHeaders } from '@/lib/api-client';
 import {
   Dialog,
   DialogContent,
@@ -220,7 +221,7 @@ export default function AddressesPage() {
   const loadAddresses = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/addresses');
+      const res = await fetch('/api/addresses', { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setAddresses(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
@@ -291,7 +292,8 @@ export default function AddressesPage() {
         // 更新
         const res = await fetch('/api/addresses', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify({
             id: editingId,
             ...formData,
@@ -310,7 +312,8 @@ export default function AddressesPage() {
         // 新增
         const res = await fetch('/api/addresses', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify(formData),
         });
         const data = await res.json();
@@ -336,6 +339,8 @@ export default function AddressesPage() {
     try {
       const res = await fetch(`/api/addresses?id=${deleteId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
       const data = await res.json();
       if (data.message) {
@@ -355,7 +360,8 @@ export default function AddressesPage() {
     try {
       const res = await fetch('/api/addresses', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ id, isDefault: true }),
       });
       const data = await res.json();

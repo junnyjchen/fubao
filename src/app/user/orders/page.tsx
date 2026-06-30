@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Pagination } from '@/components/ui/Pagination';
 import { useI18n } from '@/lib/i18n';
+import { getAuthHeaders } from '@/lib/api-client';
 
 /** 订单数据类型 */
 interface OrderItem {
@@ -119,7 +120,7 @@ export default function OrdersPage() {
         params.set('status', activeTab);
       }
 
-      const res = await fetch(`/api/orders?${params}`);
+      const res = await fetch(`/api/orders?${params}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
 
       setOrders(Array.isArray(data.data) ? data.data : []);
@@ -159,7 +160,8 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`/api/orders/${selectedOrder.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ order_status: 4 }),
       });
 
@@ -182,7 +184,8 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ order_status: 3, receive_time: new Date().toISOString() }),
       });
 

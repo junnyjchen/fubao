@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n';
+import { getAuthHeaders } from '@/lib/api-client';
 import { HistorySkeleton } from '@/components/common/PageSkeletons';
 
 /** 浏览历史项 */
@@ -177,7 +178,7 @@ export default function BrowseHistoryPage() {
   const loadHistory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/user/browse-history?limit=50');
+      const res = await fetch('/api/user/browse-history?limit=50', { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setHistory(Array.isArray(data.data) ? data.data : []);
     } catch (error) {
@@ -195,6 +196,8 @@ export default function BrowseHistoryPage() {
     try {
       await fetch(`/api/user/browse-history?goods_id=${goodsId}`, {
         method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
       setHistory((prev) => prev.filter((h) => h.goods_id !== goodsId));
       toast.success(hist.deleted);
@@ -209,7 +212,7 @@ export default function BrowseHistoryPage() {
    */
   const handleClearAll = useCallback(async () => {
     try {
-      await fetch('/api/user/browse-history', { method: 'DELETE' });
+      await fetch('/api/user/browse-history', { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
       setHistory([]);
       toast.success(hist.cleared);
     } catch (error) {
@@ -225,7 +228,8 @@ export default function BrowseHistoryPage() {
     try {
       const res = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ goodsId, quantity: 1 }),
       });
       const data = await res.json();
@@ -247,7 +251,8 @@ export default function BrowseHistoryPage() {
     try {
       const res = await fetch('/api/favorites', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ targetType: 'goods', targetId: goodsId }),
       });
       const data = await res.json();

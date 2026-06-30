@@ -35,6 +35,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthHeaders } from '@/lib/api-client';
 import { OrderDetailSkeleton } from '@/components/common/PageSkeletons';
 
 /** 订单项数据类型 */
@@ -118,7 +119,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const loadOrder = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
+      const res = await fetch(`/api/orders/${orderId}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
 
       if (data.data) {
@@ -155,7 +156,8 @@ export default function OrderDetailPage({ params }: PageProps) {
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ order_status: 4 }),
       });
 
@@ -185,7 +187,8 @@ export default function OrderDetailPage({ params }: PageProps) {
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ 
           order_status: 3, 
           receive_time: new Date().toISOString() 

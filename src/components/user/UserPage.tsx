@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useI18n } from '@/lib/i18n';
+import { getAuthHeaders } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -171,6 +172,23 @@ const getMemberLevels = (t: TranslationType) => [
   { level: 5, name: t.userPage?.home?.memberLevel?.diamond || '鑽石會員', minPoints: 5000, discount: 0.88, color: 'bg-blue-500' },
 ];
 
+/** 订单状态字符串转数字（前端 OrderCard 使用数字状态） */
+function statusStringToNumber(status: string): number {
+  const map: Record<string, number> = { cancelled: -1, pending: 0, paid: 1, shipped: 2, completed: 3, refunded: 4 };
+  return map[status] ?? 0;
+}
+
+/** 格式化日期为简洁字符串 */
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 export function UserPage() {
   const { t, isRTL } = useI18n();
   const uh = t.userPage?.home || {};
@@ -188,44 +206,52 @@ export function UserPage() {
 
   const fetchData = async () => {
     try {
+      const headers = getAuthHeaders();
       const [ordersRes, profileRes] = await Promise.all([
-        fetch('/api/orders?limit=10'),
-        fetch('/api/auth/me'),
+        fetch('/api/orders?limit=10', { headers, credentials: 'include' }),
+        fetch('/api/auth/me', { headers, credentials: 'include' }),
       ]);
 
       const ordersData = await ordersRes.json();
       const profileData = await profileRes.json();
 
-      if (Array.isArray(ordersData.data)) setOrders(ordersData.data);
+      if (Array.isArray(ordersData.data)) {
+        const mappedOrders = ordersData.data.map((order: any) => ({
+          id: order.id,
+          orderNo: order.order_no,
+          orderStatus: statusStringToNumber(order.status),
+          payAmount: order.pay_amount || order.total_amount,
+          createdAt: formatDate(order.created_at),
+          items: (order.items || []).map((item: any) => ({
+            id: item.id,
+            goodsName: item.goods_name,
+            goodsImage: item.goods_image,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+        }));
+        setOrders(mappedOrders);
+      }
+
       if (profileData.user) {
+        const u = profileData.user;
         setProfile({
-          id: profileData.user.id,
-          username: profileData.user.username || uh.userInfo.defaultUsername,
-          email: profileData.user.email || '',
-          phone: profileData.user.phone,
-          avatar: profileData.user.avatar,
-          level: profileData.user.level || 1,
-          points: profileData.user.points || 0,
-          balance: profileData.user.balance || 0,
-          totalSpent: profileData.user.totalSpent || 0,
+          id: u.id,
+          username: u.nickname || u.name || u.username || uh.userInfo?.defaultUsername || '用戶',
+          email: u.email || '',
+          phone: u.phone,
+          avatar: u.avatar,
+          level: u.level || 1,
+          points: u.points || 0,
+          balance: u.balance || 0,
+          totalSpent: u.total_spent || u.totalSpent || 0,
           orderCount: ordersData.total || 0,
-          memberSince: profileData.user.created_at || new Date().toISOString(),
+          memberSince: u.created_at || u.createdAt || new Date().toISOString(),
         });
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      // 设置默认数据
-      setProfile({
-        id: 1,
-        username: uh.userInfo.defaultUsername,
-        email: 'user@example.com',
-        level: 1,
-        points: 0,
-        balance: 0,
-        totalSpent: 0,
-        orderCount: 0,
-        memberSince: new Date().toISOString(),
-      });
+      // 不设置默认假数据，保持 null 状态
     } finally {
       setLoading(false);
     }

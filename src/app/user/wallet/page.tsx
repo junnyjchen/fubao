@@ -29,6 +29,7 @@ import {
 import { useAuth } from '@/lib/auth/context';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { UserLayout } from '@/components/user/UserLayout';
+import { getAuthHeaders } from '@/lib/api-client';
 
 interface BalanceInfo {
   balance: number;
@@ -117,7 +118,7 @@ export default function WalletPage() {
 
   const fetchBalanceInfo = async () => {
     try {
-      const res = await fetch('/api/user/balance?transactions=true');
+      const res = await fetch('/api/user/balance?transactions=true', { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       if (data.data) {
         setBalanceInfo(data.data.balance);
@@ -132,7 +133,7 @@ export default function WalletPage() {
 
   const fetchRechargeRecords = async () => {
     try {
-      const res = await fetch('/api/recharge?limit=10');
+      const res = await fetch('/api/recharge?limit=10', { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       if (data.data) {
         setRechargeRecords(data.data);
@@ -159,7 +160,8 @@ export default function WalletPage() {
     try {
       const res = await fetch('/api/recharge', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           amount: actualAmount,
           payment_method: paymentMethod,
@@ -170,7 +172,8 @@ export default function WalletPage() {
       if (data.data) {
         const callbackRes = await fetch('/api/recharge', {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify({
             recharge_no: data.data.recharge.recharge_no,
             transaction_id: `TXN${Date.now()}`,
