@@ -69,6 +69,15 @@ const orderStatusMap: Record<string, { label: string; color: string }> = {
   refunded: { label: '已退款', color: 'bg-red-100 text-red-800' },
 };
 
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('fubao_token');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
 export default function PaymentPage({ params }: PageProps) {
   const router = useRouter();
   const { id } = use(params);
@@ -81,7 +90,7 @@ export default function PaymentPage({ params }: PageProps) {
   useEffect(() => {
     const loadOrder = async () => {
       try {
-        const res = await fetch(`/api/orders/${id}`);
+        const res = await fetch(`/api/orders/${id}`, { headers: getAuthHeaders(), credentials: 'include' });
         const data = await res.json();
         if (data.data) {
           // 解析 address_snapshot
@@ -126,8 +135,9 @@ export default function PaymentPage({ params }: PageProps) {
         // 自动取消订单
         fetch(`/api/orders/${order.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({ status: 'cancelled' }),
+          credentials: 'include',
         });
       }
     }, 1000);
@@ -153,12 +163,13 @@ export default function PaymentPage({ params }: PageProps) {
 
         const res = await fetch(`/api/orders/${order.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
             payment_status: 'paid',
             payment_method: payMethod,
             payment_no: 'PAYPAL_' + Date.now(),
           }),
+          credentials: 'include',
         });
 
         const data = await res.json();
@@ -180,7 +191,7 @@ export default function PaymentPage({ params }: PageProps) {
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ status: 'cancelled' }),
       });
 

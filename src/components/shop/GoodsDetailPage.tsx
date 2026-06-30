@@ -221,8 +221,9 @@ export function GoodsDetailPage() {
     if (!goods) return;
     setAddingToCart(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
-      const hasAuth = !!token || (typeof document !== 'undefined' && document.cookie.includes('auth_token='));
+      // 检查是否已登录：localStorage token 或 cookie（httpOnly cookie无法被JS读取，fetch会自动发送）
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
+      const hasAuth = !!token;
 
       if (!hasAuth) {
         // 访客模式：存入 localStorage 购物车
@@ -301,10 +302,11 @@ export function GoodsDetailPage() {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers,
+        credentials: 'include',
         body: JSON.stringify({ goods_id: goods.id, quantity }),
       });
       const data = await res.json();
-      if (data.data?.id) {
+      if (data.success && data.data?.id) {
         // 订单创建成功，直接跳支付页
         router.push(`/payment/${data.data.id}`);
       } else if (data.error) {

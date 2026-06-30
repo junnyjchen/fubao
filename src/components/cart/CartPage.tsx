@@ -283,7 +283,7 @@ export function CartPage() {
           try {
             const goodsIds = items.map(i => i.goods_id || i.id).filter(Boolean);
             if (goodsIds.length > 0) {
-              const res = await fetch(`/api/goods?ids=${goodsIds.join(',')}&limit=${goodsIds.length}`);
+              const res = await fetch(`/api/goods?ids=${goodsIds.join(',')}&limit=${goodsIds.length}`, { credentials: 'include' });
               if (res.ok) {
                 const data = await res.json();
                 if (data.success && data.data) {
@@ -311,7 +311,7 @@ export function CartPage() {
         return;
       }
       // 登录用户：从 API 获取
-      const res = await fetch('/api/cart', { headers: getAuthHeaders() });
+      const res = await fetch('/api/cart', { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       if (data.data) {
         setMerchantGroups(data.data);
@@ -346,6 +346,7 @@ export function CartPage() {
       const res = await fetch('/api/cart', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        credentials: 'include',
         body: JSON.stringify({ cartItemId, quantity }),
       });
 
@@ -381,7 +382,7 @@ export function CartPage() {
         toast.success(cart.removed);
         return;
       }
-      const res = await fetch(`/api/cart?cartItemId=${cartItemId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/cart?cartItemId=${cartItemId}`, { method: 'DELETE', credentials: 'include' });
       if (res.ok) {
         setMerchantGroups(groups =>
           groups
@@ -416,6 +417,7 @@ export function CartPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ cartItemId, selected }),
+        credentials: 'include',
       });
 
       if (res.ok) {
@@ -455,6 +457,7 @@ export function CartPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ cartItemId: item.id, selected }),
+        credentials: 'include',
       });
     }
 
@@ -487,6 +490,7 @@ export function CartPage() {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ cartItemId: item.id, selected: newSelected }),
+          credentials: 'include',
         });
       }
     }
@@ -511,7 +515,7 @@ export function CartPage() {
         toast.success(cart.cleared);
         return;
       }
-      const res = await fetch('/api/cart?clearAll=true', { method: 'DELETE', headers: getAuthHeaders() });
+      const res = await fetch('/api/cart?clearAll=true', { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
       if (res.ok) {
         setMerchantGroups([]);
         toast.success(cart.cleared);

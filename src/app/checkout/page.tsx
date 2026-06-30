@@ -237,7 +237,7 @@ function CheckoutPageContent() {
 
       const headers = getAuthHeaders();
       // 加载地址
-      const addrRes = await fetch('/api/addresses', { headers });
+      const addrRes = await fetch('/api/addresses', { headers, credentials: 'include' });
       if (addrRes.ok) {
         const addrData = await addrRes.json();
         if (addrData.data) {
@@ -289,7 +289,7 @@ function CheckoutPageContent() {
       }
       // 模式2: 购物车下单 (cartItemIds)
       else if (cartItemIds.length > 0) {
-        const cartRes = await fetch('/api/cart', { headers });
+        const cartRes = await fetch('/api/cart', { headers, credentials: 'include' });
         if (!cartRes.ok) {
           const errData = await cartRes.json().catch(() => ({}));
           toast.error(errData.error || '加載購物車失敗');
@@ -382,6 +382,7 @@ function CheckoutPageContent() {
         const res = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             items: cartItems.map(item => ({ goods_id: item.goods_id, quantity: item.quantity })),
             guest_address: {
@@ -441,6 +442,7 @@ function CheckoutPageContent() {
         const res = await fetch('/api/orders', {
           method: 'POST',
           headers: getAuthHeaders(),
+          credentials: 'include',
           body: JSON.stringify({
             address_id: selectedAddressId,
             cart_item_ids: cartItemIds,
