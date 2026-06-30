@@ -16,7 +16,7 @@ interface BaikeArticle {
   summary: string;
   category: string;
   cover_image: string;
-  views: number;
+  view_count: number;
   created_at: string;
 }
 

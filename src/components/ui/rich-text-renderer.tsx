@@ -12,19 +12,33 @@ interface RichTextRendererProps {
  * 用于正确渲染从富文本编辑器保存的HTML内容
  */
 export function RichTextRenderer({ content, className }: RichTextRendererProps) {
-  // 检查内容是否包含HTML标签
-  const isHtml = /<[a-z][\s\S]*>/i.test(content);
-
   if (!content) {
     return null;
   }
+
+  let displayContent = content;
+
+  // 尝试解析JSON内容（AI生成的内容可能是JSON字符串）
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === 'object' && parsed !== null) {
+      // 提取JSON中的文本内容
+      displayContent = parsed.content || parsed.summary || parsed.text || parsed.description || content;
+      if (typeof displayContent !== 'string') {
+        displayContent = JSON.stringify(displayContent, null, 2);
+      }
+    }
+  } catch { /* 不是JSON，继续正常处理 */ }
+
+  // 检查内容是否包含HTML标签
+  const isHtml = /<[a-z][\s\S]*>/i.test(displayContent);
 
   if (isHtml) {
     // 使用 dangerouslySetInnerHTML 渲染 HTML 内容
     return (
       <div
         className={cn('rich-text-content', className)}
-        dangerouslySetInnerHTML={{ __html: content }}
+        dangerouslySetInnerHTML={{ __html: displayContent }}
       />
     );
   }
@@ -32,7 +46,7 @@ export function RichTextRenderer({ content, className }: RichTextRendererProps) 
   // 纯文本内容
   return (
     <div className={cn('rich-text-content', className)}>
-      {content.split('\n').map((line, index) => (
+      {displayContent.split('\n').map((line, index) => (
         <p key={index} className="mb-4 last:mb-0">
           {line || '\u00A0'}
         </p>

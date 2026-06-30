@@ -22,6 +22,13 @@ export async function GET(request: NextRequest) {
     const conditions: string[] = ['status = 1'];
     const params: unknown[] = [];
 
+    const slug = searchParams.get('slug');
+
+    if (slug) {
+      conditions.push('slug = ?');
+      params.push(slug);
+    }
+
     if (category) {
       conditions.push('category = ?');
       params.push(category);
@@ -44,7 +51,7 @@ export async function GET(request: NextRequest) {
     const publishedSelect = hasPublishedAt ? 'COALESCE(published_at, created_at) as published_at,' : '';
 
     const data = await query(
-      `SELECT id, title, slug, summary, cover_image, category, author, tags, view_count, like_count, ${publishedSelect} created_at FROM articles WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT id, title, slug, content, summary, cover_image, category, author, tags, view_count, like_count, ${publishedSelect} created_at FROM articles WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
 

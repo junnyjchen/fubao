@@ -35,13 +35,14 @@ function buildProductPrompt(topic: string, category?: string): string {
 {
   "title": "產品標題",
   "description": "產品簡短描述（50字以內）",
-  "content": "產品詳細描述（包含材質、功效、使用方法等，500字以上）",
+  "content": "產品詳細描述（包含材質、功效、使用方法等，500字以上，使用HTML格式）",
   "price": 建議售價（數字）,
   "original_price": 原價（數字）,
   "category": "${category || 'fuzhou'}",
   "tags": ["標籤1", "標籤2", "標籤3"]
 }
 
+注意：content字段必須是HTML格式，例如：<h2>產品介紹</h2><p>...</p><h2>功效說明</h2><p>...</p>
 category 必須是以下值之一：fuzhou(符咒), faqi(法器), fengshui(風水), zhouyi(周易), daojiao(道教), fojiao(佛教)`;
 }
 
@@ -51,15 +52,16 @@ function buildWikiPrompt(topic: string, category?: string): string {
 
 主題：${topic}
 
-請按以下JSON格式返回（不要包含其他文字）：
+請按以下JSON格式返回（不要包含其他文字，content字段使用HTML格式）：
 {
   "title": "文章標題",
-  "summary": "文章摘要（100字以內）",
-  "content": "文章正文（1000字以上，包含歷史淵源、文化內涵、現代應用等）",
+  "summary": "文章摘要（100字以內，純文本）",
+  "content": "文章正文（1000字以上，使用HTML格式，包含<h2>、<h3>小標題、<p>段落、<strong>強調等標記）",
   "category": "${category || 'daojiao'}",
   "tags": ["標籤1", "標籤2", "標籤3"]
 }
 
+注意：content字段必須是HTML格式，例如：<h2>歷史淵源</h2><p>開光儀式起源於...</p><h2>文化內涵</h2><p>...</p>
 category 必須是以下值之一：fuzhou(符咒), faqi(法器), fengshui(風水), zhouyi(周易), daojiao(道教), fojiao(佛教)`;
 }
 
@@ -69,15 +71,16 @@ function buildNewsPrompt(topic: string): string {
 
 話題：${topic}
 
-請按以下JSON格式返回（不要包含其他文字）：
+請按以下JSON格式返回（不要包含其他文字，content字段使用HTML格式）：
 {
   "title": "新聞標題",
-  "summary": "新聞摘要（100字以內）",
-  "content": "新聞正文（800字以上）",
+  "summary": "新聞摘要（100字以內，純文本）",
+  "content": "新聞正文（800字以上，使用HTML格式，包含<h2>、<p>、<strong>等標記）",
   "category": "新聞動態",
   "tags": ["標籤1", "標籤2", "標籤3"]
 }
 
+注意：content字段必須是HTML格式，例如：<h2>事件背景</h2><p>...</p><h2>詳細內容</h2><p>...</p>
 category 必須是以下值之一：新聞動態, 活動資訊, 行業資訊, 政策法規`;
 }
 

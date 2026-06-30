@@ -8,6 +8,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Eye, Calendar } from 'lucide-react';
 import { EmptyState, EmptyIcon } from '@/components/ui/empty-state';
+import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 
 interface Article {
   id: number;
@@ -17,7 +18,7 @@ interface Article {
   summary: string;
   category: string;
   cover_image: string;
-  views: number;
+  view_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -88,7 +89,7 @@ export default function BaikeArticlePage() {
           <h1 className="text-3xl font-bold mb-4">{article.title}</h1>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
-              <Eye className="w-4 h-4" /> {article.views} 次閱讀
+              <Eye className="w-4 h-4" /> {article.view_count || 0} 次閱讀
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" /> {new Date(article.created_at).toLocaleDateString('zh-CN')}
@@ -102,9 +103,9 @@ export default function BaikeArticlePage() {
           </div>
         )}
 
-        <div
+        <RichTextRenderer
+          content={article.content || article.summary || ''}
           className="prose prose-sm max-w-none dark:prose-invert"
-          dangerouslySetInnerHTML={{ __html: article.content || article.summary || '' }}
         />
       </article>
     </div>
