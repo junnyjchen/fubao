@@ -89,8 +89,10 @@ export async function POST(request: NextRequest) {
         invite_code: generateInviteCode(),
       }));
     } catch {
-      // 降级：不包含可能缺失的列
+      // 降级：不包含可能缺失的列（nickname/invite_code），但保留必填字段
       userId = Number(await dbInsert('users', {
+        email,
+        phone: phone || '',
         name: displayName,
         password: hashedPassword,
         role: 'user',

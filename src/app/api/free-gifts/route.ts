@@ -151,8 +151,10 @@ async function handleClaim(request: NextRequest, body: {
 }) {
   const userId = await getAuthUserId(request);
   if (!userId) {
+    console.log('[FreeGifts Claim] 認證失敗: Authorization=', request.headers.get('Authorization')?.slice(0, 20) + '...');
     return errorResponse('請先登入', 401);
   }
+  console.log('[FreeGifts Claim] 認證成功: userId=', userId);
 
   const { gift_id, receive_type, shipping_name, shipping_phone, shipping_address } = body;
 

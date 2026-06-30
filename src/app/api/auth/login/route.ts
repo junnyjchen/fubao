@@ -167,10 +167,10 @@ async function handleRegister(body: {
 
     const displayName = nickname || name || email.split('@')[0];
 
-    // 插入用户
-    const userId = await dbInsert('users', {
+    // 插入用户（降级处理：nickname/invite_code 列可能不存在）
+    let userId = await dbInsert('users', {
       email,
-      phone: phone || null,
+      phone: phone || '',
       nickname: displayName,
       password: hashedPassword,
       role: 'user',
@@ -178,6 +178,18 @@ async function handleRegister(body: {
       language: 'zh-TW',
       invite_code: generateInviteCode(),
     });
+    if (!userId) {
+      // 降级：不包含可能缺失的列
+      userId = await dbInsert('users', {
+        email,
+        phone: phone || '',
+        name: displayName,
+        password: hashedPassword,
+        role: 'user',
+        status: 1,
+        language: 'zh-TW',
+      });
+    }
 
     // 生成 JWT
     const token = generateToken({
@@ -203,7 +215,7 @@ async function handleRegister(body: {
         id: userId,
         name: displayName,
         email,
-        phone: phone || null,
+        phone: phone || '',
         avatar: null,
         language: 'zh-TW',
         role: 'user',

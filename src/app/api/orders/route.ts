@@ -134,11 +134,15 @@ export async function POST(request: NextRequest) {
       authUser = { userId, email: guestEmail, name: guestName };
     } else {
       authUser = await getAuthUser(request);
-      if (!authUser) return errorResponse('請先登錄', 401);
+      if (!authUser) {
+        console.log('[Orders POST] 認證失敗: Authorization=', request.headers.get('Authorization')?.slice(0, 20) + '..., cookie=', request.headers.get('cookie')?.slice(0, 50) + '...');
+        return errorResponse('請先登錄', 401);
+      }
       userId = authUser.userId;
       if (!userId) {
         return errorResponse('請先登錄', 401);
       }
+      console.log('[Orders POST] 認證成功: userId=', userId);
     }
 
     // 解析购买商品列表

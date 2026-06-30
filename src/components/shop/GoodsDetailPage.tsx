@@ -181,7 +181,7 @@ export function GoodsDetailPage() {
   // 检查收藏状态
   const checkFavoriteStatus = async (goodsId: number) => {
     try {
-      const res = await fetch(`/api/favorites?targetType=goods`);
+      const res = await fetch(`/api/favorites?targetType=goods`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       if (data.data) {
         const isFav = data.data.some((f: { target_id: number }) => f.target_id === goodsId);
@@ -197,9 +197,9 @@ export function GoodsDetailPage() {
     try {
       await fetch('/api/user/browse-history', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
-          user_id: 1,
           goods_id: goodsId,
           view_duration: 0,
         }),

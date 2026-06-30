@@ -253,7 +253,7 @@ function CheckoutPageContent() {
 
       // 模式1: 直接下单 (order_id)
       if (orderId) {
-        const orderRes = await fetch(`/api/orders?id=${orderId}`, { headers });
+        const orderRes = await fetch(`/api/orders?id=${orderId}`, { headers, credentials: 'include' });
         const orderData = await orderRes.json();
         if (orderData.data) {
           const order = orderData.data;

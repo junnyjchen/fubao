@@ -382,7 +382,7 @@ export function CartPage() {
         toast.success(cart.removed);
         return;
       }
-      const res = await fetch(`/api/cart?cartItemId=${cartItemId}`, { method: 'DELETE', credentials: 'include' });
+      const res = await fetch(`/api/cart?cartItemId=${cartItemId}`, { method: 'DELETE', headers: getAuthHeaders(), credentials: 'include' });
       if (res.ok) {
         setMerchantGroups(groups =>
           groups

@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           headers['Authorization'] = `Bearer ${storedToken}`;
         }
 
-        const res = await fetch('/api/auth/me', { headers });
+        const res = await fetch('/api/auth/me', { headers, credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (data.user) {
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** 登出 */
   const logout = async () => {
     try {
-      await fetch('/api/auth/login', { method: 'DELETE' });
+      await fetch('/api/auth/login', { method: 'DELETE', credentials: 'include' });
     } catch (error) {
       console.error('登出请求失败:', error);
     } finally {
@@ -169,7 +169,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** 刷新用户信息 */
   const refreshUser = async () => {
     try {
-      const res = await fetch('/api/auth/me');
+      const headers: HeadersInit = {};
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/auth/me', { headers, credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
