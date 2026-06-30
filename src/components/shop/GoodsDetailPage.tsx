@@ -222,6 +222,34 @@ export function GoodsDetailPage() {
     setAddingToCart(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
+      const hasAuth = !!token || (typeof document !== 'undefined' && document.cookie.includes('auth_token='));
+
+      if (!hasAuth) {
+        // 访客模式：存入 localStorage 购物车
+        const GUEST_CART_KEY = 'fubao_guest_cart';
+        const stored = localStorage.getItem(GUEST_CART_KEY);
+        const cartItems = stored ? JSON.parse(stored) : [];
+        const existing = cartItems.find((item: any) => item.goods_id === goods.id);
+        if (existing) {
+          existing.quantity += quantity;
+        } else {
+          cartItems.push({
+            cart_id: Date.now(),
+            goods_id: goods.id,
+            name: goods.name,
+            price: goods.price,
+            image: goods.main_image || (goods.images && goods.images[0]) || '/images/placeholder.png',
+            quantity,
+            merchant_id: goods.merchant?.id || 0,
+            selected: true,
+          });
+        }
+        localStorage.setItem(GUEST_CART_KEY, JSON.stringify(cartItems));
+        toast.success(t.shop.detail.addedToCart);
+        setAddingToCart(false);
+        return;
+      }
+
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -241,13 +269,31 @@ export function GoodsDetailPage() {
     } finally {
       setAddingToCart(false);
     }
-  }, [goods, quantity, t]);
+  }, [goods, quantity, selectedSku, t]);
 
   const handleBuyNow = useCallback(async () => {
     if (!goods) return;
     setAddingToCart(true);
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
+      const hasAuth = !!token || (typeof document !== 'undefined' && document.cookie.includes('auth_token='));
+
+      if (!hasAuth) {
+        // 访客模式：直接跳转结账页，携带商品信息
+        const guestCheckout = [{
+          goods_id: goods.id,
+          name: goods.name,
+          price: goods.price,
+          quantity,
+          image: goods.main_image || (goods.images && goods.images[0]) || '/images/placeholder.png',
+          merchant_id: goods.merchant?.id || 0,
+        }];
+        localStorage.setItem('fubao_guest_checkout', JSON.stringify(guestCheckout));
+        router.push('/checkout?guest=true');
+        setAddingToCart(false);
+        return;
+      }
+
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -270,7 +316,7 @@ export function GoodsDetailPage() {
     } finally {
       setAddingToCart(false);
     }
-  }, [goods, quantity, router, t]);
+  }, [goods, quantity, selectedSku, router, t]);
 
   const handleToggleFavorite = useCallback(async () => {
     if (!goods) return;

@@ -213,13 +213,104 @@ export function CartPage() {
   const [updating, setUpdating] = useState(false);
   const [showCouponSelector, setShowCouponSelector] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   const cart = t.cart;
+  const GUEST_CART_KEY = 'fubao_guest_cart';
+
+  // 检测是否为访客
+  useEffect(() => {
+    const token = typeof document !== 'undefined' ? document.cookie.includes('auth_token=') : false;
+    setIsGuest(!token);
+  }, []);
+
+  // 从 localStorage 读取访客购物车
+  const getGuestCart = useCallback((): any[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem(GUEST_CART_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  }, []);
+
+  // 保存访客购物车到 localStorage
+  const saveGuestCart = useCallback((items: any[]) => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(items));
+  }, []);
+
+  // 将访客购物车数据转换为 MerchantGroup 格式
+  const buildGuestGroups = useCallback((items: any[]): MerchantGroup[] => {
+    const merchantMap = new Map<number, any[]>();
+    for (const item of items) {
+      const mid = item.merchant_id || 0;
+      if (!merchantMap.has(mid)) merchantMap.set(mid, []);
+      merchantMap.get(mid)!.push(item);
+    }
+    const groups: MerchantGroup[] = [];
+    for (const [mid, mItems] of merchantMap) {
+      groups.push({
+        merchant: { id: mid, name: mid === 0 ? '符寶網' : (mItems[0]?.merchant_name || '商家'), logo: null, verified: false },
+        items: mItems.map(item => ({
+          id: item.cart_id || item.id || Date.now() + Math.random(),
+          quantity: item.quantity || 1,
+          selected: item.selected !== false,
+          goods: {
+            id: item.goods_id || item.id,
+            name: item.name || item.goods_name || item.title || '',
+            price: Number(item.price || 0),
+            original_price: Number(item.original_price || 0) || null,
+            image: item.image || item.cover_image || '/images/placeholder.png',
+            stock: Number(item.stock || 999),
+            status: item.status !== undefined ? item.status : true,
+          },
+        })),
+        selectedAll: mItems.every(item => item.selected !== false),
+      });
+    }
+    return groups;
+  }, []);
 
   // 加载购物车数据
   const loadCart = useCallback(async () => {
     setLoading(true);
     try {
+      if (isGuest) {
+        // 访客模式：从 localStorage 读取
+        const items = getGuestCart();
+        if (items.length > 0) {
+          // 尝试从 API 获取商品最新信息（可选，失败则用本地数据）
+          try {
+            const goodsIds = items.map(i => i.goods_id || i.id).filter(Boolean);
+            if (goodsIds.length > 0) {
+              const res = await fetch(`/api/goods?ids=${goodsIds.join(',')}&limit=${goodsIds.length}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.data) {
+                  // 合并最新价格和库存
+                  const goodsMap: Map<number, any> = new Map((data.data || []).map((g: any) => [g.id, g]));
+                  const mergedItems = items.map((item: any) => {
+                    const gid = item.goods_id || item.id;
+                    const latest = goodsMap.get(gid);
+                    if (latest) {
+                      return { ...item, price: latest.price, name: latest.name, image: latest.cover_image || latest.image, status: latest.status };
+                    }
+                    return item;
+                  });
+                  saveGuestCart(mergedItems);
+                  setMerchantGroups(buildGuestGroups(mergedItems));
+                  setLoading(false);
+                  return;
+                }
+              }
+            }
+          } catch { /* 获取最新信息失败，使用本地数据 */ }
+          setMerchantGroups(buildGuestGroups(items));
+        }
+        setLoading(false);
+        return;
+      }
+      // 登录用户：从 API 获取
       const res = await fetch('/api/cart', { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.data) {
@@ -230,7 +321,7 @@ export function CartPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isGuest, getGuestCart, saveGuestCart, buildGuestGroups]);
 
   useEffect(() => {
     loadCart();
@@ -241,6 +332,17 @@ export function CartPage() {
     if (quantity < 1) return;
     setUpdating(true);
     try {
+      if (isGuest) {
+        const items = getGuestCart();
+        const updated = items.map(item => {
+          const iid = item.cart_id || item.id;
+          return iid === cartItemId ? { ...item, quantity } : item;
+        });
+        saveGuestCart(updated);
+        setMerchantGroups(buildGuestGroups(updated));
+        setUpdating(false);
+        return;
+      }
       const res = await fetch('/api/cart', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -264,13 +366,21 @@ export function CartPage() {
     } finally {
       setUpdating(false);
     }
-  }, []);
+  }, [isGuest, getGuestCart, saveGuestCart, buildGuestGroups]);
 
   // 删除商品
   const removeItem = useCallback(async (cartItemId: number) => {
     if (!confirm(cart.removeConfirm)) return;
 
     try {
+      if (isGuest) {
+        const items = getGuestCart();
+        const updated = items.filter(item => (item.cart_id || item.id) !== cartItemId);
+        saveGuestCart(updated);
+        setMerchantGroups(buildGuestGroups(updated));
+        toast.success(cart.removed);
+        return;
+      }
       const res = await fetch(`/api/cart?cartItemId=${cartItemId}`, { method: 'DELETE' });
       if (res.ok) {
         setMerchantGroups(groups =>
@@ -287,11 +397,21 @@ export function CartPage() {
       console.error('刪除商品失敗:', error);
       toast.error(cart.removeFailed);
     }
-  }, [cart]);
+  }, [isGuest, cart, getGuestCart, saveGuestCart, buildGuestGroups]);
 
   // 切换单个商品选中状态
   const toggleItemSelect = useCallback(async (cartItemId: number, selected: boolean) => {
     try {
+      if (isGuest) {
+        const items = getGuestCart();
+        const updated = items.map(item => {
+          const iid = item.cart_id || item.id;
+          return iid === cartItemId ? { ...item, selected } : item;
+        });
+        saveGuestCart(updated);
+        setMerchantGroups(buildGuestGroups(updated));
+        return;
+      }
       const res = await fetch('/api/cart', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
@@ -315,10 +435,21 @@ export function CartPage() {
     } catch (error) {
       console.error('更新選中狀態失敗:', error);
     }
-  }, []);
+  }, [isGuest, getGuestCart, saveGuestCart, buildGuestGroups]);
 
   // 切换商户全选
   const toggleMerchantSelectAll = useCallback(async (merchantId: number, items: CartItem[], selected: boolean) => {
+    if (isGuest) {
+      const cartItems = getGuestCart();
+      const itemIds = items.map(i => i.id);
+      const updated = cartItems.map(item => {
+        const iid = item.cart_id || item.id;
+        return itemIds.includes(iid) ? { ...item, selected } : item;
+      });
+      saveGuestCart(updated);
+      setMerchantGroups(buildGuestGroups(updated));
+      return;
+    }
     for (const item of items) {
       await fetch('/api/cart', {
         method: 'PUT',
@@ -334,13 +465,21 @@ export function CartPage() {
           : group
       )
     );
-  }, []);
+  }, [isGuest, getGuestCart, saveGuestCart, buildGuestGroups]);
 
   // 全选/取消全选
   const toggleSelectAll = useCallback(async () => {
     const allItems = merchantGroups.flatMap(g => g.items);
     const allSelected = allItems.every(item => item.selected);
     const newSelected = !allSelected;
+
+    if (isGuest) {
+      const cartItems = getGuestCart();
+      const updated = cartItems.map(item => ({ ...item, selected: newSelected }));
+      saveGuestCart(updated);
+      setMerchantGroups(buildGuestGroups(updated));
+      return;
+    }
 
     for (const group of merchantGroups) {
       for (const item of group.items) {
@@ -366,6 +505,12 @@ export function CartPage() {
     if (!confirm(cart.clearConfirm)) return;
 
     try {
+      if (isGuest) {
+        localStorage.removeItem(GUEST_CART_KEY);
+        setMerchantGroups([]);
+        toast.success(cart.cleared);
+        return;
+      }
       const res = await fetch('/api/cart?clearAll=true', { method: 'DELETE', headers: getAuthHeaders() });
       if (res.ok) {
         setMerchantGroups([]);
@@ -375,7 +520,7 @@ export function CartPage() {
       console.error('清空購物車失敗:', error);
       toast.error(cart.operationFailed);
     }
-  }, [cart]);
+  }, [isGuest, cart]);
 
   // 选择优惠券
   const handleSelectCoupon = useCallback((coupon: Coupon | null) => {
@@ -419,9 +564,24 @@ export function CartPage() {
       return;
     }
 
+    if (isGuest) {
+      // 访客模式：将选中商品信息存入 localStorage，跳转结账页
+      const guestCheckoutItems = selectedItems.map(item => ({
+        goods_id: item.goods.id,
+        name: item.goods.name,
+        price: item.goods.price,
+        quantity: item.quantity,
+        image: item.goods.image,
+        merchant_id: 0,
+      }));
+      localStorage.setItem('fubao_guest_checkout', JSON.stringify(guestCheckoutItems));
+      router.push('/checkout?guest=true');
+      return;
+    }
+
     const cartItemIds = selectedItems.map(item => item.id).join(',');
     router.push(`/checkout?cartItemIds=${cartItemIds}${selectedCoupon ? `&couponId=${selectedCoupon.id}` : ''}`);
-  }, [selectedItems, selectedCoupon, router, cart]);
+  }, [isGuest, selectedItems, selectedCoupon, router, cart]);
 
   if (loading) {
     return (
@@ -433,6 +593,17 @@ export function CartPage() {
 
   return (
     <div className="min-h-screen bg-muted/20">
+      {/* 访客提示 */}
+      {isGuest && (
+        <div className="bg-primary/10 border-b border-primary/20">
+          <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
+            <span className="text-sm text-primary">您正在以訪客身份瀏覽購物車，登錄後可享受更多優惠</span>
+            <Link href="/login" className="text-sm font-medium text-primary hover:underline">
+              立即登錄
+            </Link>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="bg-background border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">

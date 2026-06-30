@@ -172,6 +172,31 @@ function CheckoutPageContent() {
     try {
       // 游客模式：从 localStorage 加载购物车
       if (isGuest) {
+        // 优先读取 fubao_guest_checkout（来自购物车结算/立即购买）
+        const checkoutStored = localStorage.getItem('fubao_guest_checkout');
+        if (checkoutStored) {
+          try {
+            const checkoutItems = JSON.parse(checkoutStored);
+            const items = checkoutItems.map((item: any) => ({
+              id: item.goods_id,
+              goods_id: item.goods_id,
+              quantity: item.quantity,
+              goods: {
+                id: item.goods_id,
+                name: item.name || '商品',
+                price: parseFloat(item.price || '0'),
+                image: item.image || null,
+              },
+              spec: item.spec || '',
+              merchant_id: item.merchant_id || 0,
+              merchant_name: '',
+            }));
+            setCartItems(items);
+          } catch { /* ignore */ }
+          setLoading(false);
+          return;
+        }
+        // 回退：从 fubao_guest_cart 加载
         const stored = localStorage.getItem('fubao_guest_cart');
         if (stored) {
           try {
@@ -369,6 +394,7 @@ function CheckoutPageContent() {
           localStorage.setItem('fubao_guest_orders', JSON.stringify(guestOrders));
           // 清除游客购物车
           localStorage.removeItem('fubao_guest_cart');
+          localStorage.removeItem('fubao_guest_checkout');
           router.push(`/payment/${data.data.id}`);
         } else if (data.error) {
           toast.error(data.error);
