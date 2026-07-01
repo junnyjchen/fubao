@@ -12,7 +12,9 @@
     "db:export": "ts-node scripts/sql/export-data.ts",
     "db:change": "ts-node scripts/sql/gen-change.ts",
     "db:batch": "ts-node scripts/sql/run-batch.ts",
-    "db:help": "ts-node scripts/sql/gen-change.ts --help"
+    "db:help": "ts-node scripts/sql/gen-change.ts --help",
+    "lint:build": "eslint . --quiet",
+    "validate": "pnpm run --parallel '/^(ts-check|lint:build)$/'"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",

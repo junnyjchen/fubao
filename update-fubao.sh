@@ -192,11 +192,9 @@ build_project() {
     log "安装依赖..."
     pnpm install --frozen-lockfile 2>/dev/null || pnpm install
 
-    # 清理旧构建（避免残留的 action ID）
-    if [ "$FORCE_REBUILD" = "1" ]; then
-        log "清理旧构建缓存..."
-        rm -rf .next
-    fi
+    # 清理旧构建缓存（避免残留的 action ID 导致 "Failed to find Server Action"）
+    log "清理旧构建缓存..."
+    rm -rf .next
 
     # 构建
     log "执行 pnpm build..."
