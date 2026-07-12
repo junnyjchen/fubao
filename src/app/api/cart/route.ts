@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
           name: item.goods_name,
           price: parseFloat(item.price),
           original_price: parseFloat(item.original_price),
-          image: item.main_image,
+          image: item.main_image?.startsWith('/api/file/') ? item.main_image.replace('/api/file/', '/uploads/') : item.main_image,
           stock: item.stock,
           status: item.status,
         },

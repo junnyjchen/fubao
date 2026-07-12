@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { query, queryOne, insert as dbInsert, update as dbUpdate, count } from '@/lib/db';
 import { successResponse, listResponse, errorResponse, messageResponse } from '@/lib/api-response';
 import { getAuthUserId } from '@/lib/auth/apiAuth';
+import { fixImageUrl } from '@/lib/api-client';
 
 /** 将数据库行映射为前端字段 */
 function mapGiftRow(row: Record<string, unknown>) {
@@ -16,8 +17,8 @@ function mapGiftRow(row: Record<string, unknown>) {
     name: row.name || row.title,
     title: row.title,
     description: row.description,
-    image: row.image || row.cover_image,
-    cover_image: row.cover_image,
+    image: fixImageUrl(String(row.image || row.cover_image || '')),
+    cover_image: fixImageUrl(String(row.cover_image || '')),
     original_price: row.original_price,
     stock: row.remain_count,
     claimed: row.claimed,

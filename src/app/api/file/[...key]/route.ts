@@ -21,9 +21,10 @@ export async function GET(
     const key = keyParts.join('/');
 
     // 本地文件路径（uploads 目录）
-    const cwd = process.cwd();
+    // 优先使用 COZE_WORKSPACE_PATH，fallback 到 process.cwd()
+    const basePath = process.env.COZE_WORKSPACE_PATH || process.cwd();
     const safeKey = key.replace(/\.\./g, '').replace(/\/\//g, '/');
-    const filePath = path.join(cwd, 'public', 'uploads', safeKey);
+    const filePath = path.join(basePath, 'public', 'uploads', safeKey);
 
     try {
       const fileBuffer = await readFile(filePath);

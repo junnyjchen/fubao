@@ -74,6 +74,21 @@ export function ensureArray<T = any>(data: any): T[] {
 }
 
 /**
+ * 修复图片URL：将 /api/file/xxx 格式转换为 /uploads/xxx 格式
+ * 旧版上传组件存储的是 /api/file/xxx 路径，但生产环境 Nginx 直接服务 /uploads/
+ * 这样可以避免通过 Next.js API 路由读取文件（standalone 模式下 process.cwd() 可能不对）
+ */
+export function fixImageUrl(url: string | null | undefined): string {
+  if (!url) return '/images/placeholder.png';
+  // /api/file/goods/xxx.jpg → /uploads/goods/xxx.jpg
+  if (url.startsWith('/api/file/')) {
+    return url.replace('/api/file/', '/uploads/');
+  }
+  // 已经是 /uploads/ 格式，直接返回
+  return url;
+}
+
+/**
  * 安全地从 API 响应中提取数组数据
  * 同时处理响应提取和数组类型保护
  * 

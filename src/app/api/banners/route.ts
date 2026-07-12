@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, insert as dbInsert, update as dbUpdate, remove as dbRemove } from '@/lib/db';
+import { fixImageUrl } from '@/lib/api-client';
 
 /**
  * GET - 获取轮播图列表
@@ -43,7 +44,13 @@ export async function GET(request: NextRequest) {
       data = [];
     }
 
-    return NextResponse.json({ success: true, data });
+    // 修复图片URL
+    const fixedData = data.map((item: Record<string, unknown>) => ({
+      ...item,
+      image: fixImageUrl(item.image as string),
+    }));
+
+    return NextResponse.json({ success: true, data: fixedData });
   } catch (error) {
     console.error('获取轮播图失败:', error);
     return NextResponse.json({ success: true, data: [] });

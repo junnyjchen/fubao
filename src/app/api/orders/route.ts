@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
       orderItems.push({
         goods_id: goods.id,
         goods_name: goods.name,
-        goods_image: goods.main_image,
+        goods_image: goods.main_image?.startsWith('/api/file/') ? goods.main_image.replace('/api/file/', '/uploads/') : goods.main_image,
         price: goods.price,
         quantity: item.quantity,
         total: itemTotal.toFixed(2),

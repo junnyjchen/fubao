@@ -82,9 +82,22 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // 转换图片URL：/api/file/xxx → /uploads/xxx
+    const fixImageUrl = (url: string | null | undefined): string | null => {
+      if (!url) return null;
+      if (url.startsWith('/api/file/')) return url.replace('/api/file/', '/uploads/');
+      return url;
+    };
+
+    const fixGoodsImages = (g: any) => ({
+      ...g,
+      main_image: fixImageUrl(g.main_image),
+      images: Array.isArray(g.images) ? g.images.map(fixImageUrl) : g.images,
+    });
+
     return NextResponse.json({
       success: true,
-      data: enrichedData,
+      data: enrichedData.map(fixGoodsImages),
       total,
       page,
       pageSize,

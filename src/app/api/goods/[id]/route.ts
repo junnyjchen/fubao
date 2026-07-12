@@ -85,14 +85,27 @@ export async function GET(request: Request, { params }: RouteParams) {
       }
     }
 
+    // 转换图片URL：/api/file/xxx → /uploads/xxx
+    const fixImageUrl = (url: string | null | undefined): string | null => {
+      if (!url) return null;
+      if (url.startsWith('/api/file/')) return url.replace('/api/file/', '/uploads/');
+      return url;
+    };
+
+    const fixGoodsImages = (g: any) => ({
+      ...g,
+      main_image: fixImageUrl(g.main_image),
+      images: Array.isArray(g.images) ? g.images.map(fixImageUrl) : g.images,
+    });
+
     return NextResponse.json({
       success: true,
-      data: {
+      data: fixGoodsImages({
         ...translatedGoods,
         merchant,
         category,
-        related_goods: relatedGoods,
-      },
+        related_goods: relatedGoods.map(fixGoodsImages),
+      }),
     });
   } catch (error) {
     console.error('获取商品详情失败:', error);

@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { getAuthHeaders } from '@/lib/api-client';
+import { getAuthHeaders, fixImageUrl } from '@/lib/api-client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,7 +102,7 @@ const RelatedGoodsCard = memo(function RelatedGoodsCard({
       <div className="aspect-square bg-muted rounded-lg overflow-hidden mb-2">
         {item.main_image ? (
           <Image
-            src={item.main_image}
+            src={fixImageUrl(item.main_image)}
             alt={item.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
@@ -367,7 +367,8 @@ export function GoodsDetailPage() {
     );
   }
 
-  const images = goods.images?.length ? goods.images : goods.main_image ? [goods.main_image] : [];
+  const images = (goods.images?.length ? goods.images : goods.main_image ? [goods.main_image] : []).map(fixImageUrl);
+  const mainImageUrl = fixImageUrl(goods.main_image);
   const discount = goods.original_price
     ? Math.round((1 - parseFloat(goods.price) / parseFloat(goods.original_price)) * 100)
     : 0;

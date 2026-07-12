@@ -148,7 +148,7 @@ export default function GoodsEditPage({ params }: PageProps) {
 
     const result = await response.json();
     if (result.data) {
-      return result.data.key ? `/api/file/${result.data.key}` : result.data.url;
+      return result.data.url || `/uploads/${result.data.key}`;
     }
     throw new Error(result.error || '上傳失敗');
   }, []);
