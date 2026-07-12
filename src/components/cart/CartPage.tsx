@@ -313,8 +313,10 @@ export function CartPage() {
       // 登录用户：从 API 获取
       const res = await fetch('/api/cart', { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
-      if (data.data) {
-        setMerchantGroups(data.data);
+      if (data.success && data.data) {
+        // API 返回 { groups: MerchantGroup[], summary: {...} } 或直接数组
+        const groups = Array.isArray(data.data) ? data.data : (Array.isArray(data.data.groups) ? data.data.groups : []);
+        setMerchantGroups(groups);
       }
     } catch (error) {
       console.error('加載購物車失敗:', error);
