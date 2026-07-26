@@ -89,10 +89,19 @@ export async function GET(request: NextRequest) {
       return url;
     };
 
+    const parseImages = (images: any): string[] => {
+      if (!images) return [];
+      if (Array.isArray(images)) return images;
+      if (typeof images === 'string') {
+        try { return JSON.parse(images); } catch { return []; }
+      }
+      return [];
+    };
+
     const fixGoodsImages = (g: any) => ({
       ...g,
       main_image: fixImageUrl(g.main_image),
-      images: Array.isArray(g.images) ? g.images.map(fixImageUrl) : g.images,
+      images: parseImages(g.images).map(fixImageUrl),
     });
 
     return NextResponse.json({

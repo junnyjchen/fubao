@@ -92,10 +92,22 @@ export async function GET(request: Request, { params }: RouteParams) {
       return url;
     };
 
+    const parseImages = (images: unknown): string[] => {
+      if (Array.isArray(images)) return images.map(fixImageUrl).filter(Boolean) as string[];
+      if (typeof images === 'string') {
+        try {
+          const parsed = JSON.parse(images);
+          if (Array.isArray(parsed)) return parsed.map(fixImageUrl).filter(Boolean) as string[];
+        } catch { /* not JSON, return as-is */ }
+        return [fixImageUrl(images)].filter(Boolean) as string[];
+      }
+      return [];
+    };
+
     const fixGoodsImages = (g: any) => ({
       ...g,
       main_image: fixImageUrl(g.main_image),
-      images: Array.isArray(g.images) ? g.images.map(fixImageUrl) : g.images,
+      images: parseImages(g.images),
     });
 
     return NextResponse.json({
