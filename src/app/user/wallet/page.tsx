@@ -65,6 +65,7 @@ interface BonusRule {
 }
 
 const paymentMethods = [
+  { value: 'sol', label: 'SOL', icon: Wallet, enabled: true },
   { value: 'alipay', label: '支付寶', icon: Wallet, enabled: true },
   { value: 'wechat', label: '微信支付', icon: Smartphone, enabled: true },
   { value: 'paypal', label: 'PayPal', icon: CreditCard, enabled: true },
@@ -91,7 +92,7 @@ export default function WalletPage() {
   
   const [amount, setAmount] = useState<number>(100);
   const [customAmount, setCustomAmount] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState('alipay');
+  const [paymentMethod, setPaymentMethod] = useState('sol');
   const [submitting, setSubmitting] = useState(false);
   const [bonusAmount, setBonusAmount] = useState(0);
 
