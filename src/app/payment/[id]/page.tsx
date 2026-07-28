@@ -55,10 +55,9 @@ interface PageProps {
 }
 
 const payMethods = [
-  { value: 'sol', label: 'SOL (Solana)', icon: Wallet, enabled: true, description: '加密貨幣支付' },
-  { value: 'paypal', label: 'PayPal', icon: CreditCard, enabled: true, description: '支持國際信用卡' },
   { value: 'alipay', label: '支付寶', icon: Wallet, enabled: false, description: '即將開通' },
   { value: 'wechat', label: '微信支付', icon: Smartphone, enabled: false, description: '即將開通' },
+  { value: 'paypal', label: 'PayPal', icon: CreditCard, enabled: true, description: '支持國際信用卡' },
 ];
 
 const orderStatusMap: Record<string, { label: string; color: string }> = {
@@ -85,7 +84,7 @@ export default function PaymentPage({ params }: PageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  const [payMethod, setPayMethod] = useState('sol');
+  const [payMethod, setPayMethod] = useState('paypal');
   const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
@@ -157,28 +156,8 @@ export default function PaymentPage({ params }: PageProps) {
 
     setPaying(true);
     try {
-      if (payMethod === 'sol') {
-        // SOL 支付流程 - 创建支付订单并显示钱包地址
-        const res = await fetch(`/api/orders/${order.id}`, {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            status: 'pending_payment',
-            payment_method: 'sol',
-            payment_no: 'SOL_' + Date.now(),
-          }),
-          credentials: 'include',
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          // 显示SOL支付信息弹窗
-          alert(`請將 ${order.pay_amount} HKD 等值的 SOL 轉入以下地址：\n\n${data.data?.sol_address || '請聯繫客服獲取錢包地址'}\n\n轉帳完成後，系統會在10分鐘內確認到帳。`);
-          router.push(`/user/orders?highlight=${order.id}`);
-        } else {
-          alert(data.error || '創建支付訂單失敗');
-        }
-      } else if (payMethod === 'paypal') {
+      // 模拟支付流程
+      if (payMethod === 'paypal') {
         // PayPal 支付流程
         await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -365,7 +344,7 @@ export default function PaymentPage({ params }: PageProps) {
             <CardHeader>
               <CardTitle className="text-lg">選擇支付方式</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <RadioGroup value={payMethod} onValueChange={setPayMethod}>
                 {payMethods.map((method) => {
                   const Icon = method.icon;
@@ -383,31 +362,10 @@ export default function PaymentPage({ params }: PageProps) {
                         <p className="font-medium">{method.label}</p>
                         <p className="text-xs text-muted-foreground">{method.description}</p>
                       </div>
-                      {method.value === 'sol' && (
-                        <Badge variant="secondary" className="text-xs">推薦</Badge>
-                      )}
                     </div>
                   );
                 })}
               </RadioGroup>
-
-              {/* SOL支付说明 */}
-              {payMethod === 'sol' && (
-                <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Wallet className="w-4 h-4" />
-                    SOL 支付說明
-                  </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>1. 點擊「立即支付」後，系統會生成支付訂單</p>
-                    <p>2. 請將對應金額的 SOL 轉入指定錢包地址</p>
-                    <p>3. 轉帳完成後，系統會自動確認到帳</p>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    當前匯率: 1 SOL ≈ HK$1,200 (僅供參考，以實際到帳為準)
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         )}
