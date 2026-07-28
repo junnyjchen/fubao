@@ -119,24 +119,23 @@ export default function GoodsNewPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/goods', {
+      const res = await fetch('/api/admin/goods', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
-          subtitle: form.subtitle || null,
-          category_id: form.category_id ? parseInt(form.category_id) : null,
-          type: parseInt(form.type),
-          purpose: form.purpose || null,
+          subtitle: form.subtitle || '',
+          category_id: form.category_id ? parseInt(form.category_id) : 0,
+          type: form.type || 'physical',
+          purpose: form.purpose || '',
           price: form.price,
           original_price: form.original_price || null,
           stock: parseInt(form.stock) || 0,
-          main_image: form.main_image || null,
-          images: form.images.length > 0 ? form.images : null,
-          description: form.description || null,
-          is_certified: form.is_certified,
-          status: form.status,
-          sort: parseInt(form.sort) || 0,
+          main_image: form.main_image || '',
+          images: form.images.length > 0 ? JSON.stringify(form.images) : '',
+          description: form.description || '',
+          is_certified: form.is_certified ? 1 : 0,
+          status: 1,
         }),
       });
 

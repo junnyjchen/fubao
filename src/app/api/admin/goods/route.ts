@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, queryOne, insert, update, remove, count } from '@/lib/db';
+import { fixImageUrl } from '@/lib/api-client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,8 +46,22 @@ export async function GET(request: NextRequest) {
       params
     );
 
+    // 修复图片 URL
+    const fixGoodsImages = (g: any) => ({
+      ...g,
+      main_image: g.main_image ? fixImageUrl(String(g.main_image)) : '',
+      images: (() => {
+        if (!g.images) return [];
+        if (Array.isArray(g.images)) return g.images.map((u: string) => fixImageUrl(String(u)));
+        try {
+          const parsed = JSON.parse(g.images);
+          return Array.isArray(parsed) ? parsed.map((u: string) => fixImageUrl(String(u))) : [];
+        } catch { return []; }
+      })(),
+    });
+
     return NextResponse.json({
-      data,
+      data: data.map(fixGoodsImages),
       total,
       page,
       pageSize,

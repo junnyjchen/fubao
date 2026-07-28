@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { queryOne, query } from '@/lib/db';
+import { queryOne, query, update } from '@/lib/db';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -85,11 +85,17 @@ export async function GET(request: Request, { params }: RouteParams) {
       }
     }
 
-    // 转换图片URL：/api/file/xxx → /uploads/xxx
+    // 转换图片URL：/api/file/xxx → /uploads/xxx, 纯文件名 → /uploads/goods/xxx
     const fixImageUrl = (url: string | null | undefined): string | null => {
       if (!url) return null;
-      if (url.startsWith('/api/file/')) return url.replace('/api/file/', '/uploads/');
-      return url;
+      const urlStr = String(url);
+      if (urlStr.startsWith('/api/file/')) return urlStr.replace('/api/file/', '/uploads/');
+      if (urlStr.startsWith('http://') || urlStr.startsWith('https://') || urlStr.startsWith('/')) return urlStr;
+      // 纯文件名（如 1783824918257_vqgp0k.jpg）→ 补全路径
+      if (/^\d+_[a-z0-9]+\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlStr)) {
+        return `/uploads/goods/${urlStr}`;
+      }
+      return urlStr;
     };
 
     const parseImages = (images: unknown): string[] => {
@@ -122,5 +128,40 @@ export async function GET(request: Request, { params }: RouteParams) {
   } catch (error) {
     console.error('获取商品详情失败:', error);
     return NextResponse.json({ error: '獲取商品詳情失敗' }, { status: 500 });
+  }
+}
+
+/**
+ * 更新商品
+ */
+export async function PUT(request: Request, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    const updateData: Record<string, unknown> = {
+      name: body.name,
+      subtitle: body.subtitle || '',
+      category_id: body.category_id ? parseInt(body.category_id) : 0,
+      type: body.type || 'physical',
+      purpose: body.purpose || '',
+      price: parseFloat(body.price),
+      original_price: body.original_price ? parseFloat(body.original_price) : null,
+      stock: parseInt(body.stock) || 0,
+      main_image: body.main_image || '',
+      images: body.images ? (typeof body.images === 'string' ? body.images : JSON.stringify(body.images)) : '',
+      description: body.description || '',
+      is_certified: body.is_certified ? 1 : 0,
+      status: body.status !== false ? 1 : 0,
+      sort: parseInt(body.sort) || 0,
+    };
+
+    await update('goods', id, updateData);
+
+    const goods = await queryOne('SELECT * FROM goods WHERE id = ?', [parseInt(id)]);
+    return NextResponse.json({ success: true, data: goods, message: '商品更新成功' });
+  } catch (error) {
+    console.error('更新商品失败:', error);
+    return NextResponse.json({ error: '更新商品失敗' }, { status: 500 });
   }
 }

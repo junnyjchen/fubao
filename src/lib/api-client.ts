@@ -80,12 +80,20 @@ export function ensureArray<T = any>(data: any): T[] {
  */
 export function fixImageUrl(url: string | null | undefined): string {
   if (!url) return '/images/placeholder.png';
+  const urlStr = String(url);
   // /api/file/goods/xxx.jpg → /uploads/goods/xxx.jpg
-  if (url.startsWith('/api/file/')) {
-    return url.replace('/api/file/', '/uploads/');
+  if (urlStr.startsWith('/api/file/')) {
+    return urlStr.replace('/api/file/', '/uploads/');
   }
-  // 已经是 /uploads/ 格式，直接返回
-  return url;
+  // 已经是完整 URL 或带 / 前缀的路径，直接返回
+  if (urlStr.startsWith('http://') || urlStr.startsWith('https://') || urlStr.startsWith('/')) {
+    return urlStr;
+  }
+  // 纯文件名（如 1783824918257_vqgp0k.jpg）→ 补全路径
+  if (/^\d+_[a-z0-9]+\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlStr)) {
+    return `/uploads/goods/${urlStr}`;
+  }
+  return urlStr;
 }
 
 /**

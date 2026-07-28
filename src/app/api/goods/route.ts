@@ -82,11 +82,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 转换图片URL：/api/file/xxx → /uploads/xxx
+    // 转换图片URL：/api/file/xxx → /uploads/xxx, 纯文件名 → /uploads/goods/xxx
     const fixImageUrl = (url: string | null | undefined): string | null => {
       if (!url) return null;
-      if (url.startsWith('/api/file/')) return url.replace('/api/file/', '/uploads/');
-      return url;
+      const urlStr = String(url);
+      if (urlStr.startsWith('/api/file/')) return urlStr.replace('/api/file/', '/uploads/');
+      if (urlStr.startsWith('http://') || urlStr.startsWith('https://') || urlStr.startsWith('/')) return urlStr;
+      // 纯文件名（如 1783824918257_vqgp0k.jpg）→ 补全路径
+      if (/^\d+_[a-z0-9]+\.(jpg|jpeg|png|gif|webp|svg)$/i.test(urlStr)) {
+        return `/uploads/goods/${urlStr}`;
+      }
+      return urlStr;
     };
 
     const parseImages = (images: any): string[] => {
