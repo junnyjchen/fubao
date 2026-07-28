@@ -83,6 +83,13 @@ prepare_standalone() {
     rm -rf "${STANDALONE_DIR}/public"
     cp -r "${APP_DIR}/public" "${STANDALONE_DIR}/public"
 
+    # 关键：uploads 目录使用符号链接，确保上传的文件持久保存
+    # 因为每次部署都会重新复制 public，uploads 需要链接回源码目录
+    log "创建 uploads 符号链接..."
+    rm -rf "${STANDALONE_DIR}/public/uploads"
+    ln -sf "${APP_DIR}/public/uploads" "${STANDALONE_DIR}/public/uploads"
+    log "uploads 符号链接: ${STANDALONE_DIR}/public/uploads -> ${APP_DIR}/public/uploads"
+
     log "复制 .next/static..."
     rm -rf "${STANDALONE_DIR}/.next/static"
     cp -r "${APP_DIR}/.next/static" "${STANDALONE_DIR}/.next/static"

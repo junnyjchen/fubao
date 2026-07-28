@@ -22,7 +22,11 @@ const ALLOWED_IMAGE_TYPES = [
 /** 最大文件大小 (5MB) */
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-/** 上传目录 — 优先使用 COZE_WORKSPACE_PATH，兼容 standalone 模式 */
+/** 
+ * 上传目录 — 优先使用 COZE_WORKSPACE_PATH，兼容 standalone 模式
+ * 部署脚本会创建符号链接：standalone/public/uploads -> 源码/public/uploads
+ * 所以只需要写入一个位置，两个目录都能访问
+ */
 const UPLOAD_DIR = path.join(
   process.env.COZE_WORKSPACE_PATH || process.cwd(),
   'public',
@@ -76,6 +80,7 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const filePath = path.join(targetDir, fileName);
     await writeFile(filePath, Buffer.from(arrayBuffer));
+    console.log('[Upload] 文件已保存:', filePath);
 
     // 生成访问URL
     const url = `/uploads/${folder}/${fileName}`;
@@ -121,6 +126,7 @@ export async function DELETE(request: Request) {
 
     if (existsSync(filePath)) {
       await unlink(filePath);
+      console.log('[Upload] 文件已删除:', filePath);
     }
 
     return NextResponse.json({ success: true, message: '刪除成功' });
