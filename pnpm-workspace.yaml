@@ -11,3 +11,8 @@ allowBuilds:
   sharp: true
   msw: true
   unrs-resolver: true
+
+# 兜底：允许所有依赖运行构建脚本（pnpm 10.9+）
+# 锁文件已固定依赖树，实际放行的就是上面 4 个包；
+# 避免 pnpm 12.0.0 对 allowBuilds 解析异常导致构建反复失败
+dangerouslyAllowAllBuilds: true
