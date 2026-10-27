@@ -237,7 +237,120 @@ systemctl restart fubao-nextjs
 
 ## 八、配置 Nginx
 
-### 8.1 定位站点配置文件
+> **重要**：此步不可跳过！宝塔新建站点默认是 PHP/静态站，**没有反向代理**——
+> 只有首页能通过 index.php 兜底打开，`/api/*`、`/_next/*`（CSS/JS）、`/images/*`、`/uploads/*` 全部 404，
+> 页面表现为无样式、无数据的"乱码"感。`update-fubao.sh` 的链路检查只测首页 HTML，会被 index.php 骗过。
+
+### 8.1 一键应用（推荐）
+
+以下脚本自动：找到站点配置 → 提取宝塔 SSL 证书路径 → 备份 → 写入反代配置 → 校验重载。
+
+```bash
+cd /www/server/panel/vhost/nginx
+
+# 1. 找到站点配置文件
+CONF=$(ls | grep -i fubao | head -1)
+echo ">> 站点配置: $CONF"
+[ -z "$CONF" ] && echo "未找到 fubao 相关配置，请确认文件名后手动执行" && exit 1
+
+# 2. 提取现有 SSL 证书路径（保持宝塔证书管理/续期不受影响）
+CERT=$(grep -m1 "ssl_certificate " "$CONF" | awk '{print $2}' | tr -d ';')
+KEY=$(grep -m1 "ssl_certificate_key " "$CONF" | awk '{print $2}' | tr -d ';')
+echo ">> 证书: $CERT"
+echo ">> 私钥: $KEY"
+[ -z "$CERT" ] || [ -z "$KEY" ] && echo "未提取到证书路径，请按 8.3 手动方式配置" && exit 1
+
+# 3. 备份
+cp "$CONF" "$CONF.bak-$(date +%m%d%H%M)"
+
+# 4. 写入反向代理配置
+cat > "$CONF" << EOF
+server {
+    listen 80;
+    server_name www.fubao.ltd fubao.ltd;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name www.fubao.ltd fubao.ltd;
+
+    ssl_certificate $CERT;
+    ssl_certificate_key $KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    client_max_body_size 50m;
+
+    access_log /www/wwwlogs/www.fubao.ltd.log;
+    error_log  /www/wwwlogs/www.fubao.ltd.error.log;
+
+    root /www/wwwroot/fubao/public;
+    index index.html;
+
+    # 用户上传/商品图片：Nginx 直接静态服务
+    location /uploads/ {
+        alias /www/wwwroot/fubao/public/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location /images/ {
+        alias /www/wwwroot/fubao/public/images/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Next.js 静态资源（带哈希可长缓存）
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Next.js 其他内部资源（Server Action 等）
+    location /_next/ {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        add_header Cache-Control "no-cache";
+    }
+
+    # 敏感文件禁止访问（放行 .well-known）
+    location ~ /\.(?!well-known) { deny all; }
+    location ~ \.(env|log|sql|sh)$ { deny all; }
+
+    # 其余全部 → Next.js（关闭缓冲，保证 AI 流式接口 SSE 实时输出）
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+        proxy_buffering off;
+    }
+}
+EOF
+
+# 5. 校验并重载（失败会自动提示，可用备份恢复：cp "$CONF.bak-*" "$CONF"）
+nginx -t && nginx -s reload && echo ">> Nginx 配置已生效"
+```
+
+### 8.2 定位站点配置文件（手动方式）
 
 宝塔站点的 Nginx 配置一般在：
 ```
@@ -245,7 +358,7 @@ systemctl restart fubao-nextjs
 ```
 （文件名为你的域名）
 
-### 8.2 完整配置内容
+### 8.3 完整配置内容（手动方式）
 
 用宝塔「文件」功能或 `vim` 编辑，替换为以下内容（**域名和证书路径按实际修改**）：
 
@@ -257,8 +370,7 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    http2 on;
+    listen 443 ssl http2;
     server_name www.fubao.ltd fubao.ltd;
 
     # SSL 证书（宝塔申请后自动填充，保持宝塔生成的路径）
@@ -324,11 +436,25 @@ server {
 }
 ```
 
-### 8.3 重载 Nginx
+### 8.4 重载 Nginx
 
 ```bash
 nginx -t && nginx -s reload
 ```
+
+### 8.5 配置后验证
+
+```bash
+# API 应返回 JSON（不再是宝塔 404 页面）
+curl -s "https://www.fubao.ltd/api/goods?limit=2" | head -c 200
+
+# CSS/图片/子页面应全部 200
+curl -s -o /dev/null -w "%{http_code}\n" "https://www.fubao.ltd/shop"
+curl -s -o /dev/null -w "%{http_code}\n" "https://www.fubao.ltd/images/products/taiji-fu.jpg"
+curl -s -o /dev/null -w "%{http_code}\n" "https://www.fubao.ltd/uploads/goods/1782070431769_3vyp8h.jpg"
+```
+
+浏览器访问请用 **Ctrl+Shift+R** 强制刷新，避免旧缓存干扰判断。
 
 > **注意**：宝塔面板的 SSL 续期（Let's Encrypt）会自动更新证书文件，上述配置无需改动。
 > 后续在宝塔面板修改站点配置时，注意不要让宝塔覆盖掉 `location /` 的代理规则。
