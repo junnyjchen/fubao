@@ -105,7 +105,6 @@
     "tsx": "^4.19.2",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@12.0.0",
   "engines": {
     "pnpm": ">=9.0.0"
   }
