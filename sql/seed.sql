@@ -1,6 +1,9 @@
 -- 符寶網 種子數據
 -- 執行順序: 先 schema.sql 再 seed.sql
 
+-- 关键：强制本连接使用 utf8mb4，防止客户端默认字符集（如 latin1）导致中文乱码入库
+SET NAMES utf8mb4;
+
 -- 管理員角色
 INSERT IGNORE INTO admin_roles (id, name, code, permissions, is_super) VALUES
 (1, '超級管理員', 'super_admin', '["*"]', 1),

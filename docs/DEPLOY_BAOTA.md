@@ -104,8 +104,8 @@ EOF
 
 ```bash
 # 拉取代码后再执行（sql 目录在仓库里）
-mysql -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < /www/wwwroot/fubao/sql/schema.sql
-mysql -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < /www/wwwroot/fubao/sql/seed.sql
+mysql --default-character-set=utf8mb4 -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < /www/wwwroot/fubao/sql/schema.sql
+mysql --default-character-set=utf8mb4 -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < /www/wwwroot/fubao/sql/seed.sql
 ```
 
 > `schema.sql` 使用 `CREATE TABLE IF NOT EXISTS`，可重复执行。
@@ -214,8 +214,8 @@ bash update-fubao.sh --install
 
 ```bash
 # update-fubao.sh --install 不含 schema/seed 导入，首次需手动执行：
-mysql -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < sql/schema.sql
-mysql -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < sql/seed.sql
+mysql --default-character-set=utf8mb4 -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < sql/schema.sql
+mysql --default-character-set=utf8mb4 -h127.0.0.1 -ufubao -pCZDhXEb8M7t1jheP fubao < sql/seed.sql
 
 # 重启服务生效
 systemctl restart fubao-nextjs
@@ -404,6 +404,7 @@ journalctl -u fubao-nextjs -n 50  # 最近 50 行
 | 图片 404 | uploads 符号链接丢失 | `ln -sf /www/wwwroot/fubao/public/uploads /www/wwwroot/fubao/.next/standalone/public/uploads` |
 | MySQL 连接失败 | .env 缺失 | 重跑 `bash update-fubao.sh --rebuild`（脚本会重写 .env） |
 | 构建内存不足 | 2GB 服务器 OOM | 加 swap：`fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile` |
+| 页面中文乱码 | seed 导入时客户端默认字符集非 utf8mb4 | 重建库后用 `--default-character-set=utf8mb4` 重导（seed.sql 已内置 SET NAMES） |
 
 ### git 本地改动冲突（拉取失败时）
 
