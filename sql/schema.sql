@@ -54,10 +54,12 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL,
   `slug` VARCHAR(100) NOT NULL UNIQUE,
-  `icon` VARCHAR(50) NOT NULL DEFAULT '',
+  `icon` VARCHAR(200) NOT NULL DEFAULT '',
   `image` VARCHAR(500) NOT NULL DEFAULT '',
   `description` TEXT DEFAULT NULL,
   `parent_id` INT UNSIGNED DEFAULT NULL,
+  `level` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '层级 1/2/3',
+  `path` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '路径 1/2/3',
   `sort_order` INT NOT NULL DEFAULT 0,
   `status` TINYINT NOT NULL DEFAULT 1,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -129,6 +131,10 @@ CREATE TABLE IF NOT EXISTS `merchants` (
   `login_account` VARCHAR(100) NOT NULL DEFAULT '',
   `login_password` VARCHAR(255) NOT NULL DEFAULT '',
   `logo` VARCHAR(500) NOT NULL DEFAULT '',
+  `avg_rating` DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '平均评分',
+  `review_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '评价数',
+  `total_sales` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '总销量',
+  `level` VARCHAR(20) NOT NULL DEFAULT 'bronze' COMMENT '商家等级 bronze/silver/gold/diamond',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_login_account` (`login_account`)
@@ -732,19 +738,8 @@ CREATE TABLE IF NOT EXISTS `goods_prices` (
   INDEX `idx_currency` (`currency_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 商品多级分类增强：添加 level 和 path 字段
-ALTER TABLE `categories` 
-  ADD COLUMN IF NOT EXISTS `level` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '层级 1/2/3',
-  ADD COLUMN IF NOT EXISTS `path` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '路径 1/2/3',
-  ADD COLUMN IF NOT EXISTS `icon` VARCHAR(200) NOT NULL DEFAULT '' COMMENT '分类图标',
-  ADD COLUMN IF NOT EXISTS `image` VARCHAR(500) NOT NULL DEFAULT '' COMMENT '分类图片';
-
--- 商家统计字段
-ALTER TABLE `merchants`
-  ADD COLUMN IF NOT EXISTS `avg_rating` DECIMAL(2,1) NOT NULL DEFAULT 5.0 COMMENT '平均评分',
-  ADD COLUMN IF NOT EXISTS `review_count` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '评价数',
-  ADD COLUMN IF NOT EXISTS `total_sales` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '总销量',
-  ADD COLUMN IF NOT EXISTS `level` VARCHAR(20) NOT NULL DEFAULT 'bronze' COMMENT '商家等级 bronze/silver/gold/diamond';
+-- 说明：categories.level/path、merchants.avg_rating 等列已并入上方 CREATE TABLE 定义
+-- （原此处的 ALTER TABLE ... ADD COLUMN IF NOT EXISTS 为 MariaDB 专有语法，MySQL 8 不支持，已移除）
 
 -- ============================================================
 -- 缺失列修补 (2024-06-25)
@@ -772,17 +767,8 @@ CREATE TABLE IF NOT EXISTS `articles` (
   INDEX `idx_slug` (`slug`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- admins 表：添加 last_login_at
-ALTER TABLE `admins` ADD COLUMN IF NOT EXISTS `last_login_at` DATETIME DEFAULT NULL;
-
--- news 表：添加缺失列
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `slug` VARCHAR(200) NOT NULL DEFAULT '';
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `category` VARCHAR(100) NOT NULL DEFAULT '';
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `tags` JSON DEFAULT NULL;
-ALTER TABLE `news` ADD COLUMN IF NOT EXISTS `published_at` DATETIME DEFAULT NULL;
-
--- banners 表：添加 position
-ALTER TABLE `banners` ADD COLUMN IF NOT EXISTS `position` VARCHAR(50) NOT NULL DEFAULT 'home';
+-- 说明：admins.last_login_at、news.slug/category/tags/published_at、banners.position
+-- 均已包含在各自 CREATE TABLE 定义中，无需 ALTER（MySQL 8 不支持 ADD COLUMN IF NOT EXISTS）
 
 -- 为已有 news 记录补上 published_at
 UPDATE `news` SET `published_at` = `created_at` WHERE `published_at` IS NULL AND `status` = 1;
@@ -800,9 +786,9 @@ CREATE TABLE IF NOT EXISTS `browse_history` (
   UNIQUE KEY `uk_user_goods` (`user_id`, `goods_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- favorites 表：添加 target_type 和 target_id
-ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_type` VARCHAR(50) NOT NULL DEFAULT 'goods' AFTER `user_id`;
-ALTER TABLE `favorites` ADD COLUMN IF NOT EXISTS `target_id` INT UNSIGNED NOT NULL DEFAULT 0 AFTER `target_type`;
+-- 说明：favorites.target_type/target_id 已包含在上方 CREATE TABLE 定义中
+
+-- 为旧数据迁移 target_id（幂等，新库为空时无影响）
 UPDATE `favorites` SET `target_id` = `goods_id`, `target_type` = 'goods' WHERE `target_id` = 0 AND `goods_id` > 0;
 
 SET FOREIGN_KEY_CHECKS = 1;
