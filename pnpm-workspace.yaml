@@ -3,9 +3,11 @@
 packages:
   - '.'
 
-# 放行需要运行构建脚本的依赖（pnpm 12 默认阻止所有 postinstall）
-onlyBuiltDependencies:
-  - esbuild
-  - sharp
-  - msw
-  - unrs-resolver
+# 放行需要运行构建脚本的依赖
+# pnpm 11+ 使用 allowBuilds 映射格式（onlyBuiltDependencies 已在 v11 移除）
+# pnpm 12 默认 strictDepBuilds=true，未放行的构建脚本会报 ERR_PNPM_IGNORED_BUILDS
+allowBuilds:
+  esbuild: true
+  sharp: true
+  msw: true
+  unrs-resolver: true
