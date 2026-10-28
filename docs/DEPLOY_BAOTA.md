@@ -243,112 +243,23 @@ systemctl restart fubao-nextjs
 
 ### 8.1 一键应用（推荐）
 
-以下脚本自动：找到站点配置 → 提取宝塔 SSL 证书路径 → 备份 → 写入反代配置 → 校验重载。
+仓库根目录已内置配置脚本 `setup-nginx.sh`，自动完成：定位站点配置 → 提取宝塔 SSL 证书路径 → 备份 → 写入反代配置 → `nginx -t` 校验（**失败自动回滚**）→ 重载 → 验证。
 
 ```bash
-cd /www/server/panel/vhost/nginx
-
-# 1. 找到站点配置文件
-CONF=$(ls | grep -i fubao | head -1)
-echo ">> 站点配置: $CONF"
-[ -z "$CONF" ] && echo "未找到 fubao 相关配置，请确认文件名后手动执行" && exit 1
-
-# 2. 提取现有 SSL 证书路径（保持宝塔证书管理/续期不受影响）
-CERT=$(grep -m1 "ssl_certificate " "$CONF" | awk '{print $2}' | tr -d ';')
-KEY=$(grep -m1 "ssl_certificate_key " "$CONF" | awk '{print $2}' | tr -d ';')
-echo ">> 证书: $CERT"
-echo ">> 私钥: $KEY"
-[ -z "$CERT" ] || [ -z "$KEY" ] && echo "未提取到证书路径，请按 8.3 手动方式配置" && exit 1
-
-# 3. 备份
-cp "$CONF" "$CONF.bak-$(date +%m%d%H%M)"
-
-# 4. 写入反向代理配置
-cat > "$CONF" << EOF
-server {
-    listen 80;
-    server_name www.fubao.ltd fubao.ltd;
-    return 301 https://\$host\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name www.fubao.ltd fubao.ltd;
-
-    ssl_certificate $CERT;
-    ssl_certificate_key $KEY;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-
-    client_max_body_size 50m;
-
-    access_log /www/wwwlogs/www.fubao.ltd.log;
-    error_log  /www/wwwlogs/www.fubao.ltd.error.log;
-
-    root /www/wwwroot/fubao/public;
-    index index.html;
-
-    # 用户上传/商品图片：Nginx 直接静态服务
-    location /uploads/ {
-        alias /www/wwwroot/fubao/public/uploads/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    location /images/ {
-        alias /www/wwwroot/fubao/public/images/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    # Next.js 静态资源（带哈希可长缓存）
-    location /_next/static/ {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        expires 365d;
-        add_header Cache-Control "public, immutable";
-        access_log off;
-    }
-
-    # Next.js 其他内部资源（Server Action 等）
-    location /_next/ {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        add_header Cache-Control "no-cache";
-    }
-
-    # 敏感文件禁止访问（放行 .well-known）
-    location ~ /\.(?!well-known) { deny all; }
-    location ~ \.(env|log|sql|sh)$ { deny all; }
-
-    # 其余全部 → Next.js（关闭缓冲，保证 AI 流式接口 SSE 实时输出）
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
-        proxy_read_timeout 300s;
-        proxy_send_timeout 300s;
-        proxy_buffering off;
-    }
-}
-EOF
-
-# 5. 校验并重载（失败会自动提示，可用备份恢复：cp "$CONF.bak-*" "$CONF"）
-nginx -t && nginx -s reload && echo ">> Nginx 配置已生效"
+cd /www/wwwroot/fubao
+git pull origin main      # 若提示本地改动冲突，先执行 git checkout -- .
+bash setup-nginx.sh
 ```
+
+git 拉取失败时可直接下载脚本执行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/junnyjchen/fubao/main/setup-nginx.sh -o setup-nginx.sh
+bash setup-nginx.sh
+```
+
+> 脚本自动优先选择 `www.fubao.ltd.conf`；如站点配置文件名不同，可手动指定：`bash setup-nginx.sh <配置文件名>.conf`。
+> 恢复原配置：`cp <配置文件名>.conf.bak-* <配置文件名>.conf && nginx -s reload`
 
 ### 8.2 定位站点配置文件（手动方式）
 

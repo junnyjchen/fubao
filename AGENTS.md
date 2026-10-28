@@ -87,6 +87,7 @@
 │   └── uploads/              # 用户上传文件
 ├── fubao-nextjs.service       # systemd 服务配置
 ├── update-fubao.sh            # 服务器一键部署脚本
+├── setup-nginx.sh             # 宝塔 Nginx 反向代理一键配置脚本
 └── index.php                  # 根目录 PHP 入口（宝塔环境用）
 ```
 
