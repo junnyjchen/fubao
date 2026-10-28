@@ -50,14 +50,21 @@ export default function MerchantGoodsPage() {
   const toggleStatus = async (id: number, currentStatus: number) => {
     const newStatus = currentStatus === 1 ? 0 : 1;
     try {
-      await fetch(`/api/merchant/goods?id=${id}`, {
+      // PUT 接口从 body 读取 id，必须放在 body 中
+      const res = await fetch('/api/merchant/goods', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ id, status: newStatus }),
       });
-      setGoods(prev => prev.map(g => g.id === id ? { ...g, status: newStatus } : g));
+      const data = await res.json();
+      if (data.success !== false) {
+        setGoods(prev => prev.map(g => g.id === id ? { ...g, status: newStatus } : g));
+      } else {
+        alert(data.error || '操作失敗');
+      }
     } catch (e) {
       console.error('更新状态失败:', e);
+      alert('操作失敗，請重試');
     }
   };
 

@@ -120,7 +120,11 @@ export default function MerchantGoodsEditPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          // PUT 接口从 body 读取 id，必须传入
+          id: Number(id),
           ...form,
+          // 接口字段名为 detail，form 中的富文本存在 content 字段
+          detail: form.content,
           main_image: form.images[0] || '',
           price: Number(form.price),
           original_price: form.original_price ? Number(form.original_price) : null,
