@@ -6,6 +6,7 @@
 #       /api/* 及所有页面  → 127.0.0.1:5000（含 AI 流式 SSE）
 #       /_next/*           → 127.0.0.1:5000（静态资源长缓存）
 #       /uploads/* /images/* → 静态文件 Nginx 直出
+#       fubao.ltd → 301 → www.fubao.ltd（统一域名，防止登录 Cookie 分裂）
 #
 # 用法：bash setup-nginx.sh                # 自动定位站点配置
 #       bash setup-nginx.sh xxx.conf       # 手动指定配置文件名
@@ -59,12 +60,28 @@ cat > "$CONF" << 'NGINX_CONF'
 server {
     listen 80;
     server_name www.fubao.ltd fubao.ltd;
-    return 301 https://$host$request_uri;
+    # HTTP 一律 301 到 https://www（规范域名，避免登录 Cookie 分裂）
+    return 301 https://www.fubao.ltd$request_uri;
+}
+
+# 裸域 HTTPS 也 301 到 www（auth_token Cookie 按域名隔离，
+# 两个域名同时可用会导致登录态丢失 401 / Server Action 跨域 403）
+server {
+    listen 443 ssl http2;
+    server_name fubao.ltd;
+
+    ssl_certificate __CERT__;
+    ssl_certificate_key __KEY__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    return 301 https://www.fubao.ltd$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name www.fubao.ltd fubao.ltd;
+    server_name www.fubao.ltd;
 
     ssl_certificate __CERT__;
     ssl_certificate_key __KEY__;
@@ -160,6 +177,12 @@ curl -s --max-time 10 "https://www.fubao.ltd/api/goods?limit=2" | head -c 120; e
 for u in / /shop /images/products/taiji-fu.jpg /uploads/goods/1782070431769_3vyp8h.jpg; do
     code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://www.fubao.ltd$u")
     printf "%-42s %s\n" "$u" "$code"
+done
+echo ""
+echo "== 裸域重定向检查（应为 301 → https://www.fubao.ltd/）=="
+for u in "http://fubao.ltd/" "https://fubao.ltd/" "http://www.fubao.ltd/"; do
+    code=$(curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}' --max-time 10 "$u")
+    printf "%-32s %s\n" "$u" "$code"
 done
 echo ""
 echo "浏览器访问请用 Ctrl+Shift+R 强制刷新，避免旧缓存干扰。"
