@@ -144,9 +144,11 @@ export async function PUT(request: NextRequest) {
       return errorResponse('請先登錄', 401);
     }
 
-    const { id, quantity, selected } = await request.json();
+    const { id, cartItemId, quantity, selected } = await request.json();
 
-    if (!id) {
+    // 兼容前端两种参数名：{ id } 与 { cartItemId }
+    const itemId = id || cartItemId;
+    if (!itemId) {
       return errorResponse('缺少購物車項ID');
     }
 
@@ -154,7 +156,7 @@ export async function PUT(request: NextRequest) {
     if (quantity !== undefined) updateData.quantity = quantity;
     if (selected !== undefined) updateData.selected = selected ? 1 : 0;
 
-    await dbUpdate('cart', updateData, { id, user_id: userId });
+    await dbUpdate('cart', updateData, { id: itemId, user_id: userId });
 
     return messageResponse('更新成功');
   } catch (error) {
@@ -174,7 +176,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    // 兼容前端两种参数名：?id= 与 ?cartItemId=
+    const id = searchParams.get('id') || searchParams.get('cartItemId');
 
     if (id) {
       await dbRemove('cart', { id: parseInt(id), user_id: userId });
