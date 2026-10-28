@@ -62,7 +62,7 @@ export function Footer() {
               <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary text-primary-foreground font-bold text-lg">
                 符
               </div>
-              <span className="text-xl font-semibold tracking-tight">{settings.siteName || '符寶網'}</span>
+              <span className="text-xl font-semibold tracking-tight">{settings.site_name || '符寶網'}</span>
             </Link>
             <p className="text-sm text-muted-foreground mb-4">
               {t.footer.slogan}
@@ -138,15 +138,15 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Mail className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{settings.contactEmail || 'support@fubao.ltd'}</span>
+                <span>{settings.contact_email || 'support@fubao.ltd'}</span>
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{settings.contactPhone || '+852 3900 8888'}</span>
+                <span>{settings.contact_phone || '+852 3900 8888'}</span>
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <span>{settings.contactAddress || '香港九龍XXX大廈XX樓'}</span>
+                <span>{settings.contact_address || '香港九龍XXX大廈XX樓'}</span>
               </li>
             </ul>
           </div>

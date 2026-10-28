@@ -151,8 +151,8 @@ export function MobileNav() {
   useEffect(() => {
     if (shouldHide) return; // 如果隐藏则跳过
     
-    // 未登录时不请求需认证的接口，避免 401 错误
-    const token = typeof document !== 'undefined' ? document.cookie.includes('auth_token=') : false;
+    // 未登录时不请求需认证的接口，避免 401 错误（auth_token 是 httpOnly Cookie，读不到；改用 localStorage 判定）
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
     if (!token) return;
     
     const fetchCounts = async () => {

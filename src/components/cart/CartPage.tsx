@@ -218,9 +218,9 @@ export function CartPage() {
   const cart = t.cart;
   const GUEST_CART_KEY = 'fubao_guest_cart';
 
-  // 检测是否为访客
+  // 检测是否为访客（auth_token 是 httpOnly Cookie，document.cookie 读不到；改用 localStorage 的 fubao_token 判定）
   useEffect(() => {
-    const token = typeof document !== 'undefined' ? document.cookie.includes('auth_token=') : false;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
     setIsGuest(!token);
   }, []);
 

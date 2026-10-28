@@ -78,13 +78,20 @@ export function SiteSettingsProvider({ children, initialSettings }: { children: 
         if (data.success && data.data) {
           // Convert settings array to key-value object
           const settingsMap: SiteSettings = { ...defaultSettings };
+          // 兼容两种返回形状：数组 [{key,value}] 或按组分组对象 {basic:[{key,value}],...}
+          const flatItems: { key: string; value: string }[] = [];
           if (Array.isArray(data.data)) {
-            data.data.forEach((item: { key: string; value: string }) => {
-              if (item.key) {
-                settingsMap[item.key] = item.value || '';
-              }
+            flatItems.push(...(data.data as { key: string; value: string }[]));
+          } else if (data.data && typeof data.data === 'object') {
+            Object.values(data.data as Record<string, { key: string; value: string }[]>).forEach((group) => {
+              if (Array.isArray(group)) flatItems.push(...group);
             });
           }
+          flatItems.forEach((item) => {
+            if (item.key) {
+              settingsMap[item.key] = item.value || '';
+            }
+          });
           // Convert default_currency code to currency symbol
           const currencyCode = settingsMap['default_currency'] || 'HKD';
           settingsMap.currency = CURRENCY_SYMBOLS[currencyCode] || currencyCode;

@@ -584,7 +584,7 @@ function CheckoutPageContent() {
                     </div>
                   </div>
                 ) : addresses.length === 0 ? (
-                  <Button variant="outline" className="w-full" onClick={() => router.push('/user/addresses/new')}>
+                  <Button variant="outline" className="w-full" onClick={() => router.push('/user/addresses')}>
                     <Plus className={`w-4 h-4 ${isRTL ? 'ms-2' : 'me-2'}`} />
                     {checkout.address.add}
                   </Button>
