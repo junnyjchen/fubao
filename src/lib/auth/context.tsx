@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 初始化：从本地存储恢复用户状态
+  // 初始化：从本地存储恢复用户状态；监听 storage 事件（登录/注册页写入 token 后会派发），token 变化时重新校验
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -99,6 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
+
+    // 登录/注册页写入 localStorage 后派发 storage 事件，触发重新校验登录态
+    const handleStorageChange = () => {
+      initAuth();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   /** 登录 */

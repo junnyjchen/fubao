@@ -18,7 +18,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
-import { useAuth } from '@/lib/auth/context';
 import { useI18n } from '@/lib/i18n';
 import { useSiteSettings } from '@/lib/site-settings';
 import {
@@ -124,9 +123,16 @@ function CheckoutPageContent() {
   const searchParams = useSearchParams();
   const { t, isRTL } = useI18n();
   const { settings } = useSiteSettings();
-  const { user, loading: authLoading } = useAuth();
   const currency = settings.currency || 'HK$';
-  const isGuest = !authLoading && !user;
+
+  // 检测是否为访客（auth context 在 SPA 内登录/注册后可能滞后，与购物车页一致改用 localStorage 的 fubao_token 判定）
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestChecked, setGuestChecked] = useState(false);
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
+    setIsGuest(!token);
+    setGuestChecked(true);
+  }, []);
   
   const cartItemIdsStr = searchParams.get('cartItemIds') || '';
   const cartItemIds = useMemo(() => cartItemIdsStr ? cartItemIdsStr.split(',').map(Number) : [], [cartItemIdsStr]);
@@ -324,11 +330,11 @@ function CheckoutPageContent() {
   }, [cartItemIds, orderId, getAuthHeaders, isGuest]);
 
   useEffect(() => {
-    if (!loadedRef.current) {
+    if (guestChecked && !loadedRef.current) {
       loadedRef.current = true;
       loadData();
     }
-  }, [loadData]);
+  }, [guestChecked, loadData]);
 
   // 计算金额
   const goodsAmount = cartItems.reduce((sum, item) => sum + item.goods.price * item.quantity, 0);
