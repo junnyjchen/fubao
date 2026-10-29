@@ -23,6 +23,7 @@ import {
   ArrowUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/auth/context';
 import {
   Sheet,
   SheetContent,
@@ -67,6 +68,8 @@ const HIDDEN_PATHS = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  // 登录态判定：以服务端校验过的 auth context 为唯一来源（httpOnly cookie 或 Bearer 任一有效即视为已登录）
+  const { user: authUser } = useAuth();
   const [cartCount, setCartCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false); // 默认隐藏
@@ -150,22 +153,20 @@ export function MobileNav() {
   // 获取购物车数量和通知数量
   useEffect(() => {
     if (shouldHide) return; // 如果隐藏则跳过
-    
-    // 未登录时不请求需认证的接口，避免 401 错误（auth_token 是 httpOnly Cookie，读不到；改用 localStorage 判定）
-    const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
-    if (!token) return;
-    
+    if (!authUser) return; // 未登录（以服务端校验过的 auth context 为准）不请求需认证的接口
+
     const fetchCounts = async () => {
       try {
-        // 获取购物车数量
-        const cartRes = await fetch('/api/cart');
+        // 获取购物车数量（/api/cart 返回 data.groups 分组结构，按商品行数汇总）
+        const cartRes = await fetch('/api/cart', { credentials: 'include' });
         if (cartRes.ok) {
           const cartData = await cartRes.json();
-          setCartCount(cartData.data?.length || 0);
+          const groups = cartData.data?.groups;
+          setCartCount(Array.isArray(groups) ? groups.reduce((n: number, g: { items?: unknown[] }) => n + (g.items?.length || 0), 0) : 0);
         }
 
         // 获取通知数量
-        const notifRes = await fetch('/api/notifications?unread=true');
+        const notifRes = await fetch('/api/notifications?unread=true', { credentials: 'include' });
         if (notifRes.ok) {
           const notifData = await notifRes.json();
           setNotificationCount(notifData.unreadCount || 0);
@@ -176,7 +177,7 @@ export function MobileNav() {
     };
 
     fetchCounts();
-  }, [pathname, shouldHide]);
+  }, [pathname, shouldHide, authUser]);
 
   // 如果在隐藏路径中，返回 null
   if (shouldHide) {

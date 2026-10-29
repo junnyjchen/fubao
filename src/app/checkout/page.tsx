@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { useI18n } from '@/lib/i18n';
 import { useSiteSettings } from '@/lib/site-settings';
+import { useAuth } from '@/lib/auth/context';
 import {
   MapPin,
   Plus,
@@ -125,14 +126,10 @@ function CheckoutPageContent() {
   const { settings } = useSiteSettings();
   const currency = settings.currency || 'HK$';
 
-  // 检测是否为访客（auth context 在 SPA 内登录/注册后可能滞后，与购物车页一致改用 localStorage 的 fubao_token 判定）
-  const [isGuest, setIsGuest] = useState(false);
-  const [guestChecked, setGuestChecked] = useState(false);
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
-    setIsGuest(!token);
-    setGuestChecked(true);
-  }, []);
+  // 登录态判定：以服务端校验过的 auth context 为唯一来源（httpOnly cookie 与 Bearer 任一有效即视为已登录）。
+  // 不再用 localStorage 的 fubao_token 判定——cookie 登录但 localStorage token 缺失的用户会被误判成访客导致"購物車為空"
+  const { user: authUser, loading: authLoading } = useAuth();
+  const isGuest = !authLoading && !authUser;
   
   const cartItemIdsStr = searchParams.get('cartItemIds') || '';
   const cartItemIds = useMemo(() => cartItemIdsStr ? cartItemIdsStr.split(',').map(Number) : [], [cartItemIdsStr]);
@@ -330,11 +327,12 @@ function CheckoutPageContent() {
   }, [cartItemIds, orderId, getAuthHeaders, isGuest]);
 
   useEffect(() => {
-    if (guestChecked && !loadedRef.current) {
+    // 等登录态校验完成后再执行一次性加载，避免 auth 未决时误走访客/登录分支
+    if (!authLoading && !loadedRef.current) {
       loadedRef.current = true;
       loadData();
     }
-  }, [guestChecked, loadData]);
+  }, [authLoading, loadData]);
 
   // 计算金额
   const goodsAmount = cartItems.reduce((sum, item) => sum + item.goods.price * item.quantity, 0);

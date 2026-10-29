@@ -90,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(USER_STORAGE_KEY);
             localStorage.removeItem(TOKEN_STORAGE_KEY);
           }
+        } else {
+          // 服務器無法驗證登錄態（token/cookie 均無效）：清除殘留的展示用戶，
+          // 避免“頭像顯示已登錄但實際未登錄”的前後矛盾
+          setUser(null);
+          localStorage.removeItem(USER_STORAGE_KEY);
         }
       } catch (error) {
         console.error('初始化认证失败:', error);

@@ -44,6 +44,7 @@ import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { DetailRecommendations } from '@/components/shop/ProductRecommendations';
 import { GoodsDetailSkeleton } from '@/components/shop/GoodsDetailSkeleton';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth/context';
 import { RichTextRenderer } from '@/components/ui/rich-text-renderer';
 import { SkuSelector } from '@/components/shop/SkuSelector';
 import { MerchantReviews } from '@/components/shop/MerchantReviews';
@@ -124,6 +125,8 @@ const RelatedGoodsCard = memo(function RelatedGoodsCard({
 export function GoodsDetailPage() {
   const router = useRouter();
   const { t, isRTL, lang } = useI18n();
+  // 登录态判定：以服务端校验过的 auth context 为唯一来源（httpOnly cookie 或 Bearer 任一有效即视为已登录）
+  const { user: authUser } = useAuth();
   const [goodsId, setGoodsId] = useState<string | null>(null);
   const [goods, setGoods] = useState<Goods | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,9 +225,8 @@ export function GoodsDetailPage() {
     if (!goods) return;
     setAddingToCart(true);
     try {
-      // 检查是否已登录
-      const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
-      const hasAuth = !!token || (typeof document !== 'undefined' && document.cookie.includes('auth_token='));
+      // 检查是否已登录（以服务端校验过的 auth context 为准，避免 cookie 登录但 localStorage token 缺失时误判访客）
+      const hasAuth = !!authUser;
 
       if (!hasAuth) {
         // 访客模式：存入 localStorage 购物车
@@ -269,14 +271,14 @@ export function GoodsDetailPage() {
     } finally {
       setAddingToCart(false);
     }
-  }, [goods, quantity, selectedSku, t]);
+  }, [goods, quantity, selectedSku, t, authUser]);
 
   const handleBuyNow = useCallback(async () => {
     if (!goods) return;
     setAddingToCart(true);
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : '';
-      const hasAuth = !!token || (typeof document !== 'undefined' && document.cookie.includes('auth_token='));
+      // 检查是否已登录（以服务端校验过的 auth context 为准）
+      const hasAuth = !!authUser;
 
       if (!hasAuth) {
         // 访客模式：直接跳转结账页，携带商品信息
@@ -315,7 +317,7 @@ export function GoodsDetailPage() {
     } finally {
       setAddingToCart(false);
     }
-  }, [goods, quantity, selectedSku, router, t]);
+  }, [goods, quantity, selectedSku, router, t, authUser]);
 
   const handleToggleFavorite = useCallback(async () => {
     if (!goods) return;

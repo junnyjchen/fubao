@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { CouponSelector } from '@/components/coupon/CouponSelector';
 import { EmptyState, EmptyIcon } from '@/components/ui/empty-state';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth/context';
 import {
   ShoppingCart,
   Trash2,
@@ -213,16 +214,14 @@ export function CartPage() {
   const [updating, setUpdating] = useState(false);
   const [showCouponSelector, setShowCouponSelector] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null);
-  const [isGuest, setIsGuest] = useState(false);
 
   const cart = t.cart;
   const GUEST_CART_KEY = 'fubao_guest_cart';
 
-  // 检测是否为访客（auth_token 是 httpOnly Cookie，document.cookie 读不到；改用 localStorage 的 fubao_token 判定）
-  useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('fubao_token') : null;
-    setIsGuest(!token);
-  }, []);
+  // 登录态判定：以服务端校验过的 auth context 为唯一来源（httpOnly cookie 与 Bearer 任一有效即视为已登录）。
+  // 不再用 localStorage 的 fubao_token 判定——cookie 登录但 localStorage token 缺失的用户会被误判成访客，出现"头部已登录、购物车却显示访客横幅"的矛盾
+  const { user: authUser, loading: authLoading } = useAuth();
+  const isGuest = !authLoading && !authUser;
 
   // 从 localStorage 读取访客购物车
   const getGuestCart = useCallback((): any[] => {
