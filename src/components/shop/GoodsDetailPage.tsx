@@ -60,6 +60,7 @@ interface Goods {
   main_image: string | null;
   images: string[] | null;
   description: string | null;
+  detail?: string | null;
   purpose: string | null;
   is_certified: boolean;
   status: boolean;
@@ -643,8 +644,8 @@ export function GoodsDetailPage() {
             </CardHeader>
             <CardContent className="pt-6">
               <TabsContent value="description" className="mt-0">
-                {goods.description ? (
-                  <RichTextRenderer content={goods.description} className="text-sm" />
+                {(goods.detail || goods.description) ? (
+                  <RichTextRenderer content={goods.detail || goods.description} className="text-sm" />
                 ) : (
                   <p className="text-muted-foreground text-center py-8">{detail.noDescription}</p>
                 )}
