@@ -85,6 +85,7 @@ export function RichTextEditor({
       addImage(url);
     } catch (error) {
       console.error('图片上传失败:', error);
+      window.alert(error instanceof Error ? error.message : '圖片上傳失敗，請重試');
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };

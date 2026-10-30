@@ -39,7 +39,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload, uploadImageFile } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface GoodsForm {
@@ -345,6 +345,7 @@ export default function MerchantGoodsNewPage() {
                       value={form.content}
                       onChange={(html) => setForm({ ...form, content: html })}
                       placeholder="请输入商品详情内容..."
+                      onImageUpload={(file) => uploadImageFile(file, 'merchant/goods')}
                     />
                   </CardContent>
                 </Card>

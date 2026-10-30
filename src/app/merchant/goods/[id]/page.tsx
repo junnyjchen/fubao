@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload, uploadImageFile } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface GoodsForm {
@@ -292,6 +292,7 @@ export default function MerchantGoodsEditPage() {
             value={form.content}
             onChange={(html) => setForm((f) => ({ ...f, content: html }))}
             placeholder="详细描述商品信息..."
+            onImageUpload={(file) => uploadImageFile(file, 'merchant/goods')}
           />
         </section>
 

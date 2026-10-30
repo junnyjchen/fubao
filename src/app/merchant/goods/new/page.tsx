@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload, uploadImageFile } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 export default function MerchantNewGoodsPage() {
@@ -179,6 +179,7 @@ export default function MerchantNewGoodsPage() {
               value={form.description}
               onChange={(html) => updateForm('description', html)}
               placeholder="详细描述商品信息..."
+              onImageUpload={(file) => uploadImageFile(file, 'merchant/goods')}
             />
           </div>
 

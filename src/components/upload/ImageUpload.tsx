@@ -42,6 +42,27 @@ interface UploadingFile {
   error?: string;
 }
 
+/**
+ * 上传单张本地图片到 /api/upload，返回可直接访问的 URL
+ * 供富文本编辑器等场景使用
+ */
+export async function uploadImageFile(file: File, folder = 'images'): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('folder', folder);
+
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  const result = await response.json();
+  if (!response.ok || !result.data?.url) {
+    throw new Error(result.error || '上傳失敗，請重試');
+  }
+  return result.data.url as string;
+}
+
 export function ImageUpload({
   value = [],
   onChange,

@@ -38,7 +38,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ImageUpload } from '@/components/upload/ImageUpload';
+import { ImageUpload, uploadImageFile } from '@/components/upload/ImageUpload';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface GoodsForm {
@@ -353,6 +353,7 @@ export default function MerchantGoodsEditPage({ params }: { params: Promise<{ id
                       value={form.content}
                       onChange={(value) => setForm(f => ({ ...f, content: value }))}
                       placeholder="請輸入商品詳細描述..."
+                      onImageUpload={(file) => uploadImageFile(file, 'merchant/goods')}
                     />
                   </CardContent>
                 </Card>
